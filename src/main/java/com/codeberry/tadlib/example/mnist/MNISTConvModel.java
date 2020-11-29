@@ -2,6 +2,8 @@ package com.codeberry.tadlib.example.mnist;
 
 import com.codeberry.tadlib.array.TArray;
 import com.codeberry.tadlib.example.TrainingData;
+import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.nn.model.ModelFactory;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.ReflectionUtils;
 
@@ -17,9 +19,9 @@ import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.OpsExtended.*;
 import static com.codeberry.tadlib.tensor.Tensor.TensorFactories.*;
 import static com.codeberry.tadlib.tensor.Tensor.constant;
-import static com.codeberry.tadlib.util.AccuracyUtils.*;
+import static com.codeberry.tadlib.util.AccuracyUtils.softmaxAccuracy;
 
-public class MNISTConvModel {
+public class MNISTConvModel implements Model {
     private final Config cfg;
 
     private final Tensor w;
@@ -35,16 +37,13 @@ public class MNISTConvModel {
     private final Tensor full_bn_beta;
     private final Tensor full_bn_gamma;
 
-    public BatchNormRunningAverages sec_bnAverages = new BatchNormRunningAverages();
-    public BatchNormRunningAverages full_bnAverages = new BatchNormRunningAverages();
+    public BatchNormRunningAverages secondConvBnAverages = new BatchNormRunningAverages();
+    public BatchNormRunningAverages fullyConBnAverages = new BatchNormRunningAverages();
 
     private final List<Runnable> additionalUpdatesOnWeightUpdate = new ArrayList<>();
 
     public MNISTConvModel(Config cfg) {
         this.cfg = cfg;
-
-        int imageSize = 28;
-        int out = 10;
 
         Random r = new Random(cfg.weightInitRandomSeed);
         this.w = randomWeight(r, shape(3, 3, 1, cfg.firstConvChannels));
@@ -70,13 +69,13 @@ public class MNISTConvModel {
             this.full_bn_gamma = null;
         }
 
-        int hiddenSize = imageSize / 2 / 2;
+        int hiddenSize = IMAGE_SIZE / 2 / 2;
         this.fullW = randomWeight(r,
                 shape(hiddenSize * hiddenSize * cfg.secondConvChannels,
                         cfg.fullyConnectedSize));
 
-        this.finalW = randomWeight(r, shape(cfg.fullyConnectedSize, out));
-        this.finalB = zeros(shape(out));
+        this.finalW = randomWeight(r, shape(cfg.fullyConnectedSize, OUTPUTS));
+        this.finalB = zeros(shape(OUTPUTS));
     }
 
     private MNISTConvModel(MNISTConvModel src) {
@@ -89,28 +88,32 @@ public class MNISTConvModel {
                 Tensor::copy);
     }
 
-    public void trainSingleIteration(Random rnd, TrainingData batchData, double lr, TrainStats stats) {
-        calcGradient(rnd, batchData.xTrain, batchData.yTrain, stats);
+    public PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, double lr) {
+        PredictionAndLosses l = calcGradient(rnd, batchData.xTrain, batchData.yTrain);
+
         updateWeights(lr);
+
+        return l;
     }
 
-    public void calcGradient(Random dropRnd,
-                             Tensor xTrain, Tensor yTrain) {
-        calcGradient(dropRnd, xTrain, yTrain, null);
+    @Override
+    public String getTrainingLogText() {
+        return "secondConvBnAverages:\n" + secondConvBnAverages + "\n" +
+                "fullyConBnAverages:\n" + fullyConBnAverages;
     }
 
-    public void calcGradient(Random rnd,
-                             Tensor xTrain, Tensor yTrain,
-                             TrainStats stats) {
+    public PredictionAndLosses calcGradient(Random rnd,
+                                            Tensor xTrain, Tensor yTrain) {
         resetGradients();
 
-        Tensor cost = calcCost(rnd, xTrain, yTrain, stats);
-        cost.backward(value(1.0));
+        PredictionAndLosses l = calcCost(rnd, xTrain, yTrain);
+        l.totalLoss.backward(value(1.0));
+
+        return l;
     }
 
-    public Tensor calcCost(Random rnd,
-                           Tensor xTrain, Tensor yTrain,
-                           TrainStats stats) {
+    public PredictionAndLosses calcCost(Random rnd,
+                                        Tensor xTrain, Tensor yTrain) {
         int actualBatchSize = xTrain.getShape().at(0);
 
         Tensor y = forward(rnd, xTrain, RunMode.TRAINING);
@@ -122,13 +125,9 @@ public class MNISTConvModel {
                 l2LossOf(xTrain.getShape(), cfg.l2Lambda,
                         w, sec_w, fullW, finalW);
 
-        if (stats != null) {
-            stats.accumulate((double) avgSoftmaxCost.toDoubles(),
-                    (double) l2Loss.toDoubles(),
-                    softmaxAccuracy(yTrain, y));
-        }
+        Tensor totalLoss = add(avgSoftmaxCost, l2Loss);
 
-        return add(avgSoftmaxCost, l2Loss);
+        return new PredictionAndLosses(y, totalLoss, l2Loss);
     }
 
     public List<Tensor> getParams() {
@@ -176,9 +175,9 @@ public class MNISTConvModel {
         Tensor secRelu = relu(sec_maxed);
 
         if (cfg.useBatchNormalization) {
-            BatchNormResult secBnResult = batchNorm(secRelu, sec_bn_beta, sec_bn_gamma, sec_bnAverages, runMode);
+            BatchNormResult secBnResult = batchNorm(secRelu, sec_bn_beta, sec_bn_gamma, secondConvBnAverages, runMode);
             additionalUpdatesOnWeightUpdate.add(() ->
-                    this.sec_bnAverages = this.sec_bnAverages.updateWith(secBnResult, 0.99));
+                    this.secondConvBnAverages = this.secondConvBnAverages.updateWith(secBnResult, 0.99));
             return secBnResult.output;
         } else {
             return secRelu;
@@ -195,9 +194,9 @@ public class MNISTConvModel {
 
         Tensor hiddenFinal;
         if (cfg.useBatchNormalization) {
-            BatchNormResult fullBnResult = batchNorm(hiddenRelu, full_bn_beta, full_bn_gamma, full_bnAverages, runMode);
+            BatchNormResult fullBnResult = batchNorm(hiddenRelu, full_bn_beta, full_bn_gamma, fullyConBnAverages, runMode);
             additionalUpdatesOnWeightUpdate.add(() -> {
-                this.full_bnAverages = this.full_bnAverages.updateWith(fullBnResult, 0.99);
+                this.fullyConBnAverages = this.fullyConBnAverages.updateWith(fullBnResult, 0.99);
             });
             hiddenFinal = fullBnResult.output;
         } else {
@@ -238,7 +237,7 @@ public class MNISTConvModel {
         return new MNISTConvModel(this);
     }
 
-    public static class Config {
+    public static class Config implements ModelFactory {
         private final int firstConvChannels;
         private final int secondConvChannels;
         private final int fullyConnectedSize;
@@ -255,6 +254,11 @@ public class MNISTConvModel {
             this.weightInitRandomSeed = weightInitRandomSeed;
             this.useBatchNormalization = useBatchNormalization;
             this.dropoutKeep = dropoutKeep;
+        }
+
+        @Override
+        public Model createModel() {
+            return new MNISTConvModel(this);
         }
 
         public static class Builder {
@@ -313,9 +317,10 @@ public class MNISTConvModel {
     }
 
     public static class TrainStats {
-        private double accTotal;
         private double costTotal;
         private double costL2Total;
+
+        private double accTotal;
         private int iterations;
 
         public void accumulate(double cost, double l2Cost, double accuracy) {
@@ -333,6 +338,12 @@ public class MNISTConvModel {
                     ", costTotal=" + (costTotal / iterations) +
                     ", costL2Total=" + (costL2Total / iterations) +
                     '}';
+        }
+
+        public void accumulate(PredictionAndLosses pl, Tensor labels) {
+            accumulate((double) pl.totalLoss.toDoubles(),
+                    (double) pl.l2Loss.toDoubles(),
+                    softmaxAccuracy(labels, pl.prediction));
         }
     }
 

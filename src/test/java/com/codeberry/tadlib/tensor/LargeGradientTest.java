@@ -4,6 +4,7 @@ import com.codeberry.tadlib.array.TArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.example.mnist.MNISTConvModel;
 import com.codeberry.tadlib.example.mnist.MNISTConvModel.TrainStats;
+import com.codeberry.tadlib.nn.model.Model;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -135,9 +136,10 @@ public class LargeGradientTest {
         Random dropRnd = new Random(epoch);
         TrainStats stats = new TrainStats();
 
-        model.calcGradient(dropRnd, xTrain, yTrain, stats);
+        Model.PredictionAndLosses pl = model.calcGradient(dropRnd, xTrain, yTrain);
         model.updateWeights(LEARNING_RATE);
 
+        stats.accumulate(pl, yTrain);
         System.out.println("Trained: " + stats);
     }
 }

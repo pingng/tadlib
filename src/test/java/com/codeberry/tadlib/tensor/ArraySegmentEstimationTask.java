@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.example.mnist.MNISTConvModel;
+import com.codeberry.tadlib.nn.model.Model;
 
 import java.util.Random;
 import java.util.concurrent.Callable;
@@ -62,8 +63,8 @@ class ArraySegmentEstimationTask implements Callable<double[]> {
     }
 
     private double calcCost() {
-        return (double) model.calcCost(new Random(rndSeed), xTrain, yTrain, new MNISTConvModel.TrainStats())
-                .toDoubles();
+        Model.PredictionAndLosses predictionAndLosses = model.calcCost(new Random(rndSeed), xTrain, yTrain);
+        return (double) predictionAndLosses.totalLoss.toDoubles();
     }
 
     @Override

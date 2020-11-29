@@ -50,10 +50,10 @@ outW.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
 outB.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
 ```
 
-See [the source](src/main/java/com/codeberry/tadlib/example/mnist/TrainSimpleMNISTMain.java) and
+See [the source](src/main/java/com/codeberry/tadlib/example/mnist/TrainFullyConnectedMNISTMain.java) and
 the [model](src/main/java/com/codeberry/tadlib/example/mnist/MNISTFullyConnectedModel.java) for this example.
 
-There is also [another example](src/main/java/com/codeberry/tadlib/example/mnist/TrainMNISTMain.java) using 
+There is also [another example](src/main/java/com/codeberry/tadlib/example/mnist/TrainConvMNISTMain.java) using 
 [convolutions with batch normalization](src/main/java/com/codeberry/tadlib/example/mnist/MNISTConvModel.java).
 
 Scalar implementation

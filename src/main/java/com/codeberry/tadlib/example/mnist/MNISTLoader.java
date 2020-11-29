@@ -17,6 +17,9 @@ import static com.codeberry.tadlib.array.TArray.*;
 import static java.lang.Math.min;
 
 public class MNISTLoader {
+    public static final int IMAGE_SIZE = 28;
+    public static final int OUTPUTS = 10;
+
     public static TrainingData generate(Random rand, int examples) {
         return new TrainingData(
                 generateXTrain(rand, examples),

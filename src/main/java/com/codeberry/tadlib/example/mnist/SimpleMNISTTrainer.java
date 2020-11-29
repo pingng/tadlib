@@ -1,56 +1,46 @@
 package com.codeberry.tadlib.example.mnist;
 
 import com.codeberry.tadlib.example.TrainingData;
+import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.nn.model.ModelFactory;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.StringUtils;
 
 import java.util.Random;
 
-import static com.codeberry.tadlib.example.mnist.MNISTLoader.LoadParams.params;
 import static com.codeberry.tadlib.example.mnist.MNISTConvModel.Config.Builder.cfgBuilder;
+import static com.codeberry.tadlib.example.mnist.MNISTLoader.LoadParams.params;
 import static com.codeberry.tadlib.util.AccuracyUtils.softmaxAccuracy;
 
-public class TrainMNISTMain {
+public class SimpleMNISTTrainer {
 
-    public static void main(String[] args) {
-        TrainMNISTMain main = new TrainMNISTMain();
+    private final TrainParams params;
+    private final TrainLogger logger = new TrainLogger();
+    private final TrainingData trainingData;
+    private final Model model;
 
-        main.trainModel(new TrainParams()
-                .batchSize(32)
-                .learningRate(0.15)
-                .loaderParams(params()
-                        .downloadWhenMissing(true)
-                        .trainingExamples(40_000)
-                        .testExamples(10_000))
-                .modelConfig(cfgBuilder()
-                        .firstConvChannels(4)
-                        .secondConvChannels(8)
-                        .fullyConnectedSize(32)
-                        .l2Lambda(0.01)
-                        .weightInitRandomSeed(4)
-                        .useBatchNormalization(true)
-                        .dropoutKeep(0.5)
-                        .build()));
-    }
+    public SimpleMNISTTrainer(TrainParams params) {
+        this.params = params;
 
-    private void trainModel(TrainParams params) {
         System.out.println(StringUtils.toJson(params));
 
-        TrainLogger logger = new TrainLogger();
+        trainingData = MNISTLoader.load(params.loaderParams);
+        model = params.modelFactory.createModel();
+    }
 
-        TrainingData trainingData = MNISTLoader.load(params.loaderParams);
-        MNISTConvModel model = new MNISTConvModel(params.modelConfig);
-
+    public void trainEpochs(int epochs) {
         int numberOfBatches = trainingData.calcTrainingBatchCountOfSize(params.batchSize);
 
         Random rnd = new Random(4);
-        for (int epoch = 0; epoch <= 5000; epoch++) {
+        for (int epoch = 0; epoch <= epochs; epoch++) {
             System.out.println("=== Epoch " + epoch);
             MNISTConvModel.TrainStats stats = new MNISTConvModel.TrainStats();
             for (int batchId = 0; batchId < numberOfBatches; batchId++) {
                 TrainingData batchData = trainingData.getTrainingBatch(batchId, params.batchSize);
 
-                model.trainSingleIteration(rnd, batchData, params.learningRate, stats);
+                Model.PredictionAndLosses pl = model.trainSingleIteration(rnd, batchData, params.learningRate);
+
+                stats.accumulate(pl, batchData.yTrain);
 
                 logger.log(batchId, numberOfBatches, model, stats);
             }
@@ -66,14 +56,13 @@ public class TrainMNISTMain {
         static  final int OUTPUT_BATCHES = 200;
         int batchProgress = 0;
 
-        public void log(int batchId, int numberOfBatches, MNISTConvModel model, MNISTConvModel.TrainStats stats) {
+        public void log(int batchId, int numberOfBatches, Model model, MNISTConvModel.TrainStats stats) {
             int batchIdMod = batchId % OUTPUT_BATCHES;
             if (batchIdMod == 0) {
                 batchProgress = 0;
                 System.out.println("- Batch " + batchId + "/" + numberOfBatches);
                 System.out.println("  " + stats);
-                System.out.println("sec_bnAverages:\n" + model.sec_bnAverages);
-                System.out.println("full_bnAverages:\n" + model.full_bnAverages);
+                System.out.println(model.getTrainingLogText());
             } else {
                 int progress10Percent = batchIdMod * 10 / OUTPUT_BATCHES;
                 if (progress10Percent != batchProgress) {
@@ -86,7 +75,7 @@ public class TrainMNISTMain {
 
     static class TrainParams {
         MNISTLoader.LoadParams loaderParams;
-        MNISTConvModel.Config modelConfig;
+        ModelFactory modelFactory;
         double learningRate;
         int batchSize;
 
@@ -105,8 +94,8 @@ public class TrainMNISTMain {
             return this;
         }
 
-        TrainParams modelConfig(MNISTConvModel.Config modelConfig) {
-            this.modelConfig = modelConfig;
+        TrainParams modelFactory(ModelFactory modelFactory) {
+            this.modelFactory = modelFactory;
             return this;
         }
     }

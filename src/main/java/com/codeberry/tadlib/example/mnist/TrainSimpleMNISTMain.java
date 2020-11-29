@@ -4,7 +4,12 @@ import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.StringUtils;
 
+import java.time.Duration;
+import java.time.Period;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import static com.codeberry.tadlib.array.TArray.randWeight;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.*;
@@ -34,8 +39,10 @@ public class TrainSimpleMNISTMain {
         TrainingData trainingData = load(params.loaderParams);
         int numberOfBatches = trainingData.calcTrainingBatchCountOfSize(params.batchSize);
 
+        long totalUsedMillis = 0;
         for (int epoch = 0; epoch <= 5000; epoch++) {
             System.out.println("=== Epoch " + epoch);
+            long start = System.currentTimeMillis();
             for (int batchId = 0; batchId < numberOfBatches; batchId++) {
                 TrainingData batchData = trainingData.getTrainingBatch(batchId, params.batchSize);
 
@@ -47,7 +54,9 @@ public class TrainSimpleMNISTMain {
             }
             Tensor predict = model.predict(trainingData.xTest);
             double testAccuracy = softmaxAccuracy(trainingData.yTest, predict);
+            totalUsedMillis += System.currentTimeMillis() - start;
             System.out.println("* Test acc: " + testAccuracy);
+            System.out.println("* Time used: " + Duration.of(totalUsedMillis / (epoch + 1), ChronoUnit.MILLIS));
         }
     }
 

@@ -34,10 +34,10 @@ for each of the output classes.
 We must then calculate the loss (scaled by the number of examples in the batch):
 ```java
 Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(batchData.yTrain), outLayer);
-Tensor avgSoftmaxCost = mul(totalSoftmaxCost, constant(1.0 / batchData.getTrainingBatchSize()));
+Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(actualBatchSize));
 ```
 
-Then trigger the magical backpropagation of the gradients:
+Then trigger backpropagation of the gradients:
 ```java
 avgSoftmaxCost.backward();
 ```
@@ -63,11 +63,15 @@ An even simpler implementation using scalar values can be found in the [singleva
 About
 ---
 ### What is the point/goal of TADLib?
-The focus of TADLib is to show how nn works under the hood. It concentrates 
-on the type of nn that is assembled usings AD, like Tensorflow and PyTorch.
+The focus of TADLib is to show how nn works under the hood. It runs conceptually like
+Tensor or PyTorch in eager/immediate mode. TADLib is of course much more simple and 
+runs orders of magnitude slower. The advantage is that it allows you to follow/debug/trace
+the flow of each value, since it is implemented with plain double arrays and uses
+normal java math operations.
 
-The code is meant to be simple to read and easy to follow. It has some limitations:
+The code is meant to be simple to read and not too difficult to follow. Some limitations are:
 - limited set of math ops
+- no/minimal optimizations
 - single threaded
 - immutable (mostly)
 - ...which means it is slow :)
@@ -77,8 +81,7 @@ It provides all the primitives to implement a standard multi layered convolution
 for the MNIST-class problems. Using TADLib is like coding a nn in Tensorflow using Variables and
 math ops to manually create the layers and structure of the model, but with the added verbosity of Java.
 
-It is possible to create larger models with TADLib, but it will run too slow and will be practically unusable.
-
+It is possible to create larger models with TADLib, but it will run too slow to be practically usable.
 
 References
 ---

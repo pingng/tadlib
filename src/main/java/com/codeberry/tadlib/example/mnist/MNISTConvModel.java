@@ -116,7 +116,7 @@ public class MNISTConvModel {
         Tensor y = forward(rnd, xTrain, RunMode.TRAINING);
 
         Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(yTrain), y);
-        Tensor avgSoftmaxCost = mul(totalSoftmaxCost, constant(1.0 / actualBatchSize));
+        Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(actualBatchSize));
 
         Tensor l2Loss = cfg.l2Lambda <= 0 ? Tensor.ZERO :
                 l2LossOf(xTrain.getShape(), cfg.l2Lambda,
@@ -163,7 +163,7 @@ public class MNISTConvModel {
     private Tensor firstConvLayer(Tensor inputs) {
         Tensor h_w = conv2d(inputs, w);
         Tensor h = add(h_w, b);
-        Tensor maxed = max2d(h, 2);
+        Tensor maxed = maxpool2d(h, 2);
         return relu(maxed);
     }
 
@@ -172,7 +172,7 @@ public class MNISTConvModel {
         Tensor secOut = cfg.useBatchNormalization ?
                 sec_h_w : add(sec_h_w, sec_b);
 
-        Tensor sec_maxed = max2d(secOut, 2);
+        Tensor sec_maxed = maxpool2d(secOut, 2);
         Tensor secRelu = relu(sec_maxed);
 
         if (cfg.useBatchNormalization) {

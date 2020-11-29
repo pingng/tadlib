@@ -40,7 +40,7 @@ public class Train2dTest {
 
             Tensor h_w = conv2d(x_train, w);
             Tensor h = add(h_w, b);
-            Tensor maxed = max2d(h, 2);
+            Tensor maxed = maxpool2d(h, 2);
             Tensor relu = relu(maxed);
             Tensor flattened = flatten(relu);
 

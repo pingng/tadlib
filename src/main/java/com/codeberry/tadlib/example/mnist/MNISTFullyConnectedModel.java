@@ -55,7 +55,7 @@ class MNISTFullyConnectedModel {
 
     private static Tensor backpropGradient(TrainingData batchData, Tensor outLayer) {
         Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(batchData.yTrain), outLayer);
-        Tensor avgSoftmaxCost = mul(totalSoftmaxCost, constant(1.0 / batchData.getTrainingBatchSize()));
+        Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(batchData.getTrainingBatchSize()));
         avgSoftmaxCost.backward();
 
         return avgSoftmaxCost;

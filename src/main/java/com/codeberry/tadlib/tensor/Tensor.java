@@ -113,9 +113,11 @@ public class Tensor {
                     this.gradient.add(gradient);
 
             for (ParentLink link : links) {
-                TArray linkGrad = link.gradFunc.calcGradient(gradient);
+                if (link.parent.gradientMode == GradientMode.CALCULATE_GRAD) {
+                    TArray linkGrad = link.gradFunc.calcGradient(gradient);
 
-                link.parent.backward(linkGrad);
+                    link.parent.backward(linkGrad);
+                }
             }
         }
     }

@@ -4,7 +4,7 @@ import com.codeberry.tadlib.array.TArray;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.tensor.MatrixTestUtils.assertEqualsMatrix;
-import static com.codeberry.tadlib.tensor.Ops.max2d;
+import static com.codeberry.tadlib.tensor.Ops.maxpool2d;
 
 public class TensorMax2DTest {
     @Test
@@ -18,7 +18,7 @@ public class TensorMax2DTest {
         Tensor input = new Tensor(m);
 
         //printMatrix(m);
-        Tensor maxed = max2d(input, 2);
+        Tensor maxed = maxpool2d(input, 2);
         TArray g = new TArray(new double[] {
                 1, 2, 3, 4,
                 5, 6, 7, 8

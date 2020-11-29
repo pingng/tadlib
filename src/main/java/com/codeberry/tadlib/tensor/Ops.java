@@ -2,6 +2,7 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.nn.loss.SoftmaxCrossEntropyLoss;
 
 import java.util.List;
 import java.util.Random;
@@ -16,7 +17,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 public abstract class Ops {
-    static final double EPSILON = 0.000001;
+    public static final double EPSILON = 0.000001;
 
     public static Tensor matmul(Tensor a, Tensor b) {
         TArray y = a.vals.matmul(b.vals);
@@ -170,11 +171,9 @@ public abstract class Ops {
             TArray transposed = filter.vals.transpose(0, 1, 3, 2);
             TArray fT = transposed.normalOrderedCopy();
             TArray fRotated = fT.rot180();
-            //if (b_w % 2) == 0:
+
             int offsetY = (filter.vals.shape.at(0) % 2 == 0) ? -1 : 0;
             int offsetX = (filter.vals.shape.at(1) % 2 == 0) ? -1 : 0;
-            //    b_grad_src = np.append(b_grad_src, np.zeros((b_h, 1)), axis=1)
-            //    b_grad_src = np.append(b_grad_src, np.zeros((1, b_h+1)), axis=0)
             return grad.conv2d(fRotated, offsetY, offsetX, TArray.Debug.NONE);
         };
         GradFunc gF_Filter = grad -> calcFilterGradient(grad, input.vals, filter.vals);
@@ -266,7 +265,7 @@ public abstract class Ops {
         return g;
     }
 
-    public static Tensor max2d(Tensor input, int size) {
+    public static Tensor maxpool2d(Tensor input, int size) {
         int[] dims = input.vals.shape.toDimArray();
         int len = dims.length;
         int newH = (dims[len - 3] + size - 1) / 2;
@@ -481,7 +480,7 @@ public abstract class Ops {
     public static Tensor sumSoftmaxCrossEntropy(Tensor labelsOneHot, Tensor prediction) {
         TArray softmax = prediction.vals.softmax();
 
-        double cost = sumSoftmaxCrossEntropy(softmax, softmax.shape.newIndexArray(),
+        double cost = SoftmaxCrossEntropyLoss.sumSoftmaxCrossEntropy(softmax, softmax.shape.newIndexArray(),
                 labelsOneHot.vals, 0);
 
         GradFunc gF = grad -> {
@@ -516,32 +515,6 @@ public abstract class Ops {
                 indices[dim] = i;
                 toSoftmaxGradient(predicted, indices, labelsOneHot, dim + 1);
             }
-        }
-    }
-
-    private static double sumSoftmaxCrossEntropy(TArray predicted, int[] indices, TArray target, int dim) {
-        int len = predicted.shape.at(dim);
-        if (indices.length - dim == 1) {
-            double sum = 0;
-            for (int i = 0; i < len; i++) {
-                indices[dim] = i;
-                double tgt = target.dataAt(indices);
-                double pred = predicted.dataAt(indices);
-                if (pred < EPSILON) {
-                    pred = EPSILON;
-                } else if (pred > 1.0 - EPSILON) {
-                    pred = 1.0 - EPSILON;
-                }
-                sum += -tgt * Math.log(pred);
-            }
-            return sum;
-        } else {
-            double sum = 0;
-            for (int i = 0; i < len; i++) {
-                indices[dim] = i;
-                sum += sumSoftmaxCrossEntropy(predicted, indices, target, dim + 1);
-            }
-            return sum;
         }
     }
 

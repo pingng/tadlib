@@ -64,7 +64,7 @@ About
 ---
 ### What is the point/goal of TADLib?
 The focus of TADLib is to show how nn works under the hood. It runs conceptually like
-Tensor or PyTorch in eager/immediate mode. TADLib is of course much more simple and 
+Tensorflow or PyTorch in eager/immediate mode. TADLib is of course much more simple and 
 runs orders of magnitude slower. The advantage is that it allows you to follow/debug/trace
 the flow of each value, since it is implemented with plain double arrays and uses
 normal java math operations.

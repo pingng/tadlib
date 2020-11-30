@@ -358,7 +358,6 @@ public class TArray {
         if (inIndices.length - inDim == 3) {
             int h = outShape.at(-3);
             int w = outShape.at(-2);
-            int outFilters = outShape.at(-1);
             // Eg.: in: <...,5,5,2> filter: <3,3,2,3>
             for (int y = 0; y < h; y++) {
                 inIndices[inIndices.length - 3] = y;
@@ -582,7 +581,6 @@ public class TArray {
             int valCount = a.shape.at(-1);
             int dims = indices.length;
             for (int y = 0; y < h; y++) {
-                //System.out.println("Y: " + y);
                 for (int x = 0; x < w; x++) {
                     double v = 0;
                     for (int i = 0; i < valCount; i++) {
@@ -593,9 +591,7 @@ public class TArray {
                         indices[dims - 1] = x;
                         double _b = b.getBroadcasted(indices);
                         v += _a * _b;
-                        //System.out.print(_a+" * "+_b +" ");
                     }
-                    //System.out.println();
                     indices[dims - 2] = y;
                     indices[dims - 1] = x;
                     int outIndex = outShape.calcDataIndex(indices);

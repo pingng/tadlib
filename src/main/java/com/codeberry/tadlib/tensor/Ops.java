@@ -2,6 +2,7 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange;
 import com.codeberry.tadlib.nn.loss.SoftmaxCrossEntropyLoss;
 
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.Random;
 
 import static com.codeberry.tadlib.array.TArray.DimKeepRemove.KEEP_DIM;
 import static com.codeberry.tadlib.array.TArray.DimKeepRemove.REMOVE_DIM;
+import static com.codeberry.tadlib.util.MultiThreadingSupport.multiThreadingSupportRun;
 import static com.codeberry.tadlib.array.TArray.ones;
 import static com.codeberry.tadlib.tensor.ParentLink.parentLink;
 import static java.lang.Boolean.TRUE;
@@ -184,17 +186,25 @@ public abstract class Ops {
     }
 
     private static TArray calcFilterGradient(TArray grad, TArray input, TArray filter) {
-        double[] tgtGradData = new double[filter.shape.size];
         Shape tgtShape = filter.shape.normalOrderedCopy();
-        TArray tgtGrad = new TArray(tgtGradData, tgtShape);
+
+        return multiThreadingSupportRun(new TaskRange(0, grad.shape.at(0)),
+                range -> accumulateFilterGradientAtFirstDim(range, grad, input, filter, tgtShape),
+                (left, right) -> left.add(right));
+    }
+
+    private static TArray accumulateFilterGradientAtFirstDim(TaskRange range, TArray grad, TArray input, TArray filter, Shape tgtShape) {
+        TArray tgtGrad = new TArray(new double[filter.shape.size], tgtShape);
 
         int[] gradIndices = grad.shape.newIndexArray();
         int[] inIndices = input.shape.newIndexArray();
         int[] filterIndices = filter.shape.newIndexArray();
 
-        accumulateFilterGradient(grad, gradIndices, 0,
-                input, inIndices,
-                tgtGrad, filterIndices);
+        for (int i = range.start; i < range.end; i++) {
+            gradIndices[0] = i;
+            inIndices[0] = i;
+            accumulateFilterGradient(grad, gradIndices, 1, input, inIndices, tgtGrad, filterIndices);
+        }
 
         return tgtGrad;
     }
@@ -206,8 +216,8 @@ public abstract class Ops {
             int filterH = tgtGrad.shape.at(0);
             int filterW = tgtGrad.shape.at(1);
             int inputChannels = input.shape.at(-1);
+            int outChannels = tgtGrad.shape.at(-1);
             for (int inIdx = 0; inIdx < inputChannels; inIdx++) {
-                int outChannels = tgtGrad.shape.at(-1);
                 for (int outIdx = 0; outIdx < outChannels; outIdx++) {
                     for (int y = 0; y < filterH; y++) {
                         for (int x = 0; x < filterW; x++) {
@@ -466,6 +476,26 @@ public abstract class Ops {
         for (int i = 0; i < data.length; i++) {
             if (data[i] <= 0) {
                 data[i] = 0;
+            } else {
+                gradMaskData[i] = 1;
+            }
+        }
+
+        Shape copyShape = copy.shape;
+        GradFunc gF = grad -> grad.mul(new TArray(gradMaskData, copyShape.copy()));
+
+        return new Tensor(copy, singletonList(parentLink(input, gF)));
+    }
+
+    public static Tensor leakyRelu(Tensor input, double leakyScale) {
+        TArray copy = input.vals.normalOrderedCopy();
+        double[] data = copy.getInternalData();
+        double[] gradMaskData = new double[data.length];
+
+        for (int i = 0; i < data.length; i++) {
+            if (data[i] <= 0) {
+                data[i] *= leakyScale;
+                gradMaskData[i] = leakyScale;
             } else {
                 gradMaskData[i] = 1;
             }

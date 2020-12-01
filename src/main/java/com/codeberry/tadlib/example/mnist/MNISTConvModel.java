@@ -163,7 +163,7 @@ public class MNISTConvModel implements Model {
         Tensor h_w = conv2d(inputs, w);
         Tensor h = add(h_w, b);
         Tensor maxed = maxpool2d(h, 2);
-        return relu(maxed);
+        return leakyRelu(maxed, 0.01);
     }
 
     private Tensor secondConvLayer(RunMode runMode, Tensor inputs) {
@@ -172,7 +172,7 @@ public class MNISTConvModel implements Model {
                 sec_h_w : add(sec_h_w, sec_b);
 
         Tensor sec_maxed = maxpool2d(secOut, 2);
-        Tensor secRelu = relu(sec_maxed);
+        Tensor secRelu = leakyRelu(sec_maxed, 0.01);
 
         if (cfg.useBatchNormalization) {
             BatchNormResult secBnResult = batchNorm(secRelu, sec_bn_beta, sec_bn_gamma, secondConvBnAverages, runMode);
@@ -190,7 +190,7 @@ public class MNISTConvModel implements Model {
         Tensor hidden_w = matmul(flattened, fullW);
         Tensor hiddenOut = cfg.useBatchNormalization ?
                 hidden_w : add(hidden_w, fullB);
-        Tensor hiddenRelu = relu(hiddenOut);
+        Tensor hiddenRelu = leakyRelu(hiddenOut, 0.01);
 
         Tensor hiddenFinal;
         if (cfg.useBatchNormalization) {

@@ -4,7 +4,7 @@ import com.codeberry.tadlib.array.TArray;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.array.TArray.*;
-import static com.codeberry.tadlib.tensor.MatrixTestUtils.assertEqualsMatrix;
+import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 import static com.codeberry.tadlib.util.StringUtils.toJson;
 
 public class TensorMeanTest {

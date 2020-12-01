@@ -2,23 +2,25 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.TArray;
 import com.codeberry.tadlib.tensor.conv2ddata.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
+import com.google.gson.Gson;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
-import static com.codeberry.tadlib.tensor.MatrixTestUtils.assertEqualsMatrix;
+import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.deepEquals;
 import static java.util.Arrays.deepToString;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TensorConv2DTest {
     @Test
-    public void testFromFile() throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        ObjectReader r = mapper.reader(Conv2DExample[].class);
-        Conv2DExample[] list = r.readValue(getClass().getResourceAsStream("/com/codeberry/tadlib/tensor/conv2ddata/conv2d_test_data_rnd.json"));
+    public void testFromFile() {
+        Gson gson = new Gson();
+        InputStream in = getClass().getResourceAsStream("/com/codeberry/tadlib/tensor/conv2ddata/conv2d_test_data_rnd.json");
+        Conv2DExample[] list = gson.fromJson(new InputStreamReader(in, UTF_8),
+                Conv2DExample[].class);
         for (Conv2DExample ex : list) {
             ex.convertListsToArrays();
         }

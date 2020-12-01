@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.array.TArray.*;
 import static com.codeberry.tadlib.array.TArray.onesShaped;
-import static com.codeberry.tadlib.tensor.MatrixTestUtils.assertEqualsMatrix;
+import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static org.junit.jupiter.api.Assertions.*;
 

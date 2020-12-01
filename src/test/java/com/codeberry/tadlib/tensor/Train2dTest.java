@@ -1,15 +1,15 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.TArray;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
+import com.codeberry.tadlib.util.StringUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.Random;
 
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.TensorTrainSimple.random;
+import static com.codeberry.tadlib.util.StringUtils.JsonPrintMode.COMPACT;
+import static com.codeberry.tadlib.util.StringUtils.toJson;
 import static java.util.Arrays.deepToString;
 
 public class Train2dTest {
@@ -54,8 +54,8 @@ public class Train2dTest {
 
             if ((i % 500) == 0) {
                 System.out.println("=== " + i + " Err: " + totalErr.toDoubles());
-                System.out.println("h: " + toJson(h.toDoubles()));
-                System.out.println("Flatten: " + toJson(flattened.toDoubles()));
+                System.out.println("h: " + toJson(h.toDoubles(), COMPACT));
+                System.out.println("Flatten: " + toJson(flattened.toDoubles(), COMPACT));
                 System.out.println("fW: " + deepToString((Object[]) fullW.toDoubles()));
                 System.out.println("  Y_w: " + deepToString((Object[]) y_w.toDoubles()));
                 System.out.println("Y: " + deepToString((Object[]) y.toDoubles()));
@@ -70,18 +70,6 @@ public class Train2dTest {
 
         //System.out.println(y_b.m.shape);
         //System.out.println(Arrays.deepToString((Object[]) y_b.m.toArray()));
-    }
-
-    static ObjectMapper objectMapper = new ObjectMapper();
-
-    private static String toJson(Object toArray) {
-        ObjectWriter
-                w = objectMapper.writerWithDefaultPrettyPrinter();
-        try {
-            return w.writeValueAsString(toArray);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static Tensor updateParam(Tensor w, double lr) {

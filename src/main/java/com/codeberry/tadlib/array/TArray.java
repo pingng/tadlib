@@ -7,17 +7,20 @@ import java.util.List;
 import java.util.Random;
 
 import static com.codeberry.tadlib.array.TArray.DimKeepRemove.REMOVE_DIM;
-import static java.lang.Boolean.*;
+import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
+import static com.codeberry.tadlib.util.MultiThreadingSupport.multiThreadingSupportRun;
+import static java.lang.Boolean.TRUE;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.util.Arrays.*;
-import static java.util.Arrays.copyOf;
 
 public class TArray {
     public static final TArray ZERO = new TArray(0.0);
+
+    private static final int MAX_STRING_LENGTH = 512;
+
     private final double[] data;
     public final Shape shape;
-    public static final int MAX_LENGTH = 512;
 
     public TArray(double val) {
         this(new double[]{val}, Shape.zeroDim());
@@ -103,11 +106,13 @@ public class TArray {
         return new TArray(this.data, new ShapeRot180(this.shape));
     }
 
+    // TODO: remove?
     public void addAt(int[] indices, double v) {
         int offset = shape.calcDataIndex(indices);
         data[offset] += v;
     }
 
+    // TODO: remove?
     public void setAt(int[] indices, double v) {
         int offset = shape.calcDataIndex(indices);
         data[offset] = v;
@@ -343,12 +348,31 @@ public class TArray {
         Shape outShape = evalConv2DShape(input.shape, filter.shape);
         double[] data = new double[outShape.size];
 
-        conv2dMain(input, input.shape.newIndexArray(), 0,
-                filter, filter.shape.newIndexArray(), offsetY, offsetX,
-                data, outShape, outShape.newIndexArray(),
-                debug);
+        double[] filledData = multiThreadingSupportRun(taskRange(0, input.shape.at(0)),
+                range -> conv2dSegmentedAtFirstDim(range.start, range.end, input, filter, offsetY, offsetX,
+                        data, outShape, debug),
+                (left, ignored) -> left);
 
-        return new TArray(data, outShape);
+        return new TArray(filledData, outShape);
+    }
+
+    private static double[] conv2dSegmentedAtFirstDim(int start, int end,
+                                                  TArray input, TArray filter,
+                                                  int offsetY, int offsetX,
+                                                  double[] data, Shape outShape,
+                                                  Debug debug) {
+        int[] inIndices = input.shape.newIndexArray();
+        int[] fIndices = filter.shape.newIndexArray();
+        int[] outIndices = outShape.newIndexArray();
+        for (int i = start; i < end; i++) {
+            inIndices[0] = i;
+            outIndices[0] = i;
+            conv2dMain(input, inIndices, 1,
+                    filter, fIndices,
+                    offsetY, offsetX, data, outShape, outIndices,
+                    debug);
+        }
+        return data;
     }
 
     private static void conv2dMain(TArray input, int[] inIndices, int inDim,
@@ -967,10 +991,11 @@ public class TArray {
         } else {
             buf.append(deepToString((Object[]) o));
         }
-        if (buf.length() > MAX_LENGTH - 3) {
-            buf.setLength(MAX_LENGTH);
+        if (buf.length() > MAX_STRING_LENGTH - 3) {
+            buf.setLength(MAX_STRING_LENGTH);
             buf.append("...");
         }
         return buf.toString();
     }
+
 }

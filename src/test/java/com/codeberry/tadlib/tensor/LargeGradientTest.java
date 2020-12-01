@@ -5,11 +5,12 @@ import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.example.mnist.MNISTConvModel;
 import com.codeberry.tadlib.example.mnist.MNISTConvModel.TrainStats;
 import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.util.MatrixTestUtils;
+import com.codeberry.tadlib.util.MultiThreadingSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.*;
@@ -39,7 +40,20 @@ public class LargeGradientTest {
     }
 
     @Test
-    public void testGradientWhileTrainingModel() throws IOException, ExecutionException, InterruptedException {
+    public void testGradientWhileTrainingModel_SingleThreaded() throws ExecutionException, InterruptedException {
+        MultiThreadingSupport.disableMultiThreading();
+
+        doTest();
+    }
+
+    @Test
+    public void testGradientWhileTrainingModel_MultiThreaded() throws ExecutionException, InterruptedException {
+        MultiThreadingSupport.enableMultiThreading();
+
+        doTest();
+    }
+
+    private void doTest() throws ExecutionException, InterruptedException {
         Random rand = new Random(4);
         TrainingData data = generate(rand, TRAINING_EXAMPLES);
 

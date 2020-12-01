@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.util.MatrixTestUtils;
 import org.junit.jupiter.api.Test;
 
 import static java.util.Arrays.deepToString;

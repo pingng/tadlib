@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
-import static com.codeberry.tadlib.tensor.MatrixTestUtils.*;
+import static com.codeberry.tadlib.util.MatrixTestUtils.*;
 
 public class TensorSqrtTest {
     @Test

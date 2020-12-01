@@ -72,7 +72,6 @@ normal java math operations.
 The code is meant to be simple to read and not too difficult to follow. Some limitations are:
 - limited set of math ops
 - no/minimal optimizations
-- single threaded
 - immutable (mostly)
 - ...which means it is slow :)
 
@@ -82,6 +81,9 @@ for the MNIST-class problems. Using TADLib is like coding a nn in Tensorflow usi
 math ops to manually create the layers and structure of the model, but with the added verbosity of Java.
 
 It is possible to create larger models with TADLib, but it will run too slow to be practically usable.
+
+There is support for parallel execution of some math operations. It helps training of MNIST like
+dataset, but it will still be too slow for real world problems.
 
 References
 ---

@@ -1,11 +1,12 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.util.MatrixTestUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
-import static com.codeberry.tadlib.tensor.MatrixTestUtils.assertEqualsMatrix;
+import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 import static com.codeberry.tadlib.tensor.Ops.div;
 
 public class TensorDivTest {

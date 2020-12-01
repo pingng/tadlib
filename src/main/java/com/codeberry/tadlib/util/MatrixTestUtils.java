@@ -1,11 +1,10 @@
-package com.codeberry.tadlib.tensor;
+package com.codeberry.tadlib.util;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Objects;
 
 public class MatrixTestUtils {
     public static void assertEqualsMatrix(Object a, Object b) {
@@ -40,6 +39,24 @@ public class MatrixTestUtils {
         double addSum = sqrSum(a, SumOp.ADD, b);
 
         return Math.sqrt(subSum) / Math.sqrt(addSum);
+    }
+
+    private static void assertEquals(Object left, Object right) {
+        if (!Objects.equals(left, right)) {
+            throw new RuntimeException("assertion failed: not equals\n" +
+                    "Left: " + left + "\n" +
+                    "Right: " + right);
+        }
+    }
+
+    private static void assertTrue(boolean condition) {
+        assertTrue(condition, "assertion failed");
+    }
+
+    private static void assertTrue(boolean condition, String msg) {
+        if (!condition) {
+            throw new RuntimeException(msg);
+        }
     }
 
     private static double sqrSum(Object a, SumOp op, Object b) {

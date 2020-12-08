@@ -4,6 +4,16 @@ import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.TArray;
 
 public abstract class OpsExtended {
+    public static int guessParamLength(Shape shape) {
+        int dimCount = shape.dimCount;
+        if (dimCount == 2 || dimCount == 4){
+            int channels = shape.at(-1);
+
+            return channels;
+        }
+        throw new IllegalArgumentException("Valid dims are 2 an 4");
+    }
+
     public static BatchNormResult batchNorm(Tensor input, Tensor beta, Tensor gamma, BatchNormRunningAverages averages, Ops.RunMode runMode) {
         Shape shape = input.vals.shape;
         if (shape.dimCount != 2 && shape.dimCount != 4) {

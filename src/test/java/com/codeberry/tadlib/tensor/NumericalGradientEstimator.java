@@ -1,7 +1,8 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.TArray;
-import com.codeberry.tadlib.example.mnist.MNISTConvModel;
+import com.codeberry.tadlib.example.TrainingData;
+import com.codeberry.tadlib.nn.model.Model;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -13,16 +14,14 @@ import static java.lang.Math.min;
 import static java.util.stream.Collectors.*;
 
 class NumericalGradientEstimator {
-    private final Tensor xTrain;
-    private final Tensor yTrain;
-    private final MNISTConvModel model;
+    private final TrainingData trainingData;
+    private final Model model;
     private final int rndSeed;
     private final ExecutorService execSrv;
     private final int threadCount;
 
-    public NumericalGradientEstimator(Tensor xTrain, Tensor yTrain, MNISTConvModel model, int rndSeed, ExecutorService execSrv, int threadCount) {
-        this.xTrain = xTrain;
-        this.yTrain = yTrain;
+    public NumericalGradientEstimator(TrainingData trainingData, Model model, int rndSeed, ExecutorService execSrv, int threadCount) {
+        this.trainingData = trainingData;
         this.model = model;
         this.rndSeed = rndSeed;
         this.execSrv = execSrv;
@@ -40,7 +39,8 @@ class NumericalGradientEstimator {
     }
 
     private TArray mergeResultsToSingleGradientResult(int paramIndex, List<Future<double[]>> resultFutures) throws InterruptedException, ExecutionException {
-        Tensor param = model.getParam(paramIndex);
+        List<Tensor> params = model.getParams();
+        Tensor param = params.get(paramIndex);
 
         TArray retGrad = TArray.zeros(param.getShape());
         double[] tgt = retGrad.getInternalData();
@@ -51,7 +51,8 @@ class NumericalGradientEstimator {
     }
 
     private List<ArraySegmentEstimationTask> createArraySegmentEstimationTasks(int paramIndex) {
-        Tensor param = model.getParam(paramIndex);
+        List<Tensor> params = model.getParams();
+        Tensor param = params.get(paramIndex);
 
         int paramLen = param.getShape().size;
         int threadsToUse = min(threadCount, paramLen);
@@ -77,6 +78,6 @@ class NumericalGradientEstimator {
 
     private ArraySegmentEstimationTask newArraySegmentEstimationTask(int paramIndex, int fromIndex, int endIndex) {
         return new ArraySegmentEstimationTask(rndSeed, model.copy(), paramIndex, fromIndex, endIndex,
-                xTrain, yTrain);
+                trainingData);
     }
 }

@@ -4,7 +4,9 @@ import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;
 import com.codeberry.tadlib.tensor.Tensor;
+import com.codeberry.tadlib.util.ReflectionUtils;
 
+import java.util.List;
 import java.util.Random;
 
 import static com.codeberry.tadlib.array.Shape.shape;
@@ -13,22 +15,35 @@ import static com.codeberry.tadlib.example.mnist.MNISTLoader.*;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.Tensor.constant;
 import static com.codeberry.tadlib.tensor.Tensor.tensor;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 
-class MNISTFullyConnectedModel implements Model {
+public class MNISTFullyConnectedModel implements Model {
+
+    private final Factory factory;
 
     private final Tensor hiddenW;
     private final Tensor hiddenB;
     private final Tensor outW;
     private final Tensor outB;
 
-    public MNISTFullyConnectedModel(Config config) {
-        Random weightRnd = new Random(config.weightInitRandomSeed);
+    public MNISTFullyConnectedModel(Factory factory) {
+        this.factory = factory;
+        Random weightRnd = new Random(factory.weightInitRandomSeed);
 
-        hiddenW = tensor(randWeight(weightRnd, shape(IMAGE_SIZE * IMAGE_SIZE, config.hiddenNeurons)));
-        hiddenB = tensor(randWeight(weightRnd, shape(config.hiddenNeurons)));
+        hiddenW = tensor(randWeight(weightRnd, shape(IMAGE_SIZE * IMAGE_SIZE, factory.hiddenNeurons)));
+        hiddenB = tensor(randWeight(weightRnd, shape(factory.hiddenNeurons)));
 
-        outW = tensor(randWeight(weightRnd, shape(config.hiddenNeurons, OUTPUTS)));
+        outW = tensor(randWeight(weightRnd, shape(factory.hiddenNeurons, OUTPUTS)));
         outB = tensor(randWeight(weightRnd, shape(OUTPUTS)));
+    }
+
+    public MNISTFullyConnectedModel(MNISTFullyConnectedModel src) {
+        this(src.factory);
+
+        ReflectionUtils.copyFieldOfClass(Tensor.class,
+                src, this,
+                Tensor::copy);
     }
 
     // returns logits
@@ -39,13 +54,21 @@ class MNISTFullyConnectedModel implements Model {
 
     @Override
     public PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, double learningRate) {
-        Tensor prediction = forward(batchData.xTrain);
-
-        Tensor cost = backpropGradient(batchData, prediction);
+        PredictionAndLosses pl = calcCost(rnd, batchData);
 
         updateWeights(learningRate);
 
-        return new PredictionAndLosses(prediction, cost);
+        return pl;
+    }
+
+    @Override
+    public PredictionAndLosses calcCost(Random rnd, TrainingData trainingData) {
+        Tensor prediction = forward(trainingData.xTrain);
+
+        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(trainingData.yTrain), prediction);
+        Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(trainingData.getTrainingBatchSize()));
+
+        return new PredictionAndLosses(prediction, emptyList(), avgSoftmaxCost);
     }
 
     private Tensor forward(Tensor input) {
@@ -59,14 +82,6 @@ class MNISTFullyConnectedModel implements Model {
         return outLayer;
     }
 
-    private static Tensor backpropGradient(TrainingData batchData, Tensor outLayer) {
-        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(batchData.yTrain), outLayer);
-        Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(batchData.getTrainingBatchSize()));
-        avgSoftmaxCost.backward();
-
-        return avgSoftmaxCost;
-    }
-
     private void updateWeights(double learningRate) {
         hiddenW.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
         hiddenB.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
@@ -74,11 +89,21 @@ class MNISTFullyConnectedModel implements Model {
         outB.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
     }
 
-    public static class Config implements ModelFactory {
+    @Override
+    public List<Tensor> getParams() {
+        return asList(hiddenW, hiddenB, outW, outB);
+    }
+
+    @Override
+    public Model copy() {
+        return new MNISTFullyConnectedModel(this);
+    }
+
+    public static class Factory implements ModelFactory {
         private final int hiddenNeurons;
         private final long weightInitRandomSeed;
 
-        private Config(int hiddenNeurons, long weightInitRandomSeed) {
+        private Factory(int hiddenNeurons, long weightInitRandomSeed) {
             this.hiddenNeurons = hiddenNeurons;
             this.weightInitRandomSeed = weightInitRandomSeed;
         }
@@ -102,12 +127,12 @@ class MNISTFullyConnectedModel implements Model {
                 return this;
             }
 
-            public static Builder cfgBuilder() {
+            public static Builder factoryBuilder() {
                 return new Builder();
             }
 
-            public Config build() {
-                return new Config(hiddenNeurons, weightInitRandomSeed);
+            public Factory build() {
+                return new Factory(hiddenNeurons, weightInitRandomSeed);
             }
         }
     }

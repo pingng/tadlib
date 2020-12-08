@@ -2,21 +2,23 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.TArray;
 import com.codeberry.tadlib.example.TrainingData;
-import com.codeberry.tadlib.example.mnist.MNISTConvModel;
-import com.codeberry.tadlib.example.mnist.MNISTConvModel.TrainStats;
+import com.codeberry.tadlib.example.mnist.MNISTFullyConnectedModel;
+import com.codeberry.tadlib.example.mnist.SequentialModel;
+import com.codeberry.tadlib.nn.model.TrainStats;
 import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.nn.model.ModelFactory;
 import com.codeberry.tadlib.util.MatrixTestUtils;
 import com.codeberry.tadlib.util.MultiThreadingSupport;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.*;
 
+import static com.codeberry.tadlib.example.mnist.MNISTFullyConnectedModel.Factory.Builder.factoryBuilder;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.*;
-import static com.codeberry.tadlib.example.mnist.MNISTConvModel.Config.Builder.cfgBuilder;
+import static com.codeberry.tadlib.example.mnist.TrainConfiguredConvMNISTMain.*;
 import static java.lang.Math.*;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -28,20 +30,21 @@ public class LargeGradientTest {
     public static final int TRAINING_EXAMPLES = 16;
     public static final double LEARNING_RATE = 0.1;
 
-    @BeforeEach
-    public void init() {
-        threadCount = max(Runtime.getRuntime().availableProcessors() - 1, 1);
-        execSrv = Executors.newFixedThreadPool(threadCount);
-    }
-
     @AfterEach
     public void destroy() {
         execSrv.shutdown();
     }
 
+    private void initTestThreads(int threadCount) {
+        this.threadCount = max(threadCount, 1);
+        execSrv = Executors.newFixedThreadPool(this.threadCount);
+    }
+
     @Test
     public void testGradientWhileTrainingModel_SingleThreaded() throws ExecutionException, InterruptedException {
         MultiThreadingSupport.disableMultiThreading();
+        // use many threads since the calculations are single threaded
+        initTestThreads(Runtime.getRuntime().availableProcessors() - 1);
 
         doTest();
     }
@@ -49,6 +52,8 @@ public class LargeGradientTest {
     @Test
     public void testGradientWhileTrainingModel_MultiThreaded() throws ExecutionException, InterruptedException {
         MultiThreadingSupport.enableMultiThreading();
+        // use a single test thread since the calculations are multi threaded
+        initTestThreads(1);
 
         doTest();
     }
@@ -57,33 +62,42 @@ public class LargeGradientTest {
         Random rand = new Random(4);
         TrainingData data = generate(rand, TRAINING_EXAMPLES);
 
-        MNISTConvModel model = new MNISTConvModel(cfgBuilder()
-                .firstConvChannels(2)
-                .secondConvChannels(4)
-                .fullyConnectedSize(10)
-                .l2Lambda(0.01)
-                .weightInitRandomSeed(4)
-                .useBatchNormalization(true)
-                .dropoutKeep(0.5)
-                .build());
+        ModelFactory modelFactory =
+                //createConvolutionModelFactory()
+                createFullyConnectedModelFactory()
+                ;
+
+        Model model = modelFactory.createModel();
+        System.out.println("Model: " + model.getClass().getSimpleName());
 
         double sumError = 0;
         for (int epoch = 0; epoch <= TEST_EPOCHS; epoch++) {
             System.out.println("=== Epoch " + epoch);
 
-            sumError += testGradients(data.xTrain, data.yTrain, model, epoch);
+            sumError += testGradients(data, model, epoch);
             System.out.println("* avgError=" + (sumError / (epoch + 1)));
 
-            trainModel(data.xTrain, data.yTrain, model, epoch);
+            trainModel(data, model, epoch);
         }
     }
 
-    private double testGradients(Tensor xTrain, Tensor yTrain, MNISTConvModel model, int epoch) throws ExecutionException, InterruptedException {
-        model.calcGradient(new Random(epoch), xTrain, yTrain);
+    private static MNISTFullyConnectedModel.Factory createFullyConnectedModelFactory() {
+        return factoryBuilder()
+                .hiddenNeurons(16)
+                .weightInitRandomSeed(4)
+                .build();
+    }
+
+    private static SequentialModel.Factory createConvolutionModelFactory() {
+        return createModelFactory(ModelSize.TINY);
+    }
+
+    private double testGradients(TrainingData trainingData, Model model, int epoch) throws ExecutionException, InterruptedException {
+        model.calcGradient(new Random(epoch), trainingData);
         List<TArray> gradients = model.getGradients();
 
         ErrorValidator errorValidator = new ErrorValidator();
-        NumericalGradientEstimator estimator = new NumericalGradientEstimator(xTrain, yTrain, model, epoch, execSrv, threadCount);
+        NumericalGradientEstimator estimator = new NumericalGradientEstimator(trainingData, model, epoch, execSrv, threadCount);
         for (int i = 0; i < gradients.size(); i++) {
             TArray backpropGrad = gradients.get(i);
             if (backpropGrad != null) {
@@ -146,14 +160,13 @@ public class LargeGradientTest {
         }
     }
 
-    private void trainModel(Tensor xTrain, Tensor yTrain, MNISTConvModel model, int epoch) {
+    private void trainModel(TrainingData trainingData, Model model, int epoch) {
         Random dropRnd = new Random(epoch);
         TrainStats stats = new TrainStats();
 
-        Model.PredictionAndLosses pl = model.calcGradient(dropRnd, xTrain, yTrain);
-        model.updateWeights(LEARNING_RATE);
+        Model.PredictionAndLosses pl = model.trainSingleIteration(dropRnd, trainingData, LEARNING_RATE);
 
-        stats.accumulate(pl, yTrain);
+        stats.accumulate(pl, trainingData.yTrain);
         System.out.println("Trained: " + stats);
     }
 }

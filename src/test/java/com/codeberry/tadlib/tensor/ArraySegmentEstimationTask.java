@@ -1,28 +1,27 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.example.mnist.MNISTConvModel;
+import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
 
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
 
 class ArraySegmentEstimationTask implements Callable<double[]> {
     private final int rndSeed;
-    private final MNISTConvModel model;
+    private final Model model;
     private final int paramIndex;
     private final int fromIndex;
     private final int endIndex;
-    private final Tensor xTrain;
-    private final Tensor yTrain;
+    private final TrainingData trainingData;
 
-    public ArraySegmentEstimationTask(int rndSeed, MNISTConvModel model, int paramIndex, int fromIndex, int endIndex, Tensor xTrain, Tensor yTrain) {
+    public ArraySegmentEstimationTask(int rndSeed, Model model, int paramIndex, int fromIndex, int endIndex, TrainingData trainingData) {
         this.rndSeed = rndSeed;
         this.model = model;
         this.paramIndex = paramIndex;
         this.fromIndex = fromIndex;
         this.endIndex = endIndex;
-        this.xTrain = xTrain;
-        this.yTrain = yTrain;
+        this.trainingData = trainingData;
     }
 
     @Override
@@ -30,7 +29,9 @@ class ArraySegmentEstimationTask implements Callable<double[]> {
         double d1 = 0.000005;
         double d2 = 0.000001;
 
-        double[] wData = model.getParam(paramIndex).getInternalData();
+        List<Tensor> params = model.getParams();
+        Tensor param = params.get(paramIndex);
+        double[] wData = param.getInternalData();
         double[] grad = new double[endIndex - fromIndex];
 
         for (int i = fromIndex; i < endIndex; i++) {
@@ -63,7 +64,7 @@ class ArraySegmentEstimationTask implements Callable<double[]> {
     }
 
     private double calcCost() {
-        Model.PredictionAndLosses predictionAndLosses = model.calcCost(new Random(rndSeed), xTrain, yTrain);
+        Model.PredictionAndLosses predictionAndLosses = model.calcCost(new Random(rndSeed), trainingData);
         return (double) predictionAndLosses.totalLoss.toDoubles();
     }
 

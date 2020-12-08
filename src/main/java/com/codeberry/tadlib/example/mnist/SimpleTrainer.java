@@ -3,23 +3,22 @@ package com.codeberry.tadlib.example.mnist;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;
+import com.codeberry.tadlib.nn.model.TrainStats;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.StringUtils;
 
 import java.util.Random;
 
-import static com.codeberry.tadlib.example.mnist.MNISTConvModel.Config.Builder.cfgBuilder;
-import static com.codeberry.tadlib.example.mnist.MNISTLoader.LoadParams.params;
 import static com.codeberry.tadlib.util.AccuracyUtils.softmaxAccuracy;
 
-public class SimpleMNISTTrainer {
+public class SimpleTrainer {
 
     private final TrainParams params;
     private final TrainLogger logger = new TrainLogger();
     private final TrainingData trainingData;
     private final Model model;
 
-    public SimpleMNISTTrainer(TrainParams params) {
+    public SimpleTrainer(TrainParams params) {
         this.params = params;
 
         System.out.println(StringUtils.toJson(params));
@@ -30,11 +29,12 @@ public class SimpleMNISTTrainer {
 
     public void trainEpochs(int epochs) {
         int numberOfBatches = trainingData.calcTrainingBatchCountOfSize(params.batchSize);
+        System.out.println("numberOfBatches = " + numberOfBatches);
 
         Random rnd = new Random(4);
         for (int epoch = 0; epoch <= epochs; epoch++) {
             System.out.println("=== Epoch " + epoch);
-            MNISTConvModel.TrainStats stats = new MNISTConvModel.TrainStats();
+            TrainStats stats = new TrainStats();
             for (int batchId = 0; batchId < numberOfBatches; batchId++) {
                 TrainingData batchData = trainingData.getTrainingBatch(batchId, params.batchSize);
 
@@ -56,7 +56,7 @@ public class SimpleMNISTTrainer {
         static  final int OUTPUT_BATCHES = 200;
         int batchProgress = 0;
 
-        public void log(int batchId, int numberOfBatches, Model model, MNISTConvModel.TrainStats stats) {
+        public void log(int batchId, int numberOfBatches, Model model, TrainStats stats) {
             int batchIdMod = batchId % OUTPUT_BATCHES;
             if (batchIdMod == 0) {
                 batchProgress = 0;

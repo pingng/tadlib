@@ -279,4 +279,10 @@ public class Shape {
         Arrays.fill(b, FALSE);
         return b;
     }
+
+    public Shape withDimAt(int index, int dimLength) {
+        int[] dims = toDimArray();
+        dims[wrapIndex(index)] = dimLength;
+        return new Shape(dims);
+    }
 }

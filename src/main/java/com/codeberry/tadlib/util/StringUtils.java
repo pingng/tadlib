@@ -87,6 +87,9 @@ public class StringUtils {
             }
             return '"' + value.toString() + '"';
         }
+        if (Enum.class.isAssignableFrom(valueClass)) {
+            return '"' + value.toString() + '"';
+        }
 
         if (value instanceof List) {
             List<?> l = (List<?>) value;
@@ -122,7 +125,9 @@ public class StringUtils {
                         Object rawValue = f.get(value);
                         if (rawValue != null) {
                             Object mapValue = asMapOrValue(rawValue);
-                            return new SimpleEntry<>(name, mapValue);
+                            if (mapValue != null) {
+                                return new SimpleEntry<>(name, mapValue);
+                            }
                         }
                     } catch (IllegalAccessException e) {
                         e.printStackTrace();

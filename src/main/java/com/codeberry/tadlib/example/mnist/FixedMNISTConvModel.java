@@ -1,6 +1,5 @@
 package com.codeberry.tadlib.example.mnist;
 
-import com.codeberry.tadlib.array.TArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;
@@ -12,17 +11,18 @@ import java.util.List;
 import java.util.Random;
 
 import static com.codeberry.tadlib.array.Shape.shape;
-import static com.codeberry.tadlib.array.TArray.value;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.*;
 import static com.codeberry.tadlib.nn.loss.L2Loss.l2LossOf;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.OpsExtended.*;
 import static com.codeberry.tadlib.tensor.Tensor.TensorFactories.*;
 import static com.codeberry.tadlib.tensor.Tensor.constant;
-import static com.codeberry.tadlib.util.AccuracyUtils.softmaxAccuracy;
 
-public class MNISTConvModel implements Model {
-    private final Config cfg;
+/**
+ * A hardcoded model using convolutions.
+ */
+public class FixedMNISTConvModel implements Model {
+    private final Factory cfg;
 
     private final Tensor w;
     private final Tensor b;
@@ -40,9 +40,7 @@ public class MNISTConvModel implements Model {
     public BatchNormRunningAverages secondConvBnAverages = new BatchNormRunningAverages();
     public BatchNormRunningAverages fullyConBnAverages = new BatchNormRunningAverages();
 
-    private final List<Runnable> additionalUpdatesOnWeightUpdate = new ArrayList<>();
-
-    public MNISTConvModel(Config cfg) {
+    public FixedMNISTConvModel(Factory cfg) {
         this.cfg = cfg;
 
         Random r = new Random(cfg.weightInitRandomSeed);
@@ -78,7 +76,7 @@ public class MNISTConvModel implements Model {
         this.finalB = zeros(shape(OUTPUTS));
     }
 
-    private MNISTConvModel(MNISTConvModel src) {
+    private FixedMNISTConvModel(FixedMNISTConvModel src) {
         // init with dummy tensors for weights
         this(src.cfg);
 
@@ -88,13 +86,13 @@ public class MNISTConvModel implements Model {
                 Tensor::copy);
     }
 
-    public PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, double lr) {
-        PredictionAndLosses l = calcGradient(rnd, batchData.xTrain, batchData.yTrain);
-
-        updateWeights(lr);
-
-        return l;
-    }
+//    public PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, double learningRate) {
+//        PredictionAndLosses l = calcGradient(rnd, batchData);
+//
+//        updateWeights(learningRate);
+//
+//        return l;
+//    }
 
     @Override
     public String getTrainingLogText() {
@@ -102,60 +100,51 @@ public class MNISTConvModel implements Model {
                 "fullyConBnAverages:\n" + fullyConBnAverages;
     }
 
-    public PredictionAndLosses calcGradient(Random rnd,
-                                            Tensor xTrain, Tensor yTrain) {
-        resetGradients();
-
-        PredictionAndLosses l = calcCost(rnd, xTrain, yTrain);
-        l.totalLoss.backward(value(1.0));
-
-        return l;
-    }
-
     public PredictionAndLosses calcCost(Random rnd,
-                                        Tensor xTrain, Tensor yTrain) {
-        int actualBatchSize = xTrain.getShape().at(0);
+                                        TrainingData trainingData) {
+        int actualBatchSize = trainingData.xTrain.getShape().at(0);
 
-        Tensor y = forward(rnd, xTrain, RunMode.TRAINING);
+        List<Runnable> trainingTasks = new ArrayList<>();
+        Tensor y = forward(rnd, trainingData.xTrain, trainingTasks, RunMode.TRAINING);
 
-        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(yTrain), y);
+        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(trainingData.yTrain), y);
         Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(actualBatchSize));
 
         Tensor l2Loss = cfg.l2Lambda <= 0 ? Tensor.ZERO :
-                l2LossOf(xTrain.getShape(), cfg.l2Lambda,
-                        w, sec_w, fullW, finalW);
+                div(l2LossOf(cfg.l2Lambda,
+                        w, sec_w, fullW, finalW), constant(actualBatchSize));
 
         Tensor totalLoss = add(avgSoftmaxCost, l2Loss);
 
-        return new PredictionAndLosses(y, totalLoss, l2Loss);
+        return new PredictionAndLosses(y, trainingTasks, totalLoss, l2Loss);
     }
 
     public List<Tensor> getParams() {
         return ReflectionUtils.getFieldValues(Tensor.class, this);
     }
 
-    public void updateWeights(double lr) {
-        List<Tensor> params = getParams();
-
-        for (Tensor p : params) {
-            p.update((values, gradient) -> values.sub(gradient.mul(lr)));
-        }
-        for (Runnable update : additionalUpdatesOnWeightUpdate) {
-            update.run();
-        }
-        additionalUpdatesOnWeightUpdate.clear();
-    }
+//    public void updateWeights(double lr) {
+//        List<Tensor> params = getParams();
+//
+//        for (Tensor p : params) {
+//            p.update((values, gradient) -> values.sub(gradient.mul(lr)));
+//        }
+//        for (Runnable update : additionalUpdatesOnWeightUpdate) {
+//            update.run();
+//        }
+//        additionalUpdatesOnWeightUpdate.clear();
+//    }
 
     public Tensor predict(Tensor x_train) {
-        return forward(null, x_train, RunMode.INFERENCE);
+        return forward(null, x_train, new ArrayList<>(), RunMode.INFERENCE);
     }
 
-    private Tensor forward(Random rnd, Tensor inputs, RunMode runMode) {
-        additionalUpdatesOnWeightUpdate.clear();
+    private Tensor forward(Random rnd, Tensor inputs, List<Runnable> trainingTasks, RunMode runMode) {
+        //additionalUpdatesOnWeightUpdate.clear();
 
         Tensor firstLayerOut = firstConvLayer(inputs);
-        Tensor secondLayerOut = secondConvLayer(runMode, firstLayerOut);
-        Tensor fullyLayerOut = fullyConnectedLayer(rnd, secondLayerOut, runMode);
+        Tensor secondLayerOut = secondConvLayer(runMode, firstLayerOut, trainingTasks);
+        Tensor fullyLayerOut = fullyConnectedLayer(rnd, secondLayerOut, runMode, trainingTasks);
         return finalOutputLayer(fullyLayerOut);
     }
 
@@ -166,7 +155,7 @@ public class MNISTConvModel implements Model {
         return leakyRelu(maxed, 0.01);
     }
 
-    private Tensor secondConvLayer(RunMode runMode, Tensor inputs) {
+    private Tensor secondConvLayer(RunMode runMode, Tensor inputs, List<Runnable> trainingTasks) {
         Tensor sec_h_w = conv2d(inputs, sec_w);
         Tensor secOut = cfg.useBatchNormalization ?
                 sec_h_w : add(sec_h_w, sec_b);
@@ -176,7 +165,7 @@ public class MNISTConvModel implements Model {
 
         if (cfg.useBatchNormalization) {
             BatchNormResult secBnResult = batchNorm(secRelu, sec_bn_beta, sec_bn_gamma, secondConvBnAverages, runMode);
-            additionalUpdatesOnWeightUpdate.add(() ->
+            trainingTasks.add(() ->
                     this.secondConvBnAverages = this.secondConvBnAverages.updateWith(secBnResult, 0.99));
             return secBnResult.output;
         } else {
@@ -184,7 +173,7 @@ public class MNISTConvModel implements Model {
         }
     }
 
-    private Tensor fullyConnectedLayer(Random rnd, Tensor inputs, RunMode runMode) {
+    private Tensor fullyConnectedLayer(Random rnd, Tensor inputs, RunMode runMode, List<Runnable> trainingTasks) {
         Tensor flattened = flatten(inputs);
 
         Tensor hidden_w = matmul(flattened, fullW);
@@ -195,7 +184,7 @@ public class MNISTConvModel implements Model {
         Tensor hiddenFinal;
         if (cfg.useBatchNormalization) {
             BatchNormResult fullBnResult = batchNorm(hiddenRelu, full_bn_beta, full_bn_gamma, fullyConBnAverages, runMode);
-            additionalUpdatesOnWeightUpdate.add(() -> {
+            trainingTasks.add(() -> {
                 this.fullyConBnAverages = this.fullyConBnAverages.updateWith(fullBnResult, 0.99);
             });
             hiddenFinal = fullBnResult.output;
@@ -212,32 +201,11 @@ public class MNISTConvModel implements Model {
         return add(y_w, finalB);
     }
 
-    public List<TArray> getGradients() {
-        List<Tensor> params = getParams();
-
-        List<TArray> grads = new ArrayList<>();
-        for (Tensor p : params) {
-            grads.add(p.getGradient());
-        }
-        return grads;
+    public FixedMNISTConvModel copy() {
+        return new FixedMNISTConvModel(this);
     }
 
-    public void resetGradients() {
-        List<Tensor> params = getParams();
-        for (Tensor p : params) {
-            p.resetGradient();
-        }
-    }
-
-    public Tensor getParam(int idx) {
-        return getParams().get(idx);
-    }
-
-    public MNISTConvModel copy() {
-        return new MNISTConvModel(this);
-    }
-
-    public static class Config implements ModelFactory {
+    public static class Factory implements ModelFactory {
         private final int firstConvChannels;
         private final int secondConvChannels;
         private final int fullyConnectedSize;
@@ -246,7 +214,7 @@ public class MNISTConvModel implements Model {
         private final boolean useBatchNormalization;
         private final double dropoutKeep;
 
-        private Config(int firstConvChannels, int secondConvChannels, int fullyConnectedSize, double l2Lambda, long weightInitRandomSeed, boolean useBatchNormalization, double dropoutKeep) {
+        private Factory(int firstConvChannels, int secondConvChannels, int fullyConnectedSize, double l2Lambda, long weightInitRandomSeed, boolean useBatchNormalization, double dropoutKeep) {
             this.firstConvChannels = firstConvChannels;
             this.secondConvChannels = secondConvChannels;
             this.fullyConnectedSize = fullyConnectedSize;
@@ -258,7 +226,7 @@ public class MNISTConvModel implements Model {
 
         @Override
         public Model createModel() {
-            return new MNISTConvModel(this);
+            return new FixedMNISTConvModel(this);
         }
 
         public static class Builder {
@@ -305,45 +273,14 @@ public class MNISTConvModel implements Model {
                 return this;
             }
 
-            public static Builder cfgBuilder() {
+            public static Builder factoryBuilder() {
                 return new Builder();
             }
 
-            public Config build() {
-                return new Config(firstConvChannels, secondConvChannels, fullyConnectedSize,
+            public Factory build() {
+                return new Factory(firstConvChannels, secondConvChannels, fullyConnectedSize,
                         l2Lambda, weightInitRandomSeed, useBatchNormalization, dropoutKeep);
             }
-        }
-    }
-
-    public static class TrainStats {
-        private double costTotal;
-        private double costL2Total;
-
-        private double accTotal;
-        private int iterations;
-
-        public void accumulate(double cost, double l2Cost, double accuracy) {
-            costTotal += cost;
-            costL2Total += l2Cost;
-            accTotal += accuracy;
-            iterations++;
-        }
-
-        @Override
-        public String toString() {
-            return "TrainStats{" +
-                    "iterations=" + iterations +
-                    ", accuracy=" + (accTotal / iterations) +
-                    ", costTotal=" + (costTotal / iterations) +
-                    ", costL2Total=" + (costL2Total / iterations) +
-                    '}';
-        }
-
-        public void accumulate(PredictionAndLosses pl, Tensor labels) {
-            accumulate((double) pl.totalLoss.toDoubles(),
-                    (double) pl.l2Loss.toDoubles(),
-                    softmaxAccuracy(labels, pl.prediction));
         }
     }
 

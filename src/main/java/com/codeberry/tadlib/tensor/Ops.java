@@ -10,6 +10,7 @@ import java.util.Random;
 
 import static com.codeberry.tadlib.array.TArray.DimKeepRemove.KEEP_DIM;
 import static com.codeberry.tadlib.array.TArray.DimKeepRemove.REMOVE_DIM;
+import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.multiThreadingSupportRun;
 import static com.codeberry.tadlib.array.TArray.ones;
 import static com.codeberry.tadlib.tensor.ParentLink.parentLink;
@@ -188,7 +189,7 @@ public abstract class Ops {
     private static TArray calcFilterGradient(TArray grad, TArray input, TArray filter) {
         Shape tgtShape = filter.shape.normalOrderedCopy();
 
-        return multiThreadingSupportRun(new TaskRange(0, grad.shape.at(0)),
+        return multiThreadingSupportRun(taskRange(0, grad.shape.at(0)),
                 range -> accumulateFilterGradientAtFirstDim(range, grad, input, filter, tgtShape),
                 (left, right) -> left.add(right));
     }
@@ -276,14 +277,8 @@ public abstract class Ops {
     }
 
     public static Tensor maxpool2d(Tensor input, int size) {
-        int[] dims = input.vals.shape.toDimArray();
-        int len = dims.length;
-        int newH = (dims[len - 3] + size - 1) / 2;
-        int newW = (dims[len - 2] + size - 1) / 2;
-        dims[len - 3] = newH;
-        dims[len - 2] = newW;
+        Shape outShape = getMaxPool2dOutputSize(input.vals.shape, size);
 
-        Shape outShape = new Shape(dims);
         TArray tgt = new TArray(new double[outShape.size], outShape);
 
         int[] inputIndices = input.vals.shape.newIndexArray();
@@ -299,6 +294,17 @@ public abstract class Ops {
         GradFunc gF = grad -> distribute2dMaxGrad(grad, input.vals.shape, maxIndexShape, maxIndexData);
 
         return new Tensor(tgt, singletonList(parentLink(input, gF)));
+    }
+
+    public static Shape getMaxPool2dOutputSize(Shape inputShape, int size) {
+        int[] dims = inputShape.toDimArray();
+        int len = dims.length;
+        int newH = (dims[len - 3] + size - 1) / size;
+        int newW = (dims[len - 2] + size - 1) / size;
+        dims[len - 3] = newH;
+        dims[len - 2] = newW;
+
+        return new Shape(dims);
     }
 
     private static TArray distribute2dMaxGrad(TArray grad, Shape inputShape, Shape maxIndexShape, int[] maxIndexData) {
@@ -421,15 +427,25 @@ public abstract class Ops {
         int maxY = -1;
         int maxX = -1;
 
+        int inputH = input.shape.at(-3);
+        int inputW = input.shape.at(-2);
+
         for (int y = 0; y < size; y++) {
-            inputIndices[len - 3] = y + yInputOffset;
-            for (int x = 0; x < size; x++) {
-                inputIndices[len - 2] = x + xInputOffset;
-                double inVal = input.dataAt(inputIndices);
-                if (inVal > max) {
-                    maxY = y + yInputOffset;
-                    maxX = x + xInputOffset;
-                    max = inVal;
+            int inY = y + yInputOffset;
+
+            if (inY < inputH) {
+                inputIndices[len - 3] = inY;
+                for (int x = 0; x < size; x++) {
+                    int inX = x + xInputOffset;
+                    if (inX < inputW) {
+                        inputIndices[len - 2] = inX;
+                        double inVal = input.dataAt(inputIndices);
+                        if (inVal > max) {
+                            maxY = inY;
+                            maxX = inX;
+                            max = inVal;
+                        }
+                    }
                 }
             }
         }
@@ -447,16 +463,21 @@ public abstract class Ops {
     }
 
     public static Tensor flatten(Tensor input) {
-        int size = 1;
         Shape inputShape = input.vals.shape;
-        for (int i = 1; i < inputShape.dimCount; i++) {
-            size *= inputShape.at(i);
-        }
+        int size = calcFlattenExampleSize(inputShape);
 
         GradFunc gF = grad -> grad.reshape(inputShape);
 
         return new Tensor(input.vals.reshape(inputShape.at(0), size),
                 singletonList(parentLink(input, gF)));
+    }
+
+    public static int calcFlattenExampleSize(Shape inputShape) {
+        int size = 1;
+        for (int i = 1; i < inputShape.dimCount; i++) {
+            size *= inputShape.at(i);
+        }
+        return size;
     }
 
     public static Tensor reshape(Tensor input, int... dims) {
@@ -550,6 +571,7 @@ public abstract class Ops {
 
     public static Tensor dropout(Tensor input, Random rnd, double dropoutKeep, RunMode runMode) {
         if (runMode == RunMode.TRAINING) {
+            double gradValue = 1.0 / dropoutKeep;
             TArray output = input.vals.normalOrderedCopy();
             double[] data = output.getInternalData();
             double[] gradMaskData = new double[data.length];
@@ -558,7 +580,8 @@ public abstract class Ops {
                 if (rnd.nextDouble() >= dropoutKeep) {
                     data[i] = 0;
                 } else {
-                    gradMaskData[i] = 1.0;
+                    data[i] /= dropoutKeep;
+                    gradMaskData[i] = gradValue;
                 }
             }
 

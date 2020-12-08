@@ -31,16 +31,20 @@ public abstract class MultiThreadingSupport {
     }
 
     public static class TaskRange {
+        private static final int DEFAULT_MIN_LENGTH = 1;
+
         public final int start;
         public final int end;
+        public final int minLength;
 
-        public TaskRange(int start, int end) {
+        public TaskRange(int start, int end, int minLength) {
             this.start = start;
             this.end = end;
+            this.minLength = minLength;
         }
 
         public static TaskRange taskRange(int start, int end) {
-            return new TaskRange(start, end);
+            return new TaskRange(start, end, DEFAULT_MIN_LENGTH);
         }
 
         public int size() {
@@ -51,12 +55,20 @@ public abstract class MultiThreadingSupport {
             return end - start;
         }
 
+        public boolean isSmallEnoughForDirectWork() {
+            return length() <= minLength;
+        }
+
+        public TaskRange withMinimumWorkLength(int minLen) {
+            return new TaskRange(start, end, minLen);
+        }
+
         public TaskRange leftPart() {
-            return new TaskRange(start, start + length() / 2);
+            return new TaskRange(start, start + length() / 2, minLength);
         }
 
         public TaskRange rightPart() {
-            return new TaskRange(start + length() / 2, end);
+            return new TaskRange(start + length() / 2, end, minLength);
         }
 
         @Override
@@ -69,7 +81,6 @@ public abstract class MultiThreadingSupport {
         private final TaskRange range;
         private final Function<TaskRange, R> task;
         private final BiFunction<R, R, R> merger;
-        private static final int LIMIT = 1;
 
         public MyRecursiveTask(TaskRange range, Function<TaskRange, R> task, BiFunction<R, R, R> merger) {
             this.range = range;
@@ -79,8 +90,7 @@ public abstract class MultiThreadingSupport {
 
         @Override
         protected R compute() {
-            if (range.length() <= LIMIT) {
-                //System.out.println("do: " + range+ merger.getClass());
+            if (range.isSmallEnoughForDirectWork()) {
                 return task.apply(this.range);
             } else {
                 TaskRange left = this.range.leftPart();
@@ -90,8 +100,7 @@ public abstract class MultiThreadingSupport {
                 R rightResult;
                 MyRecursiveTask<R> leftTask = new MyRecursiveTask<>(left, task, merger);
                 leftTask.fork();
-                if (right.length() <= LIMIT) {
-                    //System.out.println("dir: "+right+merger.getClass());
+                if (right.isSmallEnoughForDirectWork()) {
                     rightResult = task.apply(right);
                 } else {
                     MyRecursiveTask<R> rightTask = new MyRecursiveTask<>(right, task, merger);

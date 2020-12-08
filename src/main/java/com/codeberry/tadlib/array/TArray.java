@@ -1,5 +1,7 @@
 package com.codeberry.tadlib.array;
 
+import com.codeberry.tadlib.util.MultiThreadingSupport;
+
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -489,28 +491,66 @@ public class TArray {
         return new Shape(dims);
     }
 
+    private static class MatMulParams {
+        private final TArray a;
+        private final boolean promoteB;
+        private final TArray b;
+        private final boolean promoteA;
+
+        public MatMulParams(boolean promoteA, TArray a,
+                            boolean promoteB, TArray b) {
+            this.promoteA = promoteA;
+            this.promoteB = promoteB;
+            this.a = promoteA ? a.expandDims(0) : a;
+            this.b = promoteB ? b.expandDims(-1) : b;
+        }
+
+        static MatMulParams expandSingleDimArrays(TArray a, TArray b) {
+            boolean promoteA = a.shape.dimCount == 1;
+            boolean promoteB = b.shape.dimCount == 1;
+
+            return new MatMulParams(promoteA, a,
+                    promoteB, b);
+        }
+
+        Shape revertDimExpandOfOutputShape(Shape outShape) {
+            Shape finalOutShape = outShape;
+            if (promoteA) {
+                finalOutShape = finalOutShape.squeeze(0);
+            }
+            if (promoteB) {
+                finalOutShape = finalOutShape.squeeze(-1);
+            }
+            return finalOutShape;
+        }
+    }
+
     private static TArray matmul(TArray a, TArray b) {
-        boolean promoteA = a.shape.dimCount == 1;
-        boolean promoteB = b.shape.dimCount == 1;
-        TArray _a = promoteA ? a.expandDims(0) : a;
-        TArray _b = promoteB ? b.expandDims(-1) : b;
+        MatMulParams params = MatMulParams.expandSingleDimArrays(a, b);
 
-        validateMatMulShapes(_a.shape, _b.shape);
-        validateBroadcastShapes(_a.shape, _b.shape, -3);
-        Shape outShape = evalMatMulShape(_a.shape, _b.shape);
+        validateMatMulShapes(params.a.shape, params.b.shape);
+        validateBroadcastShapes(params.a.shape, params.b.shape, -3);
 
-        int[] indexArray = outShape.newIndexArray();
+        Shape outShape = evalMatMulShape(params.a.shape, params.b.shape);
         double[] data = new double[outShape.size];
 
-        matmul(_a, _b, data, outShape, indexArray, 0);
+        int outputRows = outShape.at(-2);
+        double[] filledData = multiThreadingSupportRun(
+                taskRange(0, outputRows)
+                        .withMinimumWorkLength(decideMinimumRowsPerThread(params.a.shape, outShape)),
+                range -> matmul(range, params.a, params.b,
+                        data, outShape, outShape.newIndexArray(), 0),
+                (left, ignored) -> left);
 
-        if (promoteA) {
-            outShape = outShape.squeeze(0);
-        }
-        if (promoteB) {
-            outShape = outShape.squeeze(-1);
-        }
-        return new TArray(data, outShape);
+        return new TArray(filledData,
+                params.revertDimExpandOfOutputShape(outShape));
+    }
+
+    private static int decideMinimumRowsPerThread(Shape leftShape, Shape outShape) {
+        int valuesToMulPerOutput = leftShape.at(-1);
+        int outputsPerRow = outShape.at(-1);
+
+        return 1 + 512 / (valuesToMulPerOutput * outputsPerRow);
     }
 
     public TArray normalOrderedCopy() {
@@ -594,17 +634,17 @@ public class TArray {
         }
     }
 
-    private static void matmul(TArray a, TArray b,
+    private static double[] matmul(MultiThreadingSupport.TaskRange rowRange,
+                               TArray a, TArray b,
                                double[] out, Shape outShape,
                                int[] indices, int dim) {
 
         if (indices.length - dim == 2) {
             //...is second last index
-            int h = outShape.at(-2);
             int w = outShape.at(-1);
             int valCount = a.shape.at(-1);
             int dims = indices.length;
-            for (int y = 0; y < h; y++) {
+            for (int y = rowRange.start; y < rowRange.end; y++) {
                 for (int x = 0; x < w; x++) {
                     double v = 0;
                     for (int i = 0; i < valCount; i++) {
@@ -626,9 +666,10 @@ public class TArray {
             int at = outShape.at(dim);
             for (int i = 0; i < at; i++) {
                 indices[dim] = i;
-                matmul(a, b, out, outShape, indices, dim + 1);
+                matmul(rowRange, a, b, out, outShape, indices, dim + 1);
             }
         }
+        return out;
     }
 
     private double getBroadcasted(int[] indices) {

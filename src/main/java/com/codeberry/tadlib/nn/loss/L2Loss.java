@@ -10,10 +10,8 @@ import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.Tensor.constant;
 
 public class L2Loss {
-    public static Tensor l2LossOf(Shape inputShape, double l2Lambda, Tensor... tensors) {
-        int actualBatchSize = inputShape.at(0);
-
-        Tensor l2Scale = constant(l2Lambda / (2 * actualBatchSize));
+    public static Tensor l2LossOf(double l2Lambda, Tensor... tensors) {
+        Tensor l2Scale = constant(l2Lambda / 2.0);
 
         Tensor[] l2Costs = Arrays.stream(tensors)
                 .map(t -> mul(sum(sqr(t)), l2Scale))

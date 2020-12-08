@@ -53,8 +53,12 @@ outB.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
 See [the source](src/main/java/com/codeberry/tadlib/example/mnist/TrainFullyConnectedMNISTMain.java) and
 the [model](src/main/java/com/codeberry/tadlib/example/mnist/MNISTFullyConnectedModel.java) for this example.
 
-There is also [another example](src/main/java/com/codeberry/tadlib/example/mnist/TrainConvMNISTMain.java) using 
-[convolutions with batch normalization](src/main/java/com/codeberry/tadlib/example/mnist/MNISTConvModel.java).
+There is also [another example](src/main/java/com/codeberry/tadlib/example/mnist/TrainFixedConvMNISTMain.java) that uses
+[convolutions with batch normalization](src/main/java/com/codeberry/tadlib/example/mnist/FixedMNISTConvModel.java).
+This is a hardcoded model.
+
+[TrainConfiguredConvMNISTMain](src/main/java/com/codeberry/tadlib/example/mnist/TrainConfiguredConvMNISTMain.java)
+is an example of a conv model built/configured in runtime using layers.
 
 Scalar implementation
 ===

@@ -3,7 +3,7 @@ package com.codeberry.tadlib.tensor;
 import com.codeberry.tadlib.array.TArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.example.mnist.MNISTFullyConnectedModel;
-import com.codeberry.tadlib.example.mnist.SequentialModel;
+import com.codeberry.tadlib.nn.model.SequentialModel;
 import com.codeberry.tadlib.nn.model.TrainStats;
 import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;

@@ -1,12 +1,13 @@
 package com.codeberry.tadlib.example.mnist;
 
 import com.codeberry.tadlib.example.mnist.SimpleTrainer.TrainParams;
+import com.codeberry.tadlib.nn.model.SequentialModel;
 import com.codeberry.tadlib.nn.model.layer.DenseLayer;
 import com.codeberry.tadlib.util.MultiThreadingSupport;
 
 import static com.codeberry.tadlib.array.Shape.shape;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.LoadParams.params;
-import static com.codeberry.tadlib.example.mnist.SequentialModel.Factory.Builder.cfgBuilder;
+import static com.codeberry.tadlib.nn.model.SequentialModel.Factory.Builder.cfgBuilder;
 import static com.codeberry.tadlib.nn.model.layer.BatchNormLayer.Builder.batchNorm;
 import static com.codeberry.tadlib.nn.model.layer.Conv2dLayer.BiasParam.NO_BIAS;
 import static com.codeberry.tadlib.nn.model.layer.Conv2dLayer.BiasParam.USE_BIAS;

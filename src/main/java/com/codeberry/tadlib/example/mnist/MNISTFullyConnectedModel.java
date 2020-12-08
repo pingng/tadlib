@@ -5,6 +5,7 @@ import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.ReflectionUtils;
+import com.codeberry.tadlib.util.TrainingDataUtils;
 
 import java.util.List;
 import java.util.Random;
@@ -65,7 +66,7 @@ public class MNISTFullyConnectedModel implements Model {
     public PredictionAndLosses calcCost(Random rnd, TrainingData trainingData) {
         Tensor prediction = forward(trainingData.xTrain);
 
-        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(trainingData.yTrain), prediction);
+        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(TrainingDataUtils.toOneHot(trainingData.yTrain, 10), prediction);
         Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(trainingData.getTrainingBatchSize()));
 
         return new PredictionAndLosses(prediction, emptyList(), avgSoftmaxCost);

@@ -1,17 +1,15 @@
-package com.codeberry.tadlib.example.mnist;
+package com.codeberry.tadlib.nn.model;
 
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.example.TrainingData;
-import com.codeberry.tadlib.nn.model.Model;
-import com.codeberry.tadlib.nn.model.ModelFactory;
 import com.codeberry.tadlib.nn.model.layer.Layer;
 import com.codeberry.tadlib.nn.model.layer.LayerBuilder;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.ReflectionUtils;
+import com.codeberry.tadlib.util.TrainingDataUtils;
 
 import java.util.*;
 
-import static com.codeberry.tadlib.example.mnist.MNISTLoader.*;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.Tensor.ZERO;
 import static com.codeberry.tadlib.tensor.Tensor.constant;
@@ -85,7 +83,7 @@ public class SequentialModel implements Model {
 
         OutputWithTasks outputWithTasks = forward(rnd, trainingData.xTrain, RunMode.TRAINING);
 
-        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(trainingData.yTrain), outputWithTasks.output);
+        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(TrainingDataUtils.toOneHot(trainingData.yTrain, 10), outputWithTasks.output);
         Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(actualBatchSize));
 
         List<Tensor> otherCosts = layers.stream()

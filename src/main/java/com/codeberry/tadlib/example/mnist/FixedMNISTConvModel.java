@@ -5,6 +5,7 @@ import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.ReflectionUtils;
+import com.codeberry.tadlib.util.TrainingDataUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -107,7 +108,7 @@ public class FixedMNISTConvModel implements Model {
         List<Runnable> trainingTasks = new ArrayList<>();
         Tensor y = forward(rnd, trainingData.xTrain, trainingTasks, RunMode.TRAINING);
 
-        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(trainingData.yTrain), y);
+        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(TrainingDataUtils.toOneHot(trainingData.yTrain, 10), y);
         Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(actualBatchSize));
 
         Tensor l2Loss = cfg.l2Lambda <= 0 ? Tensor.ZERO :

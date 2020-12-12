@@ -309,6 +309,10 @@ public class TArray {
                 b.shape.dimCount == 0) {
             return new TArray(a.data[0] + b.data[0]);
         }
+        if (a.shape.getClass() == b.shape.getClass() &&
+                Arrays.equals(a.shape.dims, b.shape.dims)) {
+            return fastAdd(a, b);
+        }
 
         validateBroadcastShapes(a.shape, b.shape, -1);
         Shape outShape = evalBroadcastOutputShape(a.shape, b.shape);
@@ -319,6 +323,14 @@ public class TArray {
         add(a, b, data, outShape, indexArray, 0);
 
         return new TArray(data, outShape);
+    }
+
+    private static TArray fastAdd(TArray a, TArray b) {
+        double[] data = copyOf(a.data, a.data.length);
+        for (int i = data.length - 1; i >= 0; i--) {
+            data[i] += b.data[i];
+        }
+        return new TArray(data, a.shape.copy());
     }
 
     public enum Debug {
@@ -835,21 +847,35 @@ public class TArray {
     }
 
     public TArray pow(double power) {
-        double[] cp = copyOf(data, data.length);
-        for (int i = 0; i < cp.length; i++) {
-            cp[i] = Math.pow(cp[i], power);
-        }
+        double[] data = copyOf(this.data, this.data.length);
+        double[] filledData = multiThreadingSupportRun(taskRange(0, this.data.length, 64),
+                range -> pow(range.start, range.end, data, power),
+                (left, ignored) -> left);
 
-        return new TArray(cp, shape.copy());
+        return new TArray(filledData, shape.copy());
+    }
+
+    private static double[] pow(int start, int end, double[] data, double power) {
+        for (int i = start; i < end; i++) {
+            data[i] = Math.pow(data[i], power);
+        }
+        return data;
     }
 
     public TArray sqrt() {
-        double[] cp = copyOf(data, data.length);
-        for (int i = 0; i < cp.length; i++) {
-            cp[i] = Math.sqrt(cp[i]);
-        }
+        double[] data = copyOf(this.data, this.data.length);
+        double[] filledData = multiThreadingSupportRun(taskRange(0, data.length, 64),
+                range -> sqrt(range.start, range.end, data),
+                (left, ignored) -> left);
 
-        return new TArray(cp, shape.copy());
+        return new TArray(filledData, shape.copy());
+    }
+
+    private static double[] sqrt(int start, int end, double[] data) {
+        for (int i = start; i < end; i++) {
+            data[i] = Math.sqrt(data[i]);
+        }
+        return data;
     }
 
     public TArray div(TArray b) {
@@ -877,7 +903,7 @@ public class TArray {
 
     private static TArray fastDiv(TArray a, TArray b) {
         double[] data = copyOf(a.data, a.data.length);
-        for (int i = 0; i < data.length; i++) {
+        for (int i = data.length - 1; i >= 0; i--) {
             data[i] /= b.data[i];
         }
         return new TArray(data, a.shape.copy());
@@ -931,7 +957,7 @@ public class TArray {
 
     private static TArray fastMul(TArray a, TArray b) {
         double[] data = copyOf(a.data, a.data.length);
-        for (int i = 0; i < data.length; i++) {
+        for (int i = data.length - 1; i >= 0; i--) {
             data[i] *= b.data[i];
         }
         return new TArray(data, a.shape.copy());
@@ -970,10 +996,18 @@ public class TArray {
 
     public TArray mul(double v) {
         double[] data = copyOf(this.data, this.data.length);
-        for (int i = 0; i < data.length; i++) {
+        double[] filledData = multiThreadingSupportRun(taskRange(0, data.length, 64),
+                range -> mul(range.start, range.end, data, v),
+                (left, ignored) -> left);
+
+        return new TArray(filledData, shape.copy());
+    }
+
+    private static double[] mul(int start, int end, double[] data, double v) {
+        for (int i = start; i < end; i++) {
             data[i] *= v;
         }
-        return new TArray(data, shape.copy());
+        return data;
     }
 
     public TArray add(double v) {

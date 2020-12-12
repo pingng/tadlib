@@ -3,6 +3,7 @@ package com.codeberry.tadlib.util;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.time.temporal.Temporal;
 import java.util.*;
 
@@ -80,6 +81,10 @@ public class StringUtils {
     }
 
     private static Object asMapOrValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+
         Class<?> valueClass = value.getClass();
         if (OUTPUT_CLASSES.contains(valueClass) || valueClass.isPrimitive()) {
             if (NO_QUOTE_CLASSES.contains(valueClass)) {
@@ -118,6 +123,7 @@ public class StringUtils {
     @SuppressWarnings("unchecked")
     private static Entry<String, Object>[] toEntries(Field[] fields, Object value) {
         return Arrays.stream(fields)
+                .filter( f -> !Modifier.isTransient(f.getModifiers()))
                 .map(f -> {
                     f.setAccessible(true);
                     String name = f.getName();

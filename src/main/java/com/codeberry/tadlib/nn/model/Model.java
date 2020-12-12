@@ -11,22 +11,16 @@ import java.util.Random;
 import static com.codeberry.tadlib.array.TArray.value;
 
 public interface Model {
-    default PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, double learningRate) {
+    default PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, Optimizer optimizer) {
         PredictionAndLosses l = calcGradient(rnd, batchData);
 
         List<Tensor> params = getParams();
 
-        updateParamsWithSGD(params, learningRate);
+        optimizer.optimize(params);
 
         l.runTasks();
 
         return l;
-    }
-
-    private static void updateParamsWithSGD(List<Tensor> params, double lr) {
-        for (Tensor p : params) {
-            p.update((values, gradient) -> values.sub(gradient.mul(lr)));
-        }
     }
 
     default String getTrainingLogText() {

@@ -6,6 +6,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static java.lang.Math.max;
+import static java.lang.Math.min;
 
 public abstract class MultiThreadingSupport {
     private static volatile ForkJoinPool pool;
@@ -23,7 +24,8 @@ public abstract class MultiThreadingSupport {
     }
 
     public static <R> R multiThreadingSupportRun(TaskRange totalRange, Function<TaskRange, R> task, BiFunction<R, R, R> merger) {
-        if (pool == null) {
+        if (pool == null ||
+                totalRange.isSmallEnoughForDirectWork()) {
             return task.apply(totalRange);
         } else {
             return pool.invoke(new MyRecursiveTask<>(totalRange, task, merger));
@@ -44,7 +46,11 @@ public abstract class MultiThreadingSupport {
         }
 
         public static TaskRange taskRange(int start, int end) {
-            return new TaskRange(start, end, DEFAULT_MIN_LENGTH);
+            return taskRange(start, end, DEFAULT_MIN_LENGTH);
+        }
+
+        public static TaskRange taskRange(int start, int end, int minSegmentLength) {
+            return new TaskRange(start, end, minSegmentLength);
         }
 
         public int size() {

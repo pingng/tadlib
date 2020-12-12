@@ -3,6 +3,7 @@ package com.codeberry.tadlib.example.mnist;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;
+import com.codeberry.tadlib.nn.model.Optimizer;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.ReflectionUtils;
 import com.codeberry.tadlib.util.TrainingDataUtils;
@@ -54,10 +55,10 @@ public class MNISTFullyConnectedModel implements Model {
     }
 
     @Override
-    public PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, double learningRate) {
+    public PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, Optimizer optimizer) {
         PredictionAndLosses pl = calcCost(rnd, batchData);
 
-        updateWeights(learningRate);
+        optimizer.optimize(getParams());
 
         return pl;
     }
@@ -81,13 +82,6 @@ public class MNISTFullyConnectedModel implements Model {
                 matmul(firstLayer, outW),
                 outB);
         return outLayer;
-    }
-
-    private void updateWeights(double learningRate) {
-        hiddenW.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
-        hiddenB.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
-        outW.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
-        outB.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
     }
 
     @Override

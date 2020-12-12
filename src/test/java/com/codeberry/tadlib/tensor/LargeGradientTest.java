@@ -3,10 +3,7 @@ package com.codeberry.tadlib.tensor;
 import com.codeberry.tadlib.array.TArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.example.mnist.MNISTFullyConnectedModel;
-import com.codeberry.tadlib.nn.model.SequentialModel;
-import com.codeberry.tadlib.nn.model.TrainStats;
-import com.codeberry.tadlib.nn.model.Model;
-import com.codeberry.tadlib.nn.model.ModelFactory;
+import com.codeberry.tadlib.nn.model.*;
 import com.codeberry.tadlib.util.MatrixTestUtils;
 import com.codeberry.tadlib.util.MultiThreadingSupport;
 import org.junit.jupiter.api.AfterEach;
@@ -63,8 +60,8 @@ public class LargeGradientTest {
         TrainingData data = generate(rand, TRAINING_EXAMPLES);
 
         ModelFactory modelFactory =
-                //createConvolutionModelFactory()
-                createFullyConnectedModelFactory()
+                createConvolutionModelFactory()
+                //createFullyConnectedModelFactory()
                 ;
 
         Model model = modelFactory.createModel();
@@ -164,7 +161,7 @@ public class LargeGradientTest {
         Random dropRnd = new Random(epoch);
         TrainStats stats = new TrainStats();
 
-        Model.PredictionAndLosses pl = model.trainSingleIteration(dropRnd, trainingData, LEARNING_RATE);
+        Model.PredictionAndLosses pl = model.trainSingleIteration(dropRnd, trainingData, new SGD(0.1));
 
         stats.accumulate(pl, trainingData.yTrain);
         System.out.println("Trained: " + stats);

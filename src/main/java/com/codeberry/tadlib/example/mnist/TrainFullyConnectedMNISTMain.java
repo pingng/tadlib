@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.example.mnist;
 
 import com.codeberry.tadlib.example.mnist.SimpleTrainer.TrainParams;
+import com.codeberry.tadlib.nn.model.SGD;
 import com.codeberry.tadlib.util.MultiThreadingSupport;
 
 import static com.codeberry.tadlib.array.TArray.randWeight;
@@ -15,7 +16,7 @@ public class TrainFullyConnectedMNISTMain {
 
         SimpleTrainer trainer = new SimpleTrainer(new TrainParams()
                 .batchSize(32)
-                .learningRate(0.05)
+                .optimizer(new SGD(0.05))
                 .loaderParams(params()
                         .downloadWhenMissing(true)
                         .trainingExamples(40_000)

@@ -3,6 +3,7 @@ package com.codeberry.tadlib.example.mnist;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;
+import com.codeberry.tadlib.nn.model.Optimizer;
 import com.codeberry.tadlib.nn.model.TrainStats;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.StringUtils;
@@ -17,6 +18,7 @@ public class SimpleTrainer {
     private final TrainLogger logger = new TrainLogger();
     private final TrainingData trainingData;
     private final Model model;
+    private final Optimizer optimizer;
 
     public SimpleTrainer(TrainParams params) {
         this.params = params;
@@ -24,6 +26,7 @@ public class SimpleTrainer {
         System.out.println(StringUtils.toJson(params));
 
         trainingData = MNISTLoader.load(params.loaderParams);
+        optimizer = params.optimizer;
         model = params.modelFactory.createModel();
     }
 
@@ -38,7 +41,7 @@ public class SimpleTrainer {
             for (int batchId = 0; batchId < numberOfBatches; batchId++) {
                 TrainingData batchData = trainingData.getTrainingBatch(batchId, params.batchSize);
 
-                Model.PredictionAndLosses pl = model.trainSingleIteration(rnd, batchData, params.learningRate);
+                Model.PredictionAndLosses pl = model.trainSingleIteration(rnd, batchData, optimizer);
 
                 stats.accumulate(pl, batchData.yTrain);
 
@@ -76,7 +79,7 @@ public class SimpleTrainer {
     static class TrainParams {
         MNISTLoader.LoadParams loaderParams;
         ModelFactory modelFactory;
-        double learningRate;
+        Optimizer optimizer;
         int batchSize;
 
         TrainParams loaderParams(MNISTLoader.LoadParams loaderParams) {
@@ -89,8 +92,8 @@ public class SimpleTrainer {
             return this;
         }
 
-        TrainParams learningRate(double learningRate) {
-            this.learningRate = learningRate;
+        TrainParams optimizer(Optimizer optimizer) {
+            this.optimizer = optimizer;
             return this;
         }
 

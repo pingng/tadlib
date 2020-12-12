@@ -1,6 +1,8 @@
 package com.codeberry.tadlib.example.mnist;
 
 import com.codeberry.tadlib.example.mnist.SimpleTrainer.TrainParams;
+import com.codeberry.tadlib.nn.model.RMSProp;
+import com.codeberry.tadlib.nn.model.SGD;
 import com.codeberry.tadlib.nn.model.SequentialModel;
 import com.codeberry.tadlib.nn.model.layer.DenseLayer;
 import com.codeberry.tadlib.util.MultiThreadingSupport;
@@ -24,8 +26,10 @@ public class TrainConfiguredConvMNISTMain {
         MultiThreadingSupport.enableMultiThreading();
 
         SimpleTrainer trainer = new SimpleTrainer(new TrainParams()
-                .batchSize(32)
-                .learningRate(0.1)
+                .batchSize(64)
+                //.batchSize(32)
+                //.optimizer(new SGD(0.1))
+                .optimizer(new RMSProp(0.0005 * 1.5))
                 .loaderParams(params()
                         .downloadWhenMissing(true)
                         .trainingExamples(40_000)

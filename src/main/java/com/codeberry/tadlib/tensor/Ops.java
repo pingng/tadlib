@@ -2,6 +2,7 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.TMutableArray;
 import com.codeberry.tadlib.nn.loss.SoftmaxCrossEntropyLoss;
 import com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange;
 
@@ -195,7 +196,7 @@ public abstract class Ops {
     }
 
     private static TArray accumulateFilterGradientAtFirstDim(TaskRange range, TArray grad, TArray input, TArray filter, Shape tgtShape) {
-        TArray tgtGrad = new TArray(new double[filter.shape.size], tgtShape);
+        TMutableArray tgtGrad = new TMutableArray(new double[filter.shape.size], tgtShape);
 
         int[] gradIndices = grad.shape.newIndexArray();
         int[] inIndices = input.shape.newIndexArray();
@@ -207,12 +208,12 @@ public abstract class Ops {
             accumulateFilterGradient(grad, gradIndices, 1, input, inIndices, tgtGrad, filterIndices);
         }
 
-        return tgtGrad;
+        return tgtGrad.toImmutable();
     }
 
     private static void accumulateFilterGradient(TArray grad, int[] gradIndices, int dim,
                                                  TArray input, int[] inIndices,
-                                                 TArray tgtGrad, int[] filterIndices) {
+                                                 TMutableArray tgtGrad, int[] filterIndices) {
         if (gradIndices.length - dim == 3) {
             int filterH = tgtGrad.shape.at(0);
             int filterW = tgtGrad.shape.at(1);
@@ -279,7 +280,7 @@ public abstract class Ops {
     public static Tensor maxpool2d(Tensor input, int size) {
         Shape outShape = getMaxPool2dOutputSize(input.vals.shape, size);
 
-        TArray tgt = new TArray(new double[outShape.size], outShape);
+        TMutableArray tgt = new TMutableArray(new double[outShape.size], outShape);
 
         int[] inputIndices = input.vals.shape.newIndexArray();
         int[] tgtIndices = outShape.newIndexArray();
@@ -293,7 +294,7 @@ public abstract class Ops {
 
         GradFunc gF = grad -> distribute2dMaxGrad(grad, input.vals.shape, maxIndexShape, maxIndexData);
 
-        return new Tensor(tgt, singletonList(parentLink(input, gF)));
+        return new Tensor(tgt.toImmutable(), singletonList(parentLink(input, gF)));
     }
 
     public static Shape getMaxPool2dOutputSize(Shape inputShape, int size) {
@@ -308,7 +309,7 @@ public abstract class Ops {
     }
 
     private static TArray distribute2dMaxGrad(TArray grad, Shape inputShape, Shape maxIndexShape, int[] maxIndexData) {
-        TArray outputGrad = zeros(inputShape);
+        TMutableArray outputGrad = new TMutableArray(inputShape);
 
         int[] tmpOutputGradIndices = outputGrad.shape.newIndexArray();
         int[] tmpGradIndices = grad.shape.newIndexArray();
@@ -316,10 +317,10 @@ public abstract class Ops {
         fillMax2dGradInto(outputGrad, maxIndexShape, maxIndexData, grad, 0,
                 tmpOutputGradIndices, tmpGradIndices, tmpMaxIndices);
 
-        return outputGrad;
+        return outputGrad.toImmutable();
     }
 
-    private static void fillMax2dGradInto(TArray outputGrad, Shape maxIndexShape, int[] maxIndexData, TArray grad, int dim,
+    private static void fillMax2dGradInto(TMutableArray outputGrad, Shape maxIndexShape, int[] maxIndexData, TArray grad, int dim,
                                           int[] tmpOutputGradIndices, int[] tmpGradIndices, int[] tmpMaxIndices) {
         if (maxIndexShape.dimCount - dim == 4) {
             int maxILen = tmpMaxIndices.length;
@@ -377,7 +378,7 @@ public abstract class Ops {
     }
 
     private static void fillMax2d(TArray input, int[] inputIndices, int size,
-                                  TArray tgt, int[] tgtIndices,
+                                  TMutableArray tgt, int[] tgtIndices,
                                   Shape maxIndexShape, int[] maxIndexData, int[] tmpMaxIndices,
                                   int dim) {
         if (inputIndices.length - dim == 3) {
@@ -535,36 +536,36 @@ public abstract class Ops {
                 labelsOneHot.vals, 0);
 
         GradFunc gF = grad -> {
-            TArray smCopy = softmax.normalOrderedCopy();
-            toSoftmaxGradient(smCopy, smCopy.shape.newIndexArray(),
+            TMutableArray tgt = TMutableArray.copyOf(softmax);
+            toSoftmaxGradient(tgt, softmax, softmax.shape.newIndexArray(),
                     labelsOneHot.vals, 0);
-            return smCopy.mul(grad);
+            return tgt.toImmutable().mul(grad);
         };
 
         return new Tensor(new TArray(cost), singletonList(parentLink(prediction, gF)));
     }
 
-    private static void toSoftmaxGradient(TArray predicted, int[] indices, TArray labelsOneHot, int dim) {
+    private static void toSoftmaxGradient(TMutableArray tgt, TArray predicted, int[] indices, TArray labelsOneHot, int dim) {
         int len = predicted.shape.at(dim);
         if (indices.length - dim == 1) {
             int maxIndex = -1;
             double max = Double.NEGATIVE_INFINITY;
             for (int i = 0; i < len; i++) {
                 indices[dim] = i;
-                double tgt = labelsOneHot.dataAt(indices);
-                if (tgt > max) {
-                    max = tgt;
+                double tgtVal = labelsOneHot.dataAt(indices);
+                if (tgtVal > max) {
+                    max = tgtVal;
                     maxIndex = i;
                 }
             }
 
             indices[dim] = maxIndex;
             double pred = predicted.dataAt(indices);
-            predicted.setAt(indices, pred - 1);
+            tgt.setAt(indices, pred - 1);
         } else {
             for (int i = 0; i < len; i++) {
                 indices[dim] = i;
-                toSoftmaxGradient(predicted, indices, labelsOneHot, dim + 1);
+                toSoftmaxGradient(tgt, predicted, indices, labelsOneHot, dim + 1);
             }
         }
     }

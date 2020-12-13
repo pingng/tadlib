@@ -41,38 +41,26 @@ public class TArray {
         return new TArray(this.data, new ShapeRot180(this.shape));
     }
 
-    // TODO: remove?
-    public void addAt(int[] indices, double v) {
-        int offset = shape.calcDataIndex(indices);
-        data[offset] += v;
-    }
-
-    // TODO: remove?
-    public void setAt(int[] indices, double v) {
-        int offset = shape.calcDataIndex(indices);
-        data[offset] = v;
-    }
-
     public double[] getInternalData() {
         return data;
     }
 
     public TArray softmax() {
-        TArray output = normalOrderedCopy();
+        TMutableArray output = new TMutableArray(new double[this.data.length], shape);
 
-        fillSoftMax(output, output.shape.newIndexArray(), 0);
+        fillSoftMax(this, output, output.shape.newIndexArray(), 0);
 
-        return output;
+        return output.toImmutable();
     }
 
-    private static void fillSoftMax(TArray tgt, int[] indices, int dim) {
+    private static void fillSoftMax(TArray src, TMutableArray tgt, int[] indices, int dim) {
         int len = tgt.shape.at(dim);
         if (indices.length - dim == 1) {
             //_mx = np.max(logits)
             double max = Double.NEGATIVE_INFINITY;
             for (int i = 0; i < len; i++) {
                 indices[dim] = i;
-                double v = tgt.dataAt(indices);
+                double v = src.dataAt(indices);
                 if (v > max) {
                     max = v;
                 }
@@ -82,7 +70,7 @@ public class TArray {
             for (int i = 0; i < len; i++) {
                 indices[dim] = i;
                 //shifted = logits - _mx
-                double shifted = tgt.dataAt(indices) - max;
+                double shifted = src.dataAt(indices) - max;
                 //l_exp = np.exp(shifted)
                 double exped = Math.exp(shifted);
                 tgt.setAt(indices, exped);
@@ -99,7 +87,7 @@ public class TArray {
         } else {
             for (int i = 0; i < len; i++) {
                 indices[dim] = i;
-                fillSoftMax(tgt, indices, dim + 1);
+                fillSoftMax(src, tgt, indices, dim + 1);
             }
         }
     }
@@ -372,7 +360,6 @@ public class TArray {
     }
 
     private static Shape evalConv2DShape(Shape input, Shape filter) {
-        // todo: handle valid padding
         int[] dims = input.normalOrderedCopy().dims;
         dims[dims.length-1] = filter.at(-1);
         return new Shape(dims);

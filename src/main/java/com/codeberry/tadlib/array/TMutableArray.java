@@ -1,19 +1,6 @@
 package com.codeberry.tadlib.array;
 
-import com.codeberry.tadlib.util.MultiThreadingSupport;
-
-import java.lang.reflect.Array;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-
-import static com.codeberry.tadlib.array.TArray.DimKeepRemove.REMOVE_DIM;
-import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
-import static com.codeberry.tadlib.util.MultiThreadingSupport.multiThreadingSupportRun;
-import static java.lang.Boolean.TRUE;
-import static java.lang.Math.max;
-import static java.lang.Math.min;
-import static java.util.Arrays.*;
 
 public class TMutableArray {
     private final double[] data;
@@ -49,7 +36,6 @@ public class TMutableArray {
         data[offset] += v;
     }
 
-    // TODO: remove?
     public void setAt(int[] indices, double v) {
         int offset = shape.calcDataIndex(indices);
         data[offset] = v;

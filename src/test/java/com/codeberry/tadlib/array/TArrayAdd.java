@@ -2,6 +2,7 @@ package com.codeberry.tadlib.array;
 
 import org.junit.jupiter.api.Test;
 
+import static com.codeberry.tadlib.array.TArrayFactory.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TArrayAdd {
@@ -17,7 +18,7 @@ class TArrayAdd {
 
     @Test
     public void addSingle() {
-        TArray a = new TArray(new double[][]{
+        TArray a = array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
@@ -32,7 +33,7 @@ class TArrayAdd {
 
     @Test
     public void addRow() {
-        TArray a = new TArray(new double[][]{
+        TArray a = array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
@@ -47,11 +48,11 @@ class TArrayAdd {
 
     @Test
     public void add() {
-        TArray a = new TArray(new double[][]{
+        TArray a = array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
-        TArray b = TArray.range(6).reshape(2, 3);
+        TArray b = range(6).reshape(2, 3);
 
         TArray c = a.add(b);
 

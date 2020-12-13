@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static com.codeberry.tadlib.array.TArray.value;
+import static com.codeberry.tadlib.array.TArrayFactory.value;
 
 public interface Model {
     default PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, Optimizer optimizer) {

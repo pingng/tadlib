@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Random;
 
 import static com.codeberry.tadlib.array.Shape.shape;
-import static com.codeberry.tadlib.array.TArray.randWeight;
+import static com.codeberry.tadlib.array.TArrayFactory.randWeight;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.*;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.Tensor.constant;

@@ -4,10 +4,8 @@ import com.codeberry.tadlib.example.mnist.SimpleTrainer.TrainParams;
 import com.codeberry.tadlib.nn.model.SGD;
 import com.codeberry.tadlib.util.MultiThreadingSupport;
 
-import static com.codeberry.tadlib.array.TArray.randWeight;
 import static com.codeberry.tadlib.example.mnist.MNISTFullyConnectedModel.Factory.Builder.factoryBuilder;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.LoadParams.params;
-import static com.codeberry.tadlib.tensor.Tensor.tensor;
 
 public class TrainFullyConnectedMNISTMain {
 

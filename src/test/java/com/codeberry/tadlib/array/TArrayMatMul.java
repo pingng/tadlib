@@ -2,6 +2,7 @@ package com.codeberry.tadlib.array;
 
 import org.junit.jupiter.api.Test;
 
+import static com.codeberry.tadlib.array.TArrayFactory.array;
 import static java.util.Arrays.deepEquals;
 import static java.util.Arrays.deepToString;
 import static org.junit.jupiter.api.Assertions.*;
@@ -9,11 +10,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class TArrayMatMul {
     @Test
     public void matmul() {
-        TArray a = new TArray(new double[][]{
+        TArray a = array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
-        TArray b = new TArray(new double[][]{
+        TArray b = array(new double[][]{
                 {10},
                 {11},
                 {13}
@@ -29,7 +30,7 @@ class TArrayMatMul {
 
     @Test
     public void matmul_1D_Right() {
-        TArray a = new TArray(new double[][]{
+        TArray a = array(new double[][]{
                 {1, 2},
                 {3, 4}
         });
@@ -44,7 +45,7 @@ class TArrayMatMul {
     @Test
     public void matmul_1D_Left() {
         TArray a = new TArray(new double[]{10, 20});
-        TArray b = new TArray(new double[][]{
+        TArray b = array(new double[][]{
                 {1, 2},
                 {3, 4}
         });
@@ -78,8 +79,8 @@ class TArrayMatMul {
 
     @Test
     public void matmulInvalidBroadcast() {
-        TArray a = TArray.range(2 * 3 * 2);
-        TArray b = TArray.range(3 * 2 * 2);
+        TArray a = TArrayFactory.range(2 * 3 * 2);
+        TArray b = TArrayFactory.range(3 * 2 * 2);
 
         assertThrows(TArray.InvalidBroadcastShape.class,
                 () -> {
@@ -91,7 +92,7 @@ class TArrayMatMul {
 
     @Test
     public void matmulBroadcast() {
-        TArray a = TArray.range(2 * 3 * 2);
+        TArray a = TArrayFactory.range(2 * 3 * 2);
         TArray b = new TArray(new double[]{0.5, 1.0});
 
         assertDoesNotThrow(() -> {
@@ -130,11 +131,11 @@ class TArrayMatMul {
 
     @Test
     public void matmul2() {
-        TArray a = new TArray(new double[][]{
+        TArray a = array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         }).reshape(1, 2, 3);
-        TArray b = new TArray(new double[][]{
+        TArray b = array(new double[][]{
                 {10},
                 {11},
                 {13}

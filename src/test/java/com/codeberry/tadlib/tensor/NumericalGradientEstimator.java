@@ -10,8 +10,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 
+import static com.codeberry.tadlib.array.TArrayFactory.zeros;
 import static java.lang.Math.min;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toList;
 
 class NumericalGradientEstimator {
     private final TrainingData trainingData;
@@ -42,7 +43,7 @@ class NumericalGradientEstimator {
         List<Tensor> params = model.getParams();
         Tensor param = params.get(paramIndex);
 
-        TArray retGrad = TArray.zeros(param.getShape());
+        TArray retGrad = zeros(param.getShape());
         double[] tgt = retGrad.getInternalData();
 
         writeResultsInOrder(resultFutures, tgt);

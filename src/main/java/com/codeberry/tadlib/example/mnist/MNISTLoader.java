@@ -13,7 +13,8 @@ import java.util.Random;
 import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 
-import static com.codeberry.tadlib.array.TArray.*;
+import static com.codeberry.tadlib.array.TArrayFactory.rand;
+import static com.codeberry.tadlib.array.TArrayFactory.randMatrixInt;
 import static java.lang.Math.min;
 
 public class MNISTLoader {

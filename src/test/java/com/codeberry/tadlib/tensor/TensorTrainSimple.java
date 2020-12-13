@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.Random;
 
+import static com.codeberry.tadlib.array.TArrayFactory.*;
 import static com.codeberry.tadlib.tensor.Ops.*;
 
 public class TensorTrainSimple {
@@ -13,7 +14,7 @@ public class TensorTrainSimple {
     public void testMethod() {
         Random rand = new Random(3);
         Tensor x_data = new Tensor(random(rand,100, 3));
-        TArray coeff = TArray.list(5, -2, 3.5);
+        TArray coeff = list(5, -2, 3.5);
         TArray yM = x_data.vals.matmul(coeff).add(5.0);
         Tensor y_data = new Tensor(yM.reshape(100, 1));
 
@@ -30,7 +31,7 @@ public class TensorTrainSimple {
             Tensor squared = mul(diff, diff);
             Tensor sum = sum(squared);
 
-            sum.backward(TArray.value(1));
+            sum.backward(value(1));
 
             System.out.println(sum.toDoubles());
             System.out.println(Arrays.deepToString((Object[]) w.gradient.toDoubles()));
@@ -62,7 +63,7 @@ public class TensorTrainSimple {
             for (double[] doubles : grad) {
                 Arrays.fill(doubles, 1);
             }
-            matmuled.backward(new TArray(grad));
+            matmuled.backward(array(grad));
 
             System.out.println(matmuled.vals.shape);
             //System.out.println(Arrays.toString((double[]) matmuled.toArray()));

@@ -70,7 +70,7 @@ public class Shape {
         return dim >= 0 ? dim : dimCount + dim;
     }
 
-    public int calcDataIndex(int[] indices) {
+    public int calcDataIndex(int... indices) {
         int idx = 0;
         int blockSize = 1;
         for (int i = indices.length - 1; i >= 0; i--) {

@@ -2,18 +2,18 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.TArray;
-import com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange;
 import com.codeberry.tadlib.nn.loss.SoftmaxCrossEntropyLoss;
+import com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange;
 
 import java.util.List;
 import java.util.Random;
 
 import static com.codeberry.tadlib.array.TArray.DimKeepRemove.KEEP_DIM;
 import static com.codeberry.tadlib.array.TArray.DimKeepRemove.REMOVE_DIM;
+import static com.codeberry.tadlib.array.TArrayFactory.*;
+import static com.codeberry.tadlib.tensor.ParentLink.parentLink;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.multiThreadingSupportRun;
-import static com.codeberry.tadlib.array.TArray.ones;
-import static com.codeberry.tadlib.tensor.ParentLink.parentLink;
 import static java.lang.Boolean.TRUE;
 import static java.util.Arrays.*;
 import static java.util.Collections.singletonList;
@@ -161,7 +161,7 @@ public abstract class Ops {
     public static Tensor sum(Tensor a) {
         TArray y = a.vals.sum();
 
-        GradFunc gF = grad -> TArray.fillLike(a.vals.shape, grad);
+        GradFunc gF = grad -> fillLike(a.vals.shape, grad);
 
         return new Tensor(y,
                 singletonList(parentLink(a, gF)));
@@ -308,7 +308,7 @@ public abstract class Ops {
     }
 
     private static TArray distribute2dMaxGrad(TArray grad, Shape inputShape, Shape maxIndexShape, int[] maxIndexData) {
-        TArray outputGrad = TArray.zeros(inputShape);
+        TArray outputGrad = zeros(inputShape);
 
         int[] tmpOutputGradIndices = outputGrad.shape.newIndexArray();
         int[] tmpGradIndices = grad.shape.newIndexArray();

@@ -2,6 +2,7 @@ package com.codeberry.tadlib.array;
 
 import org.junit.jupiter.api.Test;
 
+import static com.codeberry.tadlib.array.TArrayFactory.array;
 import static com.codeberry.tadlib.array.TArrayMatMul.toArrStr;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -9,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class TArrayTranspose {
     @Test
     public void transpose2d() {
-        TArray a = new TArray(new double[][]{
+        TArray a = array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
@@ -25,12 +26,12 @@ class TArrayTranspose {
 
     @Test
     public void transposeMatMul() {
-        TArray a = new TArray(new double[][]{
+        TArray a = array(new double[][]{
                 {0, 1},
                 {2, 3},
                 {4, 5}
         });
-        TArray b = new TArray(new double[][]{
+        TArray b = array(new double[][]{
                 {1, 2},
                 {2, 3},
                 {3, 4}
@@ -50,7 +51,7 @@ class TArrayTranspose {
 
     @Test
     public void transpose3d() {
-        TArray a = TArray.range(2*3*2)
+        TArray a = TArrayFactory.range(2*3*2)
                 .reshape(2, 3, 2);
 
         TArray c = a.transpose();
@@ -67,7 +68,7 @@ class TArrayTranspose {
 
     @Test
     public void transpose3d_CustomAxis() {
-        TArray a = TArray.range(2*3*2)
+        TArray a = TArrayFactory.range(2*3*2)
                 .reshape(2, 3, 2);
 
         TArray c = a.transpose(0, 2, 1);
@@ -82,7 +83,7 @@ class TArrayTranspose {
 
     @Test
     public void transpose_error() {
-        TArray a = TArray.range(2*3*2)
+        TArray a = TArrayFactory.range(2*3*2)
                 .reshape(2, 3, 2);
 
         assertThrows(TArray.DimensionMismatch.class, () ->

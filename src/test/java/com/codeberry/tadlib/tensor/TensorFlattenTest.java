@@ -4,12 +4,13 @@ import com.codeberry.tadlib.array.TArray;
 import com.codeberry.tadlib.util.MatrixTestUtils;
 import org.junit.jupiter.api.Test;
 
+import static com.codeberry.tadlib.array.TArrayFactory.range;
 import static java.util.Arrays.deepToString;
 
 public class TensorFlattenTest {
     @Test
     public void flatten() {
-        TArray raw = TArray.range(3 * 4 * 4 * 1);
+        TArray raw = range(3 * 4 * 4 * 1);
         Tensor input = new Tensor(raw.reshape(3, 4, 4, 1));
 
         Tensor flattened = Ops.flatten(input);

@@ -1,8 +1,8 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.TArray;
 import org.junit.jupiter.api.Test;
 
+import static com.codeberry.tadlib.array.TArrayFactory.array;
 import static com.codeberry.tadlib.tensor.Tensor.tensor;
 import static java.util.Arrays.deepEquals;
 import static java.util.Arrays.deepToString;
@@ -28,7 +28,7 @@ class TensorAddTest {
                 {3, 2, 1},
                 {6, 5, 4}
         };
-        c.backward(new TArray(gradient));
+        c.backward(array(gradient));
 
         assertTrue(deepEquals(gradient, (Object[]) c.gradient.toDoubles()));
         assertTrue(deepEquals(gradient, (Object[]) a.gradient.toDoubles()));
@@ -55,7 +55,7 @@ class TensorAddTest {
                 {1, 2, 3},
                 {10, 20, 30}
         };
-        c.backward(new TArray(gradient));
+        c.backward(array(gradient));
 
         assertTrue(deepEquals(gradient, (Object[]) c.gradient.toDoubles()));
         assertTrue(deepEquals(gradient, (Object[]) a.gradient.toDoubles()));
@@ -82,7 +82,7 @@ class TensorAddTest {
                 {1, 2, 3},
                 {10, 20, 30}
         };
-        c.backward(new TArray(gradient));
+        c.backward(array(gradient));
 
         assertTrue(deepEquals(gradient, (Object[]) c.gradient.toDoubles()));
         assertTrue(deepEquals(gradient, (Object[]) b.gradient.toDoubles()));
@@ -110,7 +110,7 @@ class TensorAddTest {
                 {1, 2, 3},
                 {10, 20, 30}
         };
-        c.backward(new TArray(gradient));
+        c.backward(array(gradient));
 
         assertTrue(deepEquals(gradient, (Object[]) c.gradient.toDoubles()));
         assertTrue(deepEquals(gradient, (Object[]) a.gradient.toDoubles()));

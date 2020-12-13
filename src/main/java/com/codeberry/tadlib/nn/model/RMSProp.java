@@ -1,10 +1,13 @@
 package com.codeberry.tadlib.nn.model;
 
 import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.TArrayFactory;
 import com.codeberry.tadlib.tensor.Tensor;
 
 import java.util.IdentityHashMap;
 import java.util.List;
+
+import static com.codeberry.tadlib.array.TArrayFactory.*;
 
 public class RMSProp implements Optimizer {
     public static final double EPSILON = 1e-6;
@@ -37,7 +40,7 @@ public class RMSProp implements Optimizer {
     private TArray updateST(Tensor p, TArray gradient) {
         TArray sT = sTMap.get(p);
         if (sT == null) {
-            sT = TArray.zeros(gradient.shape);
+            sT = zeros(gradient.shape);
         }
         TArray gradSqr = gradient.sqr();
         sT = sT.mul(gamma).add(gradSqr.mul(1.0 - gamma));

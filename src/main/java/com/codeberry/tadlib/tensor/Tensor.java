@@ -2,11 +2,13 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.TArrayFactory;
 
 import java.util.List;
 import java.util.Random;
 import java.util.function.BiFunction;
 
+import static com.codeberry.tadlib.array.TArrayFactory.*;
 import static java.util.Collections.emptyList;
 
 public class Tensor {
@@ -29,7 +31,7 @@ public class Tensor {
     }
 
     public Tensor(double[][] vals) {
-        this.vals = new TArray(vals);
+        this.vals = array(vals);
         links = emptyList();
         gradientMode = GradientMode.CALCULATE_GRAD;
     }
@@ -41,7 +43,7 @@ public class Tensor {
     }
 
     public Tensor(double[][][][] vals) {
-        this.vals = new TArray(vals);
+        this.vals = array(vals);
         links = emptyList();
         gradientMode = GradientMode.CALCULATE_GRAD;
     }
@@ -86,20 +88,20 @@ public class Tensor {
 
     public static abstract class TensorFactories {
         public static Tensor randomWeight(Random r, Shape shape) {
-            return tensor(TArray.randWeight(r, shape));
+            return tensor(randWeight(r, shape));
         }
 
         public static Tensor zeros(Shape shape) {
-            return tensor(TArray.zeros(shape));
+            return tensor(TArrayFactory.zeros(shape));
         }
 
         public static Tensor ones(Shape shape) {
-            return tensor(TArray.ones(shape));
+            return tensor(TArrayFactory.ones(shape));
         }
     }
 
     public void backward() {
-        backward(TArray.ones(this.vals.shape));
+        backward(ones(this.vals.shape));
     }
 
     public void backward(TArray gradient) {

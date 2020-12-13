@@ -1,12 +1,11 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.TArray;
 import org.junit.jupiter.api.Test;
 
+import static com.codeberry.tadlib.array.TArrayFactory.array;
 import static com.codeberry.tadlib.tensor.Tensor.tensor;
 import static java.util.Arrays.deepEquals;
 import static java.util.Arrays.deepToString;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TensorMatMulTest {
@@ -35,7 +34,7 @@ class TensorMatMulTest {
                 {1, 1},
                 {1, 1}
         };
-        c.backward(new TArray(gradient));
+        c.backward(array(gradient));
 
         System.out.println("---");
         System.out.println(deepToString((Object[]) a.gradient.toDoubles()));

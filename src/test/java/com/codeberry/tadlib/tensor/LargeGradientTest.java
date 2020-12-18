@@ -1,6 +1,6 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.JavaArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.example.mnist.MNISTFullyConnectedModel;
 import com.codeberry.tadlib.nn.model.*;
@@ -91,14 +91,14 @@ public class LargeGradientTest {
 
     private double testGradients(TrainingData trainingData, Model model, int epoch) throws ExecutionException, InterruptedException {
         model.calcGradient(new Random(epoch), trainingData);
-        List<TArray> gradients = model.getGradients();
+        List<JavaArray> gradients = model.getGradients();
 
         ErrorValidator errorValidator = new ErrorValidator();
         NumericalGradientEstimator estimator = new NumericalGradientEstimator(trainingData, model, epoch, execSrv, threadCount);
         for (int i = 0; i < gradients.size(); i++) {
-            TArray backpropGrad = gradients.get(i);
+            JavaArray backpropGrad = gradients.get(i);
             if (backpropGrad != null) {
-                TArray numericalEstimatedGrad = estimator.estimateParamGradIndex(i);
+                JavaArray numericalEstimatedGrad = estimator.estimateParamGradIndex(i);
 
                 errorValidator.validateAndAccumulateErr(backpropGrad, numericalEstimatedGrad);
             } else {
@@ -138,7 +138,7 @@ public class LargeGradientTest {
             }
         }
 
-        private void validateAndAccumulateErr(TArray backpropGrad, TArray numericalGrad) {
+        private void validateAndAccumulateErr(JavaArray backpropGrad, JavaArray numericalGrad) {
             double errAspect = MatrixTestUtils.calcErrAspect(backpropGrad.toDoubles(), numericalGrad.toDoubles());
 
             if (isNotOk(errAspect)) {

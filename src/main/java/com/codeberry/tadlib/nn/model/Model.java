@@ -1,6 +1,6 @@
 package com.codeberry.tadlib.nn.model;
 
-import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.JavaArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.tensor.Tensor;
 
@@ -47,10 +47,10 @@ public interface Model {
         }
     }
 
-    default List<TArray> getGradients() {
+    default List<JavaArray> getGradients() {
         List<Tensor> params = getParams();
 
-        List<TArray> grads = new ArrayList<>();
+        List<JavaArray> grads = new ArrayList<>();
         for (Tensor p : params) {
             grads.add(p.getGradient());
         }

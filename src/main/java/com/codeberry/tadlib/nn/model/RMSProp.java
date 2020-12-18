@@ -1,7 +1,6 @@
 package com.codeberry.tadlib.nn.model;
 
-import com.codeberry.tadlib.array.TArray;
-import com.codeberry.tadlib.array.TArrayFactory;
+import com.codeberry.tadlib.array.JavaArray;
 import com.codeberry.tadlib.tensor.Tensor;
 
 import java.util.IdentityHashMap;
@@ -14,7 +13,7 @@ public class RMSProp implements Optimizer {
     private final double learningRate;
     private final double gamma;
 
-    private transient IdentityHashMap<Tensor, TArray> sTMap = new IdentityHashMap<>();
+    private transient IdentityHashMap<Tensor, JavaArray> sTMap = new IdentityHashMap<>();
 
     public RMSProp(double learningRate) {
         this(learningRate, 0.9);
@@ -29,20 +28,20 @@ public class RMSProp implements Optimizer {
     public void optimize(List<Tensor> params) {
         for (Tensor p : params) {
             p.update((values, gradient) -> {
-                TArray sT = updateST(p, gradient);
-                TArray sTWithEpsilon = sT.add(EPSILON);
-                TArray sqrt = sTWithEpsilon.sqrt();
+                JavaArray sT = updateST(p, gradient);
+                JavaArray sTWithEpsilon = sT.add(EPSILON);
+                JavaArray sqrt = sTWithEpsilon.sqrt();
                 return values.sub(gradient.mul(learningRate).div(sqrt));
             });
         }
     }
 
-    private TArray updateST(Tensor p, TArray gradient) {
-        TArray sT = sTMap.get(p);
+    private JavaArray updateST(Tensor p, JavaArray gradient) {
+        JavaArray sT = sTMap.get(p);
         if (sT == null) {
             sT = zeros(gradient.shape);
         }
-        TArray gradSqr = gradient.sqr();
+        JavaArray gradSqr = gradient.sqr();
         sT = sT.mul(gamma).add(gradSqr.mul(1.0 - gamma));
         sTMap.put(p, sT);
 

@@ -10,12 +10,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class TArrayTranspose {
     @Test
     public void transpose2d() {
-        TArray a = array(new double[][]{
+        JavaArray a = array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
 
-        TArray c = a.transpose();
+        JavaArray c = a.transpose();
 
         double[][] out = (double[][]) c.toDoubles();
         System.out.println(toArrStr(out));
@@ -26,19 +26,19 @@ class TArrayTranspose {
 
     @Test
     public void transposeMatMul() {
-        TArray a = array(new double[][]{
+        JavaArray a = array(new double[][]{
                 {0, 1},
                 {2, 3},
                 {4, 5}
         });
-        TArray b = array(new double[][]{
+        JavaArray b = array(new double[][]{
                 {1, 2},
                 {2, 3},
                 {3, 4}
         });
         b = b.transpose();
 
-        TArray c = a.matmul(b);
+        JavaArray c = a.matmul(b);
 
         double[][] out = (double[][]) c.toDoubles();
         System.out.println(toArrStr(a.toDoubles()));
@@ -51,10 +51,10 @@ class TArrayTranspose {
 
     @Test
     public void transpose3d() {
-        TArray a = TArrayFactory.range(2*3*2)
+        JavaArray a = TArrayFactory.range(2*3*2)
                 .reshape(2, 3, 2);
 
-        TArray c = a.transpose();
+        JavaArray c = a.transpose();
 
         double[][][] out = (double[][][]) c.toDoubles();
         System.out.println(toArrStr(out));
@@ -68,10 +68,10 @@ class TArrayTranspose {
 
     @Test
     public void transpose3d_CustomAxis() {
-        TArray a = TArrayFactory.range(2*3*2)
+        JavaArray a = TArrayFactory.range(2*3*2)
                 .reshape(2, 3, 2);
 
-        TArray c = a.transpose(0, 2, 1);
+        JavaArray c = a.transpose(0, 2, 1);
 
         double[][][] out = (double[][][]) c.toDoubles();
         System.out.println(toArrStr(out));
@@ -83,12 +83,12 @@ class TArrayTranspose {
 
     @Test
     public void transpose_error() {
-        TArray a = TArrayFactory.range(2*3*2)
+        JavaArray a = TArrayFactory.range(2*3*2)
                 .reshape(2, 3, 2);
 
-        assertThrows(TArray.DimensionMismatch.class, () ->
+        assertThrows(JavaArray.DimensionMismatch.class, () ->
                 a.transpose(0, 1));
-        assertThrows(TArray.DimensionMissing.class, () ->
+        assertThrows(JavaArray.DimensionMissing.class, () ->
                 a.transpose(0, 0, 2));
     }
 }

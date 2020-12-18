@@ -1,30 +1,39 @@
 package com.codeberry.tadlib.array;
 
+import com.codeberry.tadlib.provider.JavaProvider;
+import com.codeberry.tadlib.provider.ProviderStore;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.array.TArrayFactory.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TArrayAdd {
+
+    @BeforeEach
+    public void init() {
+        ProviderStore.setProvider(new JavaProvider());
+    }
+
     @Test
     public void plainValue() {
-        TArray a = new TArray(2.0);
-        TArray b = new TArray(6.0);
+        JavaArray a = new JavaArray(2.0);
+        JavaArray b = new JavaArray(6.0);
 
-        TArray c = a.add(b);
+        JavaArray c = a.add(b);
 
         assertEquals(8.0, (double) c.toDoubles());
     }
 
     @Test
     public void addSingle() {
-        TArray a = array(new double[][]{
+        JavaArray a = array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
-        TArray b = new TArray(new double[]{10.0});
+        JavaArray b = new JavaArray(new double[]{10.0});
 
-        TArray c = a.add(b);
+        JavaArray c = a.add(b);
 
         double[][] out = (double[][]) c.toDoubles();
         assertArrayEquals(new double[] {10, 11, 12}, out[0]);
@@ -33,13 +42,13 @@ class TArrayAdd {
 
     @Test
     public void addRow() {
-        TArray a = array(new double[][]{
+        JavaArray a = array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
-        TArray b = new TArray(new double[]{1, 10, 100});
+        JavaArray b = new JavaArray(new double[]{1, 10, 100});
 
-        TArray c = a.add(b);
+        JavaArray c = a.add(b);
 
         double[][] out = (double[][]) c.toDoubles();
         assertArrayEquals(new double[] {1, 11, 102}, out[0]);
@@ -48,13 +57,13 @@ class TArrayAdd {
 
     @Test
     public void add() {
-        TArray a = array(new double[][]{
+        JavaArray a = array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
-        TArray b = range(6).reshape(2, 3);
+        JavaArray b = range(6).reshape(2, 3);
 
-        TArray c = a.add(b);
+        JavaArray c = a.add(b);
 
         double[][] out = (double[][]) c.toDoubles();
         assertArrayEquals(new double[] {0, 2, 4}, out[0]);

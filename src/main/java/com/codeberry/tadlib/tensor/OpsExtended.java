@@ -1,7 +1,7 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.JavaArray;
 
 public abstract class OpsExtended {
     public static int guessParamLength(Shape shape) {
@@ -72,31 +72,31 @@ public abstract class OpsExtended {
     }
 
     public static class BatchNormRunningAverages {
-        final TArray runningMean;
-        final TArray runningVariance;
+        final JavaArray runningMean;
+        final JavaArray runningVariance;
 
         public BatchNormRunningAverages() {
             this(null, null);
         }
 
-        public BatchNormRunningAverages(TArray runningMean, TArray runningVariance) {
+        public BatchNormRunningAverages(JavaArray runningMean, JavaArray runningVariance) {
             this.runningMean = runningMean;
             this.runningVariance = runningVariance;
         }
 
         public BatchNormRunningAverages updateWith(BatchNormResult result, double momentum) {
-            TArray newVariance = update(this.runningVariance, result.variance, momentum);
-            TArray newMean = update(this.runningMean, result.mean, momentum);
+            JavaArray newVariance = update(this.runningVariance, result.variance, momentum);
+            JavaArray newMean = update(this.runningMean, result.mean, momentum);
 
             return new BatchNormRunningAverages(newMean, newVariance);
         }
 
-        private static TArray update(TArray old, TArray current, double momentum) {
+        private static JavaArray update(JavaArray old, JavaArray current, double momentum) {
             if (old == null) {
                 return current;
             } else {
-                TArray newAmount = current.mul(1.0 - momentum);
-                TArray keptFromOld = old.mul(momentum);
+                JavaArray newAmount = current.mul(1.0 - momentum);
+                JavaArray keptFromOld = old.mul(momentum);
                 return keptFromOld.add(newAmount);
             }
         }
@@ -110,10 +110,10 @@ public abstract class OpsExtended {
 
     public static class BatchNormResult {
         public final Tensor output;
-        public final TArray mean;
-        public final TArray variance;
+        public final JavaArray mean;
+        public final JavaArray variance;
 
-        BatchNormResult(Tensor output, TArray mean, TArray variance) {
+        BatchNormResult(Tensor output, JavaArray mean, JavaArray variance) {
             this.output = output;
             this.mean = mean;
             this.variance = variance;

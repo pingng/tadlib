@@ -1,7 +1,7 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.JavaArray;
 import com.codeberry.tadlib.array.TMutableArray;
 import com.codeberry.tadlib.nn.loss.SoftmaxCrossEntropyLoss;
 import com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange;
@@ -9,8 +9,8 @@ import com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange;
 import java.util.List;
 import java.util.Random;
 
-import static com.codeberry.tadlib.array.TArray.DimKeepRemove.KEEP_DIM;
-import static com.codeberry.tadlib.array.TArray.DimKeepRemove.REMOVE_DIM;
+import static com.codeberry.tadlib.array.JavaArray.DimKeepRemove.KEEP_DIM;
+import static com.codeberry.tadlib.array.JavaArray.DimKeepRemove.REMOVE_DIM;
 import static com.codeberry.tadlib.array.TArrayFactory.*;
 import static com.codeberry.tadlib.tensor.ParentLink.parentLink;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
@@ -24,7 +24,7 @@ public abstract class Ops {
     public static final double EPSILON = 0.000001;
 
     public static Tensor matmul(Tensor a, Tensor b) {
-        TArray y = a.vals.matmul(b.vals);
+        JavaArray y = a.vals.matmul(b.vals);
 
         GradFunc gF_a = grad -> grad.matmul(b.vals.transpose());
         GradFunc gF_b = grad -> a.vals.transpose().matmul(grad);
@@ -34,9 +34,9 @@ public abstract class Ops {
     }
 
     public static Tensor negate(Tensor a) {
-        TArray y = a.vals.negate();
+        JavaArray y = a.vals.negate();
 
-        GradFunc gF = TArray::negate;
+        GradFunc gF = JavaArray::negate;
 
         return new Tensor(y,
                 singletonList(parentLink(a, gF)));
@@ -48,10 +48,10 @@ public abstract class Ops {
     }
 
     public static Tensor add(Tensor... tensors) {
-        TArray y = stream(tensors)
+        JavaArray y = stream(tensors)
                 .map(t -> t.vals)
                 .reduce((val1, val2) -> val1.add(val2))
-                .orElse(TArray.ZERO);
+                .orElse(JavaArray.ZERO);
 
         List<ParentLink> parents = stream(tensors)
                 .map(t -> parentLink(t, funcGradientAdd(t)))
@@ -61,7 +61,7 @@ public abstract class Ops {
     }
 
     public static Tensor add(Tensor a, Tensor b) {
-        TArray y = a.vals.add(b.vals);
+        JavaArray y = a.vals.add(b.vals);
 
         GradFunc gF_a = funcGradientAdd(a);
         GradFunc gF_b = funcGradientAdd(b);
@@ -71,7 +71,7 @@ public abstract class Ops {
     }
 
     public static Tensor add(Tensor a, double constant) {
-        TArray y = a.vals.add(constant);
+        JavaArray y = a.vals.add(constant);
 
         GradFunc gF_a = funcGradientAdd(a);
 
@@ -83,7 +83,7 @@ public abstract class Ops {
     }
 
     public static Tensor sqr(Tensor a) {
-        TArray y = a.vals.sqr();
+        JavaArray y = a.vals.sqr();
 
         GradFunc gF = grad -> {
             grad = grad.mul(a.vals).mul(2.0);
@@ -95,7 +95,7 @@ public abstract class Ops {
     }
 
     public static Tensor sqrt(Tensor a) {
-        TArray y = a.vals.sqrt();
+        JavaArray y = a.vals.sqrt();
 
         GradFunc gF = grad -> {
             grad = grad.mul(a.vals.pow(-0.5).mul(0.5));
@@ -107,19 +107,19 @@ public abstract class Ops {
     }
 
     public static Tensor div(Tensor a, Tensor b) {
-        TArray y = a.vals.div(b.vals);
+        JavaArray y = a.vals.div(b.vals);
 
         GradFunc gF_a = grad -> {
-            TArray agged = aggregateBroadcastedDims(a, grad);
+            JavaArray agged = aggregateBroadcastedDims(a, grad);
 
             return agged.div(b.vals);
         };
         GradFunc gF_b = grad -> {
             //  calced_divisor_grad = tf.reduce_sum(fake_grad * (-dividend / (divisor**2)), axis=(0,1))
-            TArray negateA = a.vals.negate();
-            TArray rawGrad = grad.mul(negateA);
-            TArray sqrB = b.vals.sqr();
-            TArray gradForB = rawGrad.div(sqrB);
+            JavaArray negateA = a.vals.negate();
+            JavaArray rawGrad = grad.mul(negateA);
+            JavaArray sqrB = b.vals.sqr();
+            JavaArray gradForB = rawGrad.div(sqrB);
 
             return aggregateBroadcastedDims(b, gradForB);
         };
@@ -129,7 +129,7 @@ public abstract class Ops {
     }
 
     public static Tensor mul(Tensor a, Tensor b) {
-        TArray y = a.vals.mul(b.vals);
+        JavaArray y = a.vals.mul(b.vals);
 
         GradFunc gF_a = funcGradientMul(a, b);
         GradFunc gF_b = funcGradientMul(b, a);
@@ -146,7 +146,7 @@ public abstract class Ops {
         };
     }
 
-    private static TArray aggregateBroadcastedDims(Tensor self, TArray grad) {
+    private static JavaArray aggregateBroadcastedDims(Tensor self, JavaArray grad) {
         int missingDims = grad.shape.dimCount - self.vals.shape.dimCount;
         if (missingDims >= 1) {
             grad = grad.sumFirstDims(missingDims, REMOVE_DIM);
@@ -160,7 +160,7 @@ public abstract class Ops {
     }
 
     public static Tensor sum(Tensor a) {
-        TArray y = a.vals.sum();
+        JavaArray y = a.vals.sum();
 
         GradFunc gF = grad -> fillLike(a.vals.shape, grad);
 
@@ -169,16 +169,16 @@ public abstract class Ops {
     }
 
     public static Tensor conv2d(Tensor input, Tensor filter) {
-        TArray y = input.vals.conv2d(filter.vals);
+        JavaArray y = input.vals.conv2d(filter.vals);
 
         GradFunc gF_Input = grad -> {
-            TArray transposed = filter.vals.transpose(0, 1, 3, 2);
-            TArray fT = transposed.normalOrderedCopy();
-            TArray fRotated = fT.rot180();
+            JavaArray transposed = filter.vals.transpose(0, 1, 3, 2);
+            JavaArray fT = transposed.normalOrderedCopy();
+            JavaArray fRotated = fT.rot180();
 
             int offsetY = (filter.vals.shape.at(0) % 2 == 0) ? -1 : 0;
             int offsetX = (filter.vals.shape.at(1) % 2 == 0) ? -1 : 0;
-            return grad.conv2d(fRotated, offsetY, offsetX, TArray.Debug.NONE);
+            return grad.conv2d(fRotated, offsetY, offsetX, JavaArray.Debug.NONE);
         };
         GradFunc gF_Filter = grad -> calcFilterGradient(grad, input.vals, filter.vals);
 
@@ -187,21 +187,21 @@ public abstract class Ops {
                         parentLink(filter, gF_Filter)));
     }
 
-    private static TArray calcFilterGradient(TArray grad, TArray input, TArray filter) {
+    private static JavaArray calcFilterGradient(JavaArray grad, JavaArray input, JavaArray filter) {
         Shape filterShape = filter.shape;
         int[] dims = new int[filterShape.dimCount + 1];
         System.arraycopy(filterShape.toDimArray(), 0, dims, 1, filterShape.dimCount);
         dims[0] = input.shape.at(0);
         Shape tgtShape = new Shape(dims);
 
-        TArray gradPerInputExample = multiThreadingSupportRun(taskRange(0, grad.shape.at(0)),
+        JavaArray gradPerInputExample = multiThreadingSupportRun(taskRange(0, grad.shape.at(0)),
                 range -> accumulateFilterGradientAtFirstDim(range, grad, input, tgtShape),
                 (left, right) -> left.add(right));
 
         return gradPerInputExample.sumFirstDims(1, REMOVE_DIM);
     }
 
-    private static TArray accumulateFilterGradientAtFirstDim(TaskRange range, TArray grad, TArray input, Shape tgtShape) {
+    private static JavaArray accumulateFilterGradientAtFirstDim(TaskRange range, JavaArray grad, JavaArray input, Shape tgtShape) {
         TMutableArray tgtGrad = new TMutableArray(new double[tgtShape.size], tgtShape);
 
         int[] gradIndices = grad.shape.newIndexArray();
@@ -218,8 +218,8 @@ public abstract class Ops {
         return tgtGrad.migrateToImmutable();
     }
 
-    private static void accumulateFilterGradient(TArray grad, int[] gradIndices, int dim,
-                                                 TArray input, int[] inIndices,
+    private static void accumulateFilterGradient(JavaArray grad, int[] gradIndices, int dim,
+                                                 JavaArray input, int[] inIndices,
                                                  TMutableArray tgtGrad, int[] tgtIndices) {
         if (gradIndices.length - dim == 3) {
             int filterH = tgtGrad.shape.at(1);
@@ -258,8 +258,8 @@ public abstract class Ops {
     }
 
     private static double sumFilterGradAt(int filterH, int filterW,
-                                          TArray grad, int[] gradIndices,
-                                          TArray input, int[] inIndices,
+                                          JavaArray grad, int[] gradIndices,
+                                          JavaArray input, int[] inIndices,
                                           int inIdx, int outIdx,
                                           int offsetGradY, int offsetGradX) {
         int inputH = input.shape.at(-3);
@@ -317,7 +317,7 @@ public abstract class Ops {
         return new Shape(dims);
     }
 
-    private static TArray distribute2dMaxGrad(TArray grad, Shape inputShape, Shape maxIndexShape, int[] maxIndexData) {
+    private static JavaArray distribute2dMaxGrad(JavaArray grad, Shape inputShape, Shape maxIndexShape, int[] maxIndexData) {
         TMutableArray outputGrad = new TMutableArray(inputShape);
 
         int[] tmpOutputGradIndices = outputGrad.shape.newIndexArray();
@@ -329,7 +329,7 @@ public abstract class Ops {
         return outputGrad.migrateToImmutable();
     }
 
-    private static void fillMax2dGradInto(TMutableArray outputGrad, Shape maxIndexShape, int[] maxIndexData, TArray grad, int dim,
+    private static void fillMax2dGradInto(TMutableArray outputGrad, Shape maxIndexShape, int[] maxIndexData, JavaArray grad, int dim,
                                           int[] tmpOutputGradIndices, int[] tmpGradIndices, int[] tmpMaxIndices) {
         if (maxIndexShape.dimCount - dim == 4) {
             int maxILen = tmpMaxIndices.length;
@@ -386,7 +386,7 @@ public abstract class Ops {
         return new Shape(idxDims);
     }
 
-    private static void fillMax2d(TArray input, int[] inputIndices, int size,
+    private static void fillMax2d(JavaArray input, int[] inputIndices, int size,
                                   TMutableArray tgt, int[] tgtIndices,
                                   Shape maxIndexShape, int[] maxIndexData, int[] tmpMaxIndices,
                                   int dim) {
@@ -427,7 +427,7 @@ public abstract class Ops {
         }
     }
 
-    private static double getMax2dVal(TArray input, int[] inputIndices,
+    private static double getMax2dVal(JavaArray input, int[] inputIndices,
                                       int yInputOffset, int xInputOffset, int c,
                                       int size,
                                       Shape maxIndexShape, int[] maxIndexData, int[] tmpMaxIndices) {
@@ -500,7 +500,7 @@ public abstract class Ops {
     }
 
     public static Tensor relu(Tensor input) {
-        TArray copy = input.vals.normalOrderedCopy();
+        JavaArray copy = input.vals.normalOrderedCopy();
         double[] data = copy.getInternalData();
         double[] gradMaskData = new double[data.length];
 
@@ -513,13 +513,13 @@ public abstract class Ops {
         }
 
         Shape copyShape = copy.shape;
-        GradFunc gF = grad -> grad.mul(new TArray(gradMaskData, copyShape.copy()));
+        GradFunc gF = grad -> grad.mul(new JavaArray(gradMaskData, copyShape.copy()));
 
         return new Tensor(copy, singletonList(parentLink(input, gF)));
     }
 
     public static Tensor leakyRelu(Tensor input, double leakyScale) {
-        TArray copy = input.vals.normalOrderedCopy();
+        JavaArray copy = input.vals.normalOrderedCopy();
         double[] data = copy.getInternalData();
         double[] gradMaskData = new double[data.length];
 
@@ -533,13 +533,13 @@ public abstract class Ops {
         }
 
         Shape copyShape = copy.shape;
-        GradFunc gF = grad -> grad.mul(new TArray(gradMaskData, copyShape.copy()));
+        GradFunc gF = grad -> grad.mul(new JavaArray(gradMaskData, copyShape.copy()));
 
         return new Tensor(copy, singletonList(parentLink(input, gF)));
     }
 
     public static Tensor sumSoftmaxCrossEntropy(Tensor labelsOneHot, Tensor prediction) {
-        TArray softmax = prediction.vals.softmax();
+        JavaArray softmax = prediction.vals.softmax();
 
         double cost = SoftmaxCrossEntropyLoss.sumSoftmaxCrossEntropy(softmax, softmax.shape.newIndexArray(),
                 labelsOneHot.vals, 0);
@@ -551,10 +551,10 @@ public abstract class Ops {
             return tgt.migrateToImmutable().mul(grad);
         };
 
-        return new Tensor(new TArray(cost), singletonList(parentLink(prediction, gF)));
+        return new Tensor(new JavaArray(cost), singletonList(parentLink(prediction, gF)));
     }
 
-    private static void toSoftmaxGradient(TMutableArray tgt, TArray predicted, int[] indices, TArray labelsOneHot, int dim) {
+    private static void toSoftmaxGradient(TMutableArray tgt, JavaArray predicted, int[] indices, JavaArray labelsOneHot, int dim) {
         int len = predicted.shape.at(dim);
         if (indices.length - dim == 1) {
             int maxIndex = -1;
@@ -582,7 +582,7 @@ public abstract class Ops {
     public static Tensor dropout(Tensor input, Random rnd, double dropoutKeep, RunMode runMode) {
         if (runMode == RunMode.TRAINING) {
             double gradValue = 1.0 / dropoutKeep;
-            TArray output = input.vals.normalOrderedCopy();
+            JavaArray output = input.vals.normalOrderedCopy();
             double[] data = output.getInternalData();
             double[] gradMaskData = new double[data.length];
             int[] dims = output.shape.toDimArray();
@@ -595,7 +595,7 @@ public abstract class Ops {
                 }
             }
 
-            GradFunc gF = grad -> grad.mul(new TArray(gradMaskData, Shape.of(dims)));
+            GradFunc gF = grad -> grad.mul(new JavaArray(gradMaskData, Shape.of(dims)));
 
             return new Tensor(output, singletonList(parentLink(input, gF)));
         }
@@ -614,8 +614,8 @@ public abstract class Ops {
                 elementsSummed *= inputShape.at(i);
             }
         }
-        TArray sum = input.vals.sumDims(dimsToCollapse, REMOVE_DIM);
-        TArray mean = sum.div(elementsSummed);
+        JavaArray sum = input.vals.sumDims(dimsToCollapse, REMOVE_DIM);
+        JavaArray mean = sum.div(elementsSummed);
 
         int[] broadcastDims = inputShape.toDimArray();
         for (int d = 0; d < dimsToCollapse.length; d++) {
@@ -626,9 +626,9 @@ public abstract class Ops {
 
         int finalElementsSummed = elementsSummed;
         GradFunc gF = grad -> {
-            TArray broadcastCompatGrad = grad.reshape(broadcastDims);
-            TArray onesInInputShape = ones(inputShape);
-            TArray gradInInputShape = onesInInputShape.mul(broadcastCompatGrad);
+            JavaArray broadcastCompatGrad = grad.reshape(broadcastDims);
+            JavaArray onesInInputShape = ones(inputShape);
+            JavaArray gradInInputShape = onesInInputShape.mul(broadcastCompatGrad);
 
             return gradInInputShape.div(finalElementsSummed);
         };

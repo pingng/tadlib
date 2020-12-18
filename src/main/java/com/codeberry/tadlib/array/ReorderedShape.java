@@ -96,10 +96,10 @@ public class ReorderedShape extends Shape {
 
     public static ReorderedShape customOrder(Shape shape, int[] axes) {
         if (shape.dimCount != axes.length) {
-            throw new TArray.DimensionMismatch();
+            throw new JavaArray.DimensionMismatch();
         }
         if (!hasAllAxis(axes)) {
-            throw new TArray.DimensionMissing();
+            throw new JavaArray.DimensionMissing();
         }
         return new ReorderedShape(shape.dims, axes);
     }

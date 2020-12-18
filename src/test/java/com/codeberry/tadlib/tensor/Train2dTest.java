@@ -1,7 +1,6 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.TArray;
-import com.codeberry.tadlib.util.StringUtils;
+import com.codeberry.tadlib.array.JavaArray;
 import org.junit.jupiter.api.Test;
 
 import java.util.Random;
@@ -77,7 +76,7 @@ public class Train2dTest {
         //return new Tensor(w.m.sub(w.gradient.m.mul(lr)));
     }
 
-    private TArray randMatrix(Random rand, int size) {
-        return new TArray(random(rand, size));
+    private JavaArray randMatrix(Random rand, int size) {
+        return new JavaArray(random(rand, size));
     }
 }

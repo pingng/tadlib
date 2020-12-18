@@ -1,6 +1,6 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.JavaArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
 
@@ -29,7 +29,7 @@ class NumericalGradientEstimator {
         this.threadCount = threadCount;
     }
 
-    public TArray estimateParamGradIndex(int paramIndex) throws ExecutionException, InterruptedException {
+    public JavaArray estimateParamGradIndex(int paramIndex) throws ExecutionException, InterruptedException {
 
         List<ArraySegmentEstimationTask> tasks = createArraySegmentEstimationTasks(paramIndex);
 
@@ -39,11 +39,11 @@ class NumericalGradientEstimator {
         return mergeResultsToSingleGradientResult(paramIndex, resultFutures);
     }
 
-    private TArray mergeResultsToSingleGradientResult(int paramIndex, List<Future<double[]>> resultFutures) throws InterruptedException, ExecutionException {
+    private JavaArray mergeResultsToSingleGradientResult(int paramIndex, List<Future<double[]>> resultFutures) throws InterruptedException, ExecutionException {
         List<Tensor> params = model.getParams();
         Tensor param = params.get(paramIndex);
 
-        TArray retGrad = zeros(param.getShape());
+        JavaArray retGrad = zeros(param.getShape());
         double[] tgt = retGrad.getInternalData();
 
         writeResultsInOrder(resultFutures, tgt);

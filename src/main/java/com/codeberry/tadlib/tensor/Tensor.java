@@ -1,7 +1,7 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.JavaArray;
 import com.codeberry.tadlib.array.TArrayFactory;
 
 import java.util.List;
@@ -12,20 +12,20 @@ import static com.codeberry.tadlib.array.TArrayFactory.*;
 import static java.util.Collections.emptyList;
 
 public class Tensor {
-    public static final Tensor ZERO = new Tensor(TArray.ZERO, GradientMode.NONE);
+    public static final Tensor ZERO = new Tensor(JavaArray.ZERO, GradientMode.NONE);
 
     private final List<ParentLink> links;
     private final GradientMode gradientMode;
 
-    TArray vals;
-    TArray gradient;
+    JavaArray vals;
+    JavaArray gradient;
 
     public Tensor(double val) {
         this(val, GradientMode.CALCULATE_GRAD);
     }
 
     public Tensor(double val, GradientMode mode) {
-        vals = new TArray(val);
+        vals = new JavaArray(val);
         links = emptyList();
         gradientMode = mode;
     }
@@ -37,7 +37,7 @@ public class Tensor {
     }
 
     public Tensor(double[] vals) {
-        this.vals = new TArray(vals);
+        this.vals = new JavaArray(vals);
         links = emptyList();
         gradientMode = GradientMode.CALCULATE_GRAD;
     }
@@ -48,19 +48,19 @@ public class Tensor {
         gradientMode = GradientMode.CALCULATE_GRAD;
     }
 
-    public Tensor(TArray vals) {
+    public Tensor(JavaArray vals) {
         this(vals, GradientMode.CALCULATE_GRAD);
     }
 
-    public Tensor(TArray vals, GradientMode gradientMode) {
+    public Tensor(JavaArray vals, GradientMode gradientMode) {
         this(vals, emptyList(), gradientMode);
     }
 
-    Tensor(TArray vals, List<ParentLink> links) {
+    Tensor(JavaArray vals, List<ParentLink> links) {
         this(vals, links, GradientMode.CALCULATE_GRAD);
     }
 
-    Tensor(TArray vals, List<ParentLink> links, GradientMode gradientMode) {
+    Tensor(JavaArray vals, List<ParentLink> links, GradientMode gradientMode) {
         this.vals = vals;
         this.links = links;
         this.gradientMode = gradientMode;
@@ -78,7 +78,7 @@ public class Tensor {
         return new Tensor(val);
     }
 
-    public static Tensor tensor(TArray tArray) {
+    public static Tensor tensor(JavaArray tArray) {
         return new Tensor(tArray);
     }
 
@@ -104,7 +104,7 @@ public class Tensor {
         backward(ones(this.vals.shape));
     }
 
-    public void backward(TArray gradient) {
+    public void backward(JavaArray gradient) {
         if (gradientMode == GradientMode.CALCULATE_GRAD) {
             if (!gradient.shape.correspondsTo(this.vals.shape)) {
                 throw new IllegalArgumentException("Wrong shape: param:" + this.vals.shape + " vs grad:" + gradient.shape);
@@ -116,7 +116,7 @@ public class Tensor {
 
             for (ParentLink link : links) {
                 if (link.parent.gradientMode == GradientMode.CALCULATE_GRAD) {
-                    TArray linkGrad = link.gradFunc.calcGradient(gradient);
+                    JavaArray linkGrad = link.gradFunc.calcGradient(gradient);
 
                     link.parent.backward(linkGrad);
                 }
@@ -137,7 +137,7 @@ public class Tensor {
         return new Tensor(this.vals.subBatch(batchId, batchSize), this.gradientMode);
     }
 
-    public void update(BiFunction<TArray, TArray, TArray> convertFunc) {
+    public void update(BiFunction<JavaArray, JavaArray, JavaArray> convertFunc) {
         this.vals = convertFunc.apply(this.vals, this.gradient);
 
         resetGradient();
@@ -159,7 +159,7 @@ public class Tensor {
         return vals.dataAt(indices);
     }
 
-    public TArray getGradient() {
+    public JavaArray getGradient() {
         return gradient;
     }
 

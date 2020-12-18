@@ -1,6 +1,6 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.JavaArray;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -14,8 +14,8 @@ public class TensorTrainSimple {
     public void testMethod() {
         Random rand = new Random(3);
         Tensor x_data = new Tensor(random(rand,100, 3));
-        TArray coeff = list(5, -2, 3.5);
-        TArray yM = x_data.vals.matmul(coeff).add(5.0);
+        JavaArray coeff = list(5, -2, 3.5);
+        JavaArray yM = x_data.vals.matmul(coeff).add(5.0);
         Tensor y_data = new Tensor(yM.reshape(100, 1));
 
         Random wR = new Random(3);
@@ -52,7 +52,7 @@ public class TensorTrainSimple {
         Tensor y_data = new Tensor(x_data.vals.matmul(coeff.vals));
 
         Random wR = new Random(3);
-        TArray mW = new TArray(random(wR, 3)).reshape(3, 1);
+        JavaArray mW = new JavaArray(random(wR, 3)).reshape(3, 1);
         Tensor w = new Tensor(mW);
         Tensor b = new Tensor(random(wR, 1));
 

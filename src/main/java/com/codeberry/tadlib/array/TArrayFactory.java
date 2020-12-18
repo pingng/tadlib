@@ -8,35 +8,35 @@ import java.util.Random;
 import static java.util.Arrays.fill;
 
 public abstract class TArrayFactory {
-    public static TArray list(double... v) {
-        return new TArray(v);
+    public static JavaArray list(double... v) {
+        return new JavaArray(v);
     }
 
-    public static TArray onesShaped(int... dims) {
+    public static JavaArray onesShaped(int... dims) {
         return ones(new Shape(dims));
     }
 
-    public static TArray ones(Shape shape) {
-        TArray m = zeros(shape);
+    public static JavaArray ones(Shape shape) {
+        JavaArray m = zeros(shape);
         fill(m.getInternalData(), 1.0);
         return m;
     }
 
-    public static TArray zerosShaped(int... dims) {
+    public static JavaArray zerosShaped(int... dims) {
         return zeros(new Shape(dims));
     }
 
-    public static TArray zeros(Shape shape) {
+    public static JavaArray zeros(Shape shape) {
         double[] data = new double[shape.size];
-        return new TArray(data, shape.normalOrderedCopy());
+        return new JavaArray(data, shape.normalOrderedCopy());
     }
 
-    public static TArray value(double v) {
-        return new TArray(v);
+    public static JavaArray value(double v) {
+        return new JavaArray(v);
     }
 
-    public static TArray randMatrixInt(Random rand, int from, int to, int size) {
-        return new TArray(randomInt(rand, from, to, size));
+    public static JavaArray randMatrixInt(Random rand, int from, int to, int size) {
+        return new JavaArray(randomInt(rand, from, to, size));
     }
 
     private static double[] randomInt(Random rand, int from, int to, int len) {
@@ -48,16 +48,16 @@ public abstract class TArrayFactory {
         return row;
     }
 
-    public static TArray rand(Random rand, int size) {
-        return new TArray(random(rand, size));
+    public static JavaArray rand(Random rand, int size) {
+        return new JavaArray(random(rand, size));
     }
 
-    public static TArray randWeight(Random rand, Shape shape) {
+    public static JavaArray randWeight(Random rand, Shape shape) {
         return randWeight(rand, shape.size).reshape(shape);
     }
 
-    public static TArray randWeight(Random rand, int size) {
-        return new TArray(random(rand, size)).add(-0.5).mul(2.0).mul(Math.sqrt(2./size));
+    public static JavaArray randWeight(Random rand, int size) {
+        return new JavaArray(random(rand, size)).add(-0.5).mul(2.0).mul(Math.sqrt(2./size));
     }
 
     private static double[] random(Random rand, int len) {
@@ -68,15 +68,15 @@ public abstract class TArrayFactory {
         return row;
     }
 
-    public static TArray range(int count) {
+    public static JavaArray range(int count) {
         double[] data = new double[count];
         for (int i = 0; i < count; i++) {
             data[i] = i;
         }
-        return new TArray(data);
+        return new JavaArray(data);
     }
 
-    public static TArray fillLike(Shape shape, TArray zeroDim) {
+    public static JavaArray fillLike(Shape shape, JavaArray zeroDim) {
         if (zeroDim.shape.dimCount != 0) {
             throw new IllegalArgumentException("value must be of zero dim");
         }
@@ -84,19 +84,19 @@ public abstract class TArrayFactory {
         double[] data = new double[shape.size];
         fill(data, v);
 
-        return new TArray(data, shape.copy());
+        return new JavaArray(data, shape.copy());
     }
 
-    public static TArray array(double[][] values) {
+    public static JavaArray array(double[][] values) {
         NativeArrayConverter preparedData = NativeArrayConverter.prepareData(values);
 
-        return new TArray(preparedData.data, preparedData.shape);
+        return new JavaArray(preparedData.data, preparedData.shape);
     }
 
-    public static TArray array(double[][][][] values) {
+    public static JavaArray array(double[][][][] values) {
         NativeArrayConverter preparedData = NativeArrayConverter.prepareData(values);
 
-        return new TArray(preparedData.data, preparedData.shape);
+        return new JavaArray(preparedData.data, preparedData.shape);
     }
 
     private static class NativeArrayConverter {

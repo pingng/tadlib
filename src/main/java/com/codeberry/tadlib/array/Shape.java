@@ -88,16 +88,16 @@ public class Shape {
             int dim = dims[i];
             if (dim > 0) {
                 if ((restSize % dim) != 0) {
-                    throw new TArray.InvalidTargetShape("Not divisible: Index: " + i + " dim: " + dim);
+                    throw new JavaArray.InvalidTargetShape("Not divisible: Index: " + i + " dim: " + dim);
                 }
                 restSize /= dim;
             } else if (dim == -1) {
                 if (deduceDim != -1) {
-                    throw new TArray.InvalidTargetShape("Multiple -1 dim not allowed: Index: " + i);
+                    throw new JavaArray.InvalidTargetShape("Multiple -1 dim not allowed: Index: " + i);
                 }
                 deduceDim = i;
             } else {
-                throw new TArray.InvalidTargetShape("Invalid dim: Index: " + i + " dim:" + dim);
+                throw new JavaArray.InvalidTargetShape("Invalid dim: Index: " + i + " dim:" + dim);
             }
         }
 
@@ -151,12 +151,12 @@ public class Shape {
             if (!bitSet.get(idx)) {
                 bitSet.set(idx);
             } else {
-                throw new TArray.DuplicatedSqueezeDimension("dim=" + idx);
+                throw new JavaArray.DuplicatedSqueezeDimension("dim=" + idx);
             }
         }
         for (int i = 0; i < _tmp.length; i++) {
             if (this.dims[_tmp[i]] != 1) {
-                throw new TArray.CannotSqueezeNoneSingleDimension("index=" + i + " dim=" + _tmp[i]);
+                throw new JavaArray.CannotSqueezeNoneSingleDimension("index=" + i + " dim=" + _tmp[i]);
             }
         }
         int[] dims = new int[dimCount - _tmp.length];

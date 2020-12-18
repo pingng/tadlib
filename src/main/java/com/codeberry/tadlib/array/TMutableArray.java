@@ -15,7 +15,7 @@ public class TMutableArray {
         this.shape = shape;
     }
 
-    public static TMutableArray copyOf(TArray src) {
+    public static TMutableArray copyOf(JavaArray src) {
         double[] data = src.getInternalData();
         return new TMutableArray(Arrays.copyOf(data, data.length), src.shape.copy());
     }
@@ -39,8 +39,8 @@ public class TMutableArray {
     /**
      * The current instance cannot be used after this call.
      */
-    public synchronized TArray migrateToImmutable() {
-        TArray immutable = new TArray(this.data, shape.copy());
+    public synchronized JavaArray migrateToImmutable() {
+        JavaArray immutable = new JavaArray(this.data, shape.copy());
 
         this.data = null;
 

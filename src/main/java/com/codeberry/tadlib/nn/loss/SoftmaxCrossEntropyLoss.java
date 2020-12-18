@@ -1,10 +1,10 @@
 package com.codeberry.tadlib.nn.loss;
 
-import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.JavaArray;
 import com.codeberry.tadlib.tensor.Ops;
 
 public class SoftmaxCrossEntropyLoss {
-    public static double sumSoftmaxCrossEntropy(TArray predicted, int[] indices, TArray target, int dim) {
+    public static double sumSoftmaxCrossEntropy(JavaArray predicted, int[] indices, JavaArray target, int dim) {
         int len = predicted.shape.at(dim);
         if (indices.length - dim == 1) {
             double sum = 0;

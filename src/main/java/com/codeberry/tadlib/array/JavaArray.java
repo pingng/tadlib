@@ -6,9 +6,8 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
-import static com.codeberry.tadlib.array.TArray.DimKeepRemove.REMOVE_DIM;
+import static com.codeberry.tadlib.array.JavaArray.DimKeepRemove.REMOVE_DIM;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.multiThreadingSupportRun;
 import static java.lang.Boolean.TRUE;
@@ -16,36 +15,36 @@ import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.util.Arrays.*;
 
-public class TArray {
-    public static final TArray ZERO = new TArray(0.0);
+public class JavaArray {
+    public static final JavaArray ZERO = new JavaArray(0.0);
 
     private static final int MAX_STRING_LENGTH = 512;
 
     private final double[] data;
     public final Shape shape;
 
-    public TArray(double val) {
+    public JavaArray(double val) {
         this(new double[]{val}, Shape.zeroDim());
     }
 
-    public TArray(double[] data) {
+    public JavaArray(double[] data) {
         this(data, new Shape(data.length));
     }
 
-    public TArray(double[] data, Shape shape) {
+    public JavaArray(double[] data, Shape shape) {
         this.data = data;
         this.shape = shape;
     }
 
-    public TArray rot180() {
-        return new TArray(this.data, new ShapeRot180(this.shape));
+    public JavaArray rot180() {
+        return new JavaArray(this.data, new ShapeRot180(this.shape));
     }
 
     public double[] getInternalData() {
         return data;
     }
 
-    public TArray softmax() {
+    public JavaArray softmax() {
         TMutableArray output = new TMutableArray(new double[this.data.length], shape);
 
         fillSoftMax(this, output, output.shape.newIndexArray(), 0);
@@ -53,7 +52,7 @@ public class TArray {
         return output.migrateToImmutable();
     }
 
-    private static void fillSoftMax(TArray src, TMutableArray tgt, int[] indices, int dim) {
+    private static void fillSoftMax(JavaArray src, TMutableArray tgt, int[] indices, int dim) {
         int len = tgt.shape.at(dim);
         if (indices.length - dim == 1) {
             //_mx = np.max(logits)
@@ -92,8 +91,8 @@ public class TArray {
         }
     }
 
-    public TArray subBatch(int batchId, int batchSize) {
-        TArray src = (shape.getClass() == Shape.class ? this : this.normalOrderedCopy());
+    public JavaArray subBatch(int batchId, int batchSize) {
+        JavaArray src = (shape.getClass() == Shape.class ? this : this.normalOrderedCopy());
 
         int[] indices = src.shape.newIndexArray();
         int fromBatchIndex = batchId * batchSize;
@@ -109,15 +108,15 @@ public class TArray {
         dims[0] = endBatchIndex - fromBatchIndex;
         Shape outShape = new Shape(dims);
 
-        return new TArray(data, outShape);
+        return new JavaArray(data, outShape);
     }
 
-    public TArray reshape(int... dims) {
-        return new TArray(this.data, this.shape.reshape(dims));
+    public JavaArray reshape(int... dims) {
+        return new JavaArray(this.data, this.shape.reshape(dims));
     }
 
-    public TArray reshape(Shape shape) {
-        return new TArray(this.data, this.shape.reshape(shape.dims));
+    public JavaArray reshape(Shape shape) {
+        return new JavaArray(this.data, this.shape.reshape(shape.dims));
     }
 
     public Object toDoubles() {
@@ -155,22 +154,22 @@ public class TArray {
         }
     }
 
-    public TArray matmul(TArray b) {
+    public JavaArray matmul(JavaArray b) {
         return matmul(this, b);
     }
 
-    public TArray sub(TArray m) {
+    public JavaArray sub(JavaArray m) {
         return add(m.negate());
     }
 
-    public TArray add(TArray b) {
+    public JavaArray add(JavaArray b) {
         return add(this, b);
     }
 
-    private static TArray add(TArray a, TArray b) {
+    private static JavaArray add(JavaArray a, JavaArray b) {
         if (a.shape.dimCount == 0 &&
                 b.shape.dimCount == 0) {
-            return new TArray(a.data[0] + b.data[0]);
+            return new JavaArray(a.data[0] + b.data[0]);
         }
         if (a.shape.getClass() == b.shape.getClass() &&
                 Arrays.equals(a.shape.dims, b.shape.dims)) {
@@ -185,15 +184,15 @@ public class TArray {
 
         add(a, b, data, outShape, indexArray, 0);
 
-        return new TArray(data, outShape);
+        return new JavaArray(data, outShape);
     }
 
-    private static TArray fastAdd(TArray a, TArray b) {
+    private static JavaArray fastAdd(JavaArray a, JavaArray b) {
         double[] data = copyOf(a.data, a.data.length);
         for (int i = data.length - 1; i >= 0; i--) {
             data[i] += b.data[i];
         }
-        return new TArray(data, a.shape.copy());
+        return new JavaArray(data, a.shape.copy());
     }
 
     public enum Debug {
@@ -206,15 +205,15 @@ public class TArray {
         }
     }
 
-    public TArray conv2d(TArray filter) {
+    public JavaArray conv2d(JavaArray filter) {
         return conv2d(filter, 0, 0, Debug.NONE);
     }
 
-    public TArray conv2d(TArray filter, int offsetY, int offsetX, Debug debug) {
+    public JavaArray conv2d(JavaArray filter, int offsetY, int offsetX, Debug debug) {
         return conv2d(this, filter, offsetY, offsetX, debug);
     }
 
-    private static TArray conv2d(TArray input, TArray filter, int offsetY, int offsetX, Debug debug) {
+    private static JavaArray conv2d(JavaArray input, JavaArray filter, int offsetY, int offsetX, Debug debug) {
         if (input.shape.dimCount < 4) {
             throw new RuntimeException("input must have 4+ dims");
         }
@@ -230,14 +229,14 @@ public class TArray {
                         data, outShape, debug),
                 (left, ignored) -> left);
 
-        return new TArray(filledData, outShape);
+        return new JavaArray(filledData, outShape);
     }
 
     private static double[] conv2dSegmentedAtFirstDim(int start, int end,
-                                                  TArray input, TArray filter,
-                                                  int offsetY, int offsetX,
-                                                  double[] data, Shape outShape,
-                                                  Debug debug) {
+                                                      JavaArray input, JavaArray filter,
+                                                      int offsetY, int offsetX,
+                                                      double[] data, Shape outShape,
+                                                      Debug debug) {
         int[] inIndices = input.shape.newIndexArray();
         int[] fIndices = filter.shape.newIndexArray();
         int[] outIndices = outShape.newIndexArray();
@@ -252,8 +251,8 @@ public class TArray {
         return data;
     }
 
-    private static void conv2dMain(TArray input, int[] inIndices, int inDim,
-                                   TArray filter, int[] fIndices, int offsetY, int offsetX,
+    private static void conv2dMain(JavaArray input, int[] inIndices, int inDim,
+                                   JavaArray filter, int[] fIndices, int offsetY, int offsetX,
                                    double[] data, Shape outShape, int[] outIndices,
                                    Debug debug) {
         if (inIndices.length - inDim == 3) {
@@ -286,8 +285,8 @@ public class TArray {
     }
 
     // Eg.: in: <...,5,5,2> filter: <3,3,2,3>
-    private static void conv2dAt(TArray input, int[] inIndices,
-                                 TArray filter, int[] fIndices, int offsetY, int offsetX,
+    private static void conv2dAt(JavaArray input, int[] inIndices,
+                                 JavaArray filter, int[] fIndices, int offsetY, int offsetX,
                                  double[] data, Shape outShape, int[] outIndices,
                                  Debug debug) {
         int fLen = fIndices.length;
@@ -366,20 +365,20 @@ public class TArray {
     }
 
     private static class MatMulParams {
-        private final TArray a;
+        private final JavaArray a;
         private final boolean promoteB;
-        private final TArray b;
+        private final JavaArray b;
         private final boolean promoteA;
 
-        public MatMulParams(boolean promoteA, TArray a,
-                            boolean promoteB, TArray b) {
+        public MatMulParams(boolean promoteA, JavaArray a,
+                            boolean promoteB, JavaArray b) {
             this.promoteA = promoteA;
             this.promoteB = promoteB;
             this.a = promoteA ? a.expandDims(0) : a;
             this.b = promoteB ? b.expandDims(-1) : b;
         }
 
-        static MatMulParams expandSingleDimArrays(TArray a, TArray b) {
+        static MatMulParams expandSingleDimArrays(JavaArray a, JavaArray b) {
             boolean promoteA = a.shape.dimCount == 1;
             boolean promoteB = b.shape.dimCount == 1;
 
@@ -399,7 +398,7 @@ public class TArray {
         }
     }
 
-    private static TArray matmul(TArray a, TArray b) {
+    private static JavaArray matmul(JavaArray a, JavaArray b) {
         MatMulParams params = MatMulParams.expandSingleDimArrays(a, b);
 
         validateMatMulShapes(params.a.shape, params.b.shape);
@@ -416,7 +415,7 @@ public class TArray {
                         data, outShape, outShape.newIndexArray(), 0),
                 (left, ignored) -> left);
 
-        return new TArray(filledData,
+        return new JavaArray(filledData,
                 params.revertDimExpandOfOutputShape(outShape));
     }
 
@@ -427,21 +426,21 @@ public class TArray {
         return 1 + 512 / (valuesToMulPerOutput * outputsPerRow);
     }
 
-    public TArray normalOrderedCopy() {
+    public JavaArray normalOrderedCopy() {
         Shape tgtShape = this.shape.normalOrderedCopy();
         double[] data = this.shape.convertDataToShape(this.data, tgtShape);
 
-        return new TArray(data, tgtShape);
+        return new JavaArray(data, tgtShape);
     }
 
-    private TArray expandDims(int... indicesForSingleDims) {
+    private JavaArray expandDims(int... indicesForSingleDims) {
         if (shape instanceof ReorderedShape) {
             return expandDims(this.normalOrderedCopy(), indicesForSingleDims);
         }
         return expandDims(this, indicesForSingleDims);
     }
 
-    private static TArray expandDims(TArray m, int... indicesForSingleDims) {
+    private static JavaArray expandDims(JavaArray m, int... indicesForSingleDims) {
         int[] _tmp = copyOf(indicesForSingleDims, indicesForSingleDims.length);
         for (int i = 0; i < _tmp.length; i++) {
             if(_tmp[i] <= -1)
@@ -460,7 +459,7 @@ public class TArray {
             dimArr[i] = dims.get(i);
         }
 
-        return new TArray(m.data, new Shape(dimArr));
+        return new JavaArray(m.data, new Shape(dimArr));
     }
 
     private static void validateBroadcastShapes(Shape a, Shape b, int startDimensionInReverse) {
@@ -485,7 +484,7 @@ public class TArray {
         }
     }
 
-    private static void add(TArray a, TArray b,
+    private static void add(JavaArray a, JavaArray b,
                             double[] out, Shape outShape,
                             int[] indices, int dim) {
         if (indices.length - dim == 1) {
@@ -509,9 +508,9 @@ public class TArray {
     }
 
     private static double[] matmul(MultiThreadingSupport.TaskRange rowRange,
-                               TArray a, TArray b,
-                               double[] out, Shape outShape,
-                               int[] indices, int dim) {
+                                   JavaArray a, JavaArray b,
+                                   double[] out, Shape outShape,
+                                   int[] indices, int dim) {
 
         if (indices.length - dim == 2) {
             //...is second last index
@@ -573,19 +572,19 @@ public class TArray {
         return dims;
     }
 
-    public TArray transpose(int... axes) {
+    public JavaArray transpose(int... axes) {
         ReorderedShape shape = axes.length == 0?
                 ReorderedShape.reverseOf(this.shape) : ReorderedShape.customOrder(this.shape, axes);
-        return new TArray(data, shape);
+        return new JavaArray(data, shape);
     }
 
-    public TArray sum() {
+    public JavaArray sum() {
         Boolean[] toCollapse = new Boolean[shape.dimCount];
         fill(toCollapse, TRUE);
         return sumDims(toCollapse, REMOVE_DIM);
     }
 
-    public TArray sumFirstDims(int firstDimsToRemove, DimKeepRemove keepRemove) {
+    public JavaArray sumFirstDims(int firstDimsToRemove, DimKeepRemove keepRemove) {
         Boolean[] dimsToCollapse = new Boolean[shape.dimCount];
         for (int i = 0; i < firstDimsToRemove; i++) {
             dimsToCollapse[i] = true;
@@ -594,7 +593,7 @@ public class TArray {
         return sum(dimsToCollapse, keepRemove);
     }
 
-    private TArray sum(Boolean[] dimsToCollapse, DimKeepRemove keepRemove) {
+    private JavaArray sum(Boolean[] dimsToCollapse, DimKeepRemove keepRemove) {
         if (dimsToCollapse.length != shape.dimCount) {
             throw new RuntimeException("input collapse dims must have same length as shape");
         }
@@ -606,12 +605,12 @@ public class TArray {
                 target, physicalShape, physicalShape.newIndexArray(), dimMapping);
 
         if (keepRemove == DimKeepRemove.KEEP_DIM) {
-            return new TArray(target, toPhysicalShapeWithKeep(shape, dimsToCollapse));
+            return new JavaArray(target, toPhysicalShapeWithKeep(shape, dimsToCollapse));
         }
-        return new TArray(target, physicalShape);
+        return new JavaArray(target, physicalShape);
     }
 
-    public TArray sumDims(Boolean[] dimsToCollapse, DimKeepRemove keepRemove) {
+    public JavaArray sumDims(Boolean[] dimsToCollapse, DimKeepRemove keepRemove) {
         return sum(dimsToCollapse, keepRemove);
     }
 
@@ -688,7 +687,7 @@ public class TArray {
         return count;
     }
 
-    public TArray negate() {
+    public JavaArray negate() {
         if (this.shape instanceof ReorderedShape) {
             throw new UnsupportedOperationException("reordered shape not yet supported");
         }
@@ -696,25 +695,25 @@ public class TArray {
         for (int i = 0; i < data.length; i++) {
             data[i] *= -1;
         }
-        return new TArray(data, new Shape(this.shape.dims));
+        return new JavaArray(data, new Shape(this.shape.dims));
     }
 
-    public TArray sqr() {
+    public JavaArray sqr() {
         double[] cp = copyOf(data, data.length);
         for (int i = 0; i < cp.length; i++) {
             cp[i] *= cp[i];
         }
 
-        return new TArray(cp, shape.copy());
+        return new JavaArray(cp, shape.copy());
     }
 
-    public TArray pow(double power) {
+    public JavaArray pow(double power) {
         double[] data = copyOf(this.data, this.data.length);
         double[] filledData = multiThreadingSupportRun(taskRange(0, this.data.length, 64),
                 range -> pow(range.start, range.end, data, power),
                 (left, ignored) -> left);
 
-        return new TArray(filledData, shape.copy());
+        return new JavaArray(filledData, shape.copy());
     }
 
     private static double[] pow(int start, int end, double[] data, double power) {
@@ -724,13 +723,13 @@ public class TArray {
         return data;
     }
 
-    public TArray sqrt() {
+    public JavaArray sqrt() {
         double[] data = copyOf(this.data, this.data.length);
         double[] filledData = multiThreadingSupportRun(taskRange(0, data.length, 64),
                 range -> sqrt(range.start, range.end, data),
                 (left, ignored) -> left);
 
-        return new TArray(filledData, shape.copy());
+        return new JavaArray(filledData, shape.copy());
     }
 
     private static double[] sqrt(int start, int end, double[] data) {
@@ -740,11 +739,11 @@ public class TArray {
         return data;
     }
 
-    public TArray div(TArray b) {
+    public JavaArray div(JavaArray b) {
         return div(this, b);
     }
 
-    private static TArray div(TArray a, TArray b) {
+    private static JavaArray div(JavaArray a, JavaArray b) {
         if (a.shape.getClass() == b.shape.getClass() &&
                 Arrays.equals(a.shape.dims, b.shape.dims)) {
             return fastDiv(a, b);
@@ -760,18 +759,18 @@ public class TArray {
                 data, outShape,
                 indexArray, 0);
 
-        return new TArray(data, outShape);
+        return new JavaArray(data, outShape);
     }
 
-    private static TArray fastDiv(TArray a, TArray b) {
+    private static JavaArray fastDiv(JavaArray a, JavaArray b) {
         double[] data = copyOf(a.data, a.data.length);
         for (int i = data.length - 1; i >= 0; i--) {
             data[i] /= b.data[i];
         }
-        return new TArray(data, a.shape.copy());
+        return new JavaArray(data, a.shape.copy());
     }
 
-    private static void div(TArray a, TArray b,
+    private static void div(JavaArray a, JavaArray b,
                             double[] out, Shape outShape,
                             int[] indices, int dim) {
         if (indices.length - dim == 1) {
@@ -794,11 +793,11 @@ public class TArray {
         }
     }
 
-    public TArray mul(TArray b) {
+    public JavaArray mul(JavaArray b) {
         return mul(this, b);
     }
 
-    private static TArray mul(TArray a, TArray b) {
+    private static JavaArray mul(JavaArray a, JavaArray b) {
         if (a.shape.getClass() == b.shape.getClass() &&
                 Arrays.equals(a.shape.dims, b.shape.dims)) {
             return fastMul(a, b);
@@ -814,18 +813,18 @@ public class TArray {
                 data, outShape,
                 indexArray, 0);
 
-        return new TArray(data, outShape);
+        return new JavaArray(data, outShape);
     }
 
-    private static TArray fastMul(TArray a, TArray b) {
+    private static JavaArray fastMul(JavaArray a, JavaArray b) {
         double[] data = copyOf(a.data, a.data.length);
         for (int i = data.length - 1; i >= 0; i--) {
             data[i] *= b.data[i];
         }
-        return new TArray(data, a.shape.copy());
+        return new JavaArray(data, a.shape.copy());
     }
 
-    private static void mul(TArray a, TArray b,
+    private static void mul(JavaArray a, JavaArray b,
                             double[] out, Shape outShape,
                             int[] indices, int dim) {
         if (indices.length - dim == 1) {
@@ -848,21 +847,21 @@ public class TArray {
         }
     }
 
-    public TArray div(double v) {
+    public JavaArray div(double v) {
         double[] data = copyOf(this.data, this.data.length);
         for (int i = 0; i < data.length; i++) {
             data[i] /= v;
         }
-        return new TArray(data, shape.copy());
+        return new JavaArray(data, shape.copy());
     }
 
-    public TArray mul(double v) {
+    public JavaArray mul(double v) {
         double[] data = copyOf(this.data, this.data.length);
         double[] filledData = multiThreadingSupportRun(taskRange(0, data.length, 64),
                 range -> mul(range.start, range.end, data, v),
                 (left, ignored) -> left);
 
-        return new TArray(filledData, shape.copy());
+        return new JavaArray(filledData, shape.copy());
     }
 
     private static double[] mul(int start, int end, double[] data, double v) {
@@ -872,12 +871,12 @@ public class TArray {
         return data;
     }
 
-    public TArray add(double v) {
+    public JavaArray add(double v) {
         double[] data = copyOf(this.data, this.data.length);
         for (int i = 0; i < data.length; i++) {
             data[i] += v;
         }
-        return new TArray(data, shape.copy());
+        return new JavaArray(data, shape.copy());
     }
 
     public enum DimKeepRemove {

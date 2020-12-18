@@ -1,6 +1,6 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.JavaArray;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.array.TArrayFactory.onesShaped;
@@ -10,7 +10,7 @@ import static com.codeberry.tadlib.util.StringUtils.toJson;
 public class TensorMeanTest {
     @Test
     public void mean() {
-        Tensor input = new Tensor(new TArray(new double[]{
+        Tensor input = new Tensor(new JavaArray(new double[]{
                 0.01, 0.1, -1,
                 1, 10, -2,
                 0.02, 0.2, -3,
@@ -26,13 +26,13 @@ public class TensorMeanTest {
         Tensor mean = Ops.mean(input, 0, 1, 2);
         mean.backward(onesShaped(3));
 
-        assertEqualsMatrix(new TArray(new double[]{
+        assertEqualsMatrix(new JavaArray(new double[]{
                         (0.01 + 1 + 0.02 + 2 + 0.03 + 3 + 0.04 + 4) / 8,
                         (0.1 + 10 + 0.2 + 20 + 0.3 + 30 + 0.4 + 40) / 8,
                         (-1. - 2 - 3 - 4 - 5 - 6 - 7 - 8) / 8
                 }).toDoubles(),
                 mean.vals.toDoubles());
-        assertEqualsMatrix(new TArray(new double[]{
+        assertEqualsMatrix(new JavaArray(new double[]{
                         1.0 / 8, 1.0 / 8, 1.0 / 8,
                         1.0 / 8, 1.0 / 8, 1.0 / 8,
                         1.0 / 8, 1.0 / 8, 1.0 / 8,
@@ -47,7 +47,7 @@ public class TensorMeanTest {
 
     @Test
     public void mean2() {
-        Tensor input = new Tensor(new TArray(new double[]{
+        Tensor input = new Tensor(new JavaArray(new double[]{
                 0.01, 0.1, -1,
                 1, 10, -2,
 
@@ -62,9 +62,9 @@ public class TensorMeanTest {
         }).reshape(2, 2, 2, 3));
 
         Tensor mean = Ops.mean(input, 0, 2, 3);
-        mean.backward(new TArray(new double[]{10, 20}));
+        mean.backward(new JavaArray(new double[]{10, 20}));
 
-        assertEqualsMatrix(new TArray(new double[]{
+        assertEqualsMatrix(new JavaArray(new double[]{
                         (0.01 + 0.1 + -1 +
                                 1 + 10 + -2 +
                                 0.03 + 0.3 + -5 +
@@ -76,7 +76,7 @@ public class TensorMeanTest {
                                 4 + 40 + -8) / 12
                 }).toDoubles(),
                 mean.vals.toDoubles());
-        assertEqualsMatrix(new TArray(new double[]{
+        assertEqualsMatrix(new JavaArray(new double[]{
                         10.0 / 12, 10.0 / 12, 10.0 / 12,
                         10.0 / 12, 10.0 / 12, 10.0 / 12,
 
@@ -95,7 +95,7 @@ public class TensorMeanTest {
 
     @Test
     public void mean_GeneratedWithTf() {
-        Tensor input = new Tensor(new TArray(new double[]{
+        Tensor input = new Tensor(new JavaArray(new double[]{
                 0.9670298, 0.5472323, 0.9726844, 0.714816, 0.6977288, 0.2160895,
                 0.97627443, 0.00623026, 0.25298235, 0.43479154, 0.77938294, 0.19768508,
                 0.86299324, 0.9834007, 0.16384225, 0.59733397, 0.0089861, 0.3865713,
@@ -119,15 +119,15 @@ public class TensorMeanTest {
         }).reshape(3, 5, 2, 4));
 
         Tensor mean = Ops.mean(input, 0, 1, 2);
-        mean.backward(new TArray(new double[]{
+        mean.backward(new JavaArray(new double[]{
                 1, 2, 3, 4
         }));
 
-        assertEqualsMatrix(new TArray(new double[]{
+        assertEqualsMatrix(new JavaArray(new double[]{
                         0.5320078, 0.5306335, 0.52558774, 0.51413995
                 }).toDoubles(),
                 mean.vals.toDoubles());
-        assertEqualsMatrix(new TArray(new double[]{
+        assertEqualsMatrix(new JavaArray(new double[]{
                         0.03333334, 0.06666667, 0.1, 0.13333334, 0.03333334, 0.06666667, 0.1, 0.13333334,
                         0.03333334, 0.06666667, 0.1, 0.13333334, 0.03333334, 0.06666667, 0.1, 0.13333334,
                         0.03333334, 0.06666667, 0.1, 0.13333334, 0.03333334, 0.06666667, 0.1, 0.13333334,

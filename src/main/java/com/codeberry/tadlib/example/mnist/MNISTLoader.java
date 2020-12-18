@@ -1,7 +1,7 @@
 package com.codeberry.tadlib.example.mnist;
 
 import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.array.TArray;
+import com.codeberry.tadlib.array.JavaArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.tensor.Tensor;
 
@@ -169,7 +169,7 @@ public class MNISTLoader {
         for (int i = 0; i < pixels.length; i++) {
             data[i] = pixels[i];
         }
-        return new Tensor(new TArray(data, new Shape(images, 1)),
+        return new Tensor(new JavaArray(data, new Shape(images, 1)),
                 Tensor.GradientMode.NONE);
     }
 
@@ -200,7 +200,7 @@ public class MNISTLoader {
         for (int i = 0; i < pixels.length; i++) {
             data[i] = (pixels[i] & 0xff) / 255.0;
         }
-        return new Tensor(new TArray(data, new Shape(images, rows, cols, 1)),
+        return new Tensor(new JavaArray(data, new Shape(images, rows, cols, 1)),
                 Tensor.GradientMode.NONE);
     }
 }

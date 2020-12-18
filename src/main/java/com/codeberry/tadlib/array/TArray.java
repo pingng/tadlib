@@ -50,7 +50,7 @@ public class TArray {
 
         fillSoftMax(this, output, output.shape.newIndexArray(), 0);
 
-        return output.toImmutable();
+        return output.migrateToImmutable();
     }
 
     private static void fillSoftMax(TArray src, TMutableArray tgt, int[] indices, int dim) {

@@ -188,37 +188,45 @@ public abstract class Ops {
     }
 
     private static TArray calcFilterGradient(TArray grad, TArray input, TArray filter) {
-        Shape tgtShape = filter.shape.normalOrderedCopy();
+        Shape filterShape = filter.shape;
+        int[] dims = new int[filterShape.dimCount + 1];
+        System.arraycopy(filterShape.toDimArray(), 0, dims, 1, filterShape.dimCount);
+        dims[0] = input.shape.at(0);
+        Shape tgtShape = new Shape(dims);
 
-        return multiThreadingSupportRun(taskRange(0, grad.shape.at(0)),
-                range -> accumulateFilterGradientAtFirstDim(range, grad, input, filter, tgtShape),
+        TArray gradPerInputExample = multiThreadingSupportRun(taskRange(0, grad.shape.at(0)),
+                range -> accumulateFilterGradientAtFirstDim(range, grad, input, tgtShape),
                 (left, right) -> left.add(right));
+
+        return gradPerInputExample.sumFirstDims(1, REMOVE_DIM);
     }
 
-    private static TArray accumulateFilterGradientAtFirstDim(TaskRange range, TArray grad, TArray input, TArray filter, Shape tgtShape) {
-        TMutableArray tgtGrad = new TMutableArray(new double[filter.shape.size], tgtShape);
+    private static TArray accumulateFilterGradientAtFirstDim(TaskRange range, TArray grad, TArray input, Shape tgtShape) {
+        TMutableArray tgtGrad = new TMutableArray(new double[tgtShape.size], tgtShape);
 
         int[] gradIndices = grad.shape.newIndexArray();
         int[] inIndices = input.shape.newIndexArray();
-        int[] filterIndices = filter.shape.newIndexArray();
+        int[] tgtIndices = tgtShape.newIndexArray();
 
         for (int i = range.start; i < range.end; i++) {
             gradIndices[0] = i;
             inIndices[0] = i;
-            accumulateFilterGradient(grad, gradIndices, 1, input, inIndices, tgtGrad, filterIndices);
+            tgtIndices[0] = i;
+            accumulateFilterGradient(grad, gradIndices, 1, input, inIndices, tgtGrad, tgtIndices);
         }
 
-        return tgtGrad.toImmutable();
+        return tgtGrad.migrateToImmutable();
     }
 
     private static void accumulateFilterGradient(TArray grad, int[] gradIndices, int dim,
                                                  TArray input, int[] inIndices,
-                                                 TMutableArray tgtGrad, int[] filterIndices) {
+                                                 TMutableArray tgtGrad, int[] tgtIndices) {
         if (gradIndices.length - dim == 3) {
-            int filterH = tgtGrad.shape.at(0);
-            int filterW = tgtGrad.shape.at(1);
+            int filterH = tgtGrad.shape.at(1);
+            int filterW = tgtGrad.shape.at(2);
             int inputChannels = input.shape.at(-1);
             int outChannels = tgtGrad.shape.at(-1);
+            int tgtDims = tgtIndices.length;
             for (int inIdx = 0; inIdx < inputChannels; inIdx++) {
                 for (int outIdx = 0; outIdx < outChannels; outIdx++) {
                     for (int y = 0; y < filterH; y++) {
@@ -229,11 +237,11 @@ public abstract class Ops {
                                     inIdx, outIdx,
                                     y, x);
 
-                            filterIndices[0] = y;
-                            filterIndices[1] = x;
-                            filterIndices[2] = inIdx;
-                            filterIndices[3] = outIdx;
-                            tgtGrad.addAt(filterIndices, g);
+                            tgtIndices[tgtDims - 4] = y;
+                            tgtIndices[tgtDims - 3] = x;
+                            tgtIndices[tgtDims - 2] = inIdx;
+                            tgtIndices[tgtDims - 1] = outIdx;
+                            tgtGrad.setAt(tgtIndices, g);
                         }
                     }
                 }
@@ -243,7 +251,8 @@ public abstract class Ops {
             for (int i = 0; i < len; i++) {
                 gradIndices[dim] = i;
                 inIndices[dim] = i;
-                accumulateFilterGradient(grad, gradIndices, dim + 1, input, inIndices, tgtGrad, filterIndices);
+                tgtIndices[dim] = i;
+                accumulateFilterGradient(grad, gradIndices, dim + 1, input, inIndices, tgtGrad, tgtIndices);
             }
         }
     }
@@ -294,7 +303,7 @@ public abstract class Ops {
 
         GradFunc gF = grad -> distribute2dMaxGrad(grad, input.vals.shape, maxIndexShape, maxIndexData);
 
-        return new Tensor(tgt.toImmutable(), singletonList(parentLink(input, gF)));
+        return new Tensor(tgt.migrateToImmutable(), singletonList(parentLink(input, gF)));
     }
 
     public static Shape getMaxPool2dOutputSize(Shape inputShape, int size) {
@@ -317,7 +326,7 @@ public abstract class Ops {
         fillMax2dGradInto(outputGrad, maxIndexShape, maxIndexData, grad, 0,
                 tmpOutputGradIndices, tmpGradIndices, tmpMaxIndices);
 
-        return outputGrad.toImmutable();
+        return outputGrad.migrateToImmutable();
     }
 
     private static void fillMax2dGradInto(TMutableArray outputGrad, Shape maxIndexShape, int[] maxIndexData, TArray grad, int dim,
@@ -539,7 +548,7 @@ public abstract class Ops {
             TMutableArray tgt = TMutableArray.copyOf(softmax);
             toSoftmaxGradient(tgt, softmax, softmax.shape.newIndexArray(),
                     labelsOneHot.vals, 0);
-            return tgt.toImmutable().mul(grad);
+            return tgt.migrateToImmutable().mul(grad);
         };
 
         return new Tensor(new TArray(cost), singletonList(parentLink(prediction, gF)));

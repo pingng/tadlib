@@ -3,7 +3,7 @@ package com.codeberry.tadlib.array;
 import java.util.Arrays;
 
 public class TMutableArray {
-    private final double[] data;
+    private volatile double[] data;
     public final Shape shape;
 
     public TMutableArray(Shape shape) {
@@ -31,18 +31,19 @@ public class TMutableArray {
         return 0;
     }
 
-    public void addAt(int[] indices, double v) {
-        int offset = shape.calcDataIndex(indices);
-        data[offset] += v;
-    }
-
     public void setAt(int[] indices, double v) {
         int offset = shape.calcDataIndex(indices);
         data[offset] = v;
     }
 
-    // TODO: implement as "migrateToImmutable() that nulls the array and hands it to TArray? Avoid array copy.
-    public TArray toImmutable() {
-        return new TArray(Arrays.copyOf(data, data.length), shape.copy());
+    /**
+     * The current instance cannot be used after this call.
+     */
+    public synchronized TArray migrateToImmutable() {
+        TArray immutable = new TArray(this.data, shape.copy());
+
+        this.data = null;
+
+        return immutable;
     }
 }

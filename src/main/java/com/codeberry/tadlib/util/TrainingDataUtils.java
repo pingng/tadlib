@@ -1,8 +1,5 @@
 package com.codeberry.tadlib.util;
 
-import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.array.TArray;
-import com.codeberry.tadlib.array.TArrayFactory;
 import com.codeberry.tadlib.array.TMutableArray;
 import com.codeberry.tadlib.tensor.Tensor;
 
@@ -18,6 +15,6 @@ public abstract class TrainingDataUtils {
             indices[1] = (int) yTrain.dataAt(i, 0);
             out.setAt(indices, 1.0);
         }
-        return new Tensor(out.toImmutable(), Tensor.GradientMode.NONE);
+        return new Tensor(out.migrateToImmutable(), Tensor.GradientMode.NONE);
     }
 }

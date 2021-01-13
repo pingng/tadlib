@@ -11,12 +11,14 @@ public class MatrixTestUtils {
         assertEqualsMatrix(a, b, 10e-8);
     }
 
-    public static double assertEqualsMatrix(Object a, Object b, double aspectLimit) {
-        double errAspect = calcErrAspect(a, b);
+    public static double assertEqualsMatrix(Object expected, Object actual, double aspectLimit) {
+        double errAspect = calcErrAspect(expected, actual);
         boolean condition = errAspect < aspectLimit;
         if (!condition) {
-            print(a);
-            print(b);
+            System.err.println("Expected");
+            print(expected);
+            System.err.println("Actual");
+            print(actual);
         }
         assertTrue(condition, "Err aspect: " + errAspect);
         return errAspect;
@@ -60,7 +62,7 @@ public class MatrixTestUtils {
 
     private static void assertTrue(boolean condition, String msg) {
         if (!condition) {
-            throw new RuntimeException(msg);
+            throw new AssertionError(msg);
         }
     }
 
@@ -80,8 +82,10 @@ public class MatrixTestUtils {
             return sum;
         } else {
             double sum = 0;
-            int len = Array.getLength(a);
-            for (int i = 0; i < len; i++) {
+            int lenA = Array.getLength(a);
+            int lenB = Array.getLength(b);
+            assertEquals(lenA, lenB);
+            for (int i = 0; i < lenA; i++) {
                 Object aEl = Array.get(a, i);
                 Object bEl = Array.get(b, i);
                 sum += sqrSum(aEl, op, bEl);

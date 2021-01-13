@@ -1,7 +1,5 @@
 package com.codeberry.tadlib.example.mnist;
 
-import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.array.JavaArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.tensor.Tensor;
 
@@ -13,8 +11,9 @@ import java.util.Random;
 import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 
-import static com.codeberry.tadlib.array.TArrayFactory.rand;
-import static com.codeberry.tadlib.array.TArrayFactory.randMatrixInt;
+import static com.codeberry.tadlib.array.TArrayFactory.random;
+import static com.codeberry.tadlib.array.TArrayFactory.randomInt;
+import static com.codeberry.tadlib.provider.ProviderStore.*;
 import static java.lang.Math.min;
 
 public class MNISTLoader {
@@ -161,26 +160,25 @@ public class MNISTLoader {
         DataInputStream in = new DataInputStream(new GZIPInputStream(inputStream));
         int magic = in.readInt();
         int images = min(in.readInt(), maxExamples);
-        System.out.println("Magic: " + magic);
-        System.out.println("Number of images: " + images);
+        System.out.println("Load MNIST Output: Magic=" + magic + " OutputCountInFile=" + images);
         byte[] pixels = new byte[images];
         in.readFully(pixels);
         double[] data = new double[pixels.length];
         for (int i = 0; i < pixels.length; i++) {
             data[i] = pixels[i];
         }
-        return new Tensor(new JavaArray(data, new Shape(images, 1)),
+        return new Tensor(array(data, shape(images, 1)),
                 Tensor.GradientMode.NONE);
     }
 
     private static Tensor generateYTrain(Random rand, int examples) {
-        return new Tensor(randMatrixInt(rand, 0, 10, examples)
+        return new Tensor(randomInt(rand, 0, 10, examples)
                 .reshape(examples, 1), Tensor.GradientMode.NONE);
     }
 
     private static Tensor generateXTrain(Random rand, int examples) {
         int imageSize = 28;
-        return new Tensor(rand(rand, examples * imageSize * imageSize * 1)
+        return new Tensor(random(rand, examples * imageSize * imageSize * 1)
                 .reshape(examples, imageSize, imageSize, 1), Tensor.GradientMode.NONE);
     }
 
@@ -190,17 +188,14 @@ public class MNISTLoader {
         int images = min(in.readInt(), maxExamples);
         int rows = in.readInt();
         int cols = in.readInt();
-        System.out.println("Magic: " + magic);
-        System.out.println("Number of images: " + images);
-        System.out.println("Rows: " + rows);
-        System.out.println("Cols: " + cols);
+        System.out.println("Load MNIST Input: Magic=" + magic + " ImagesCountInFile=" + images + " Rows=" + rows + "Cols=" + cols);
         byte[] pixels = new byte[images * rows * cols];
         in.readFully(pixels);
         double[] data = new double[pixels.length];
         for (int i = 0; i < pixels.length; i++) {
             data[i] = (pixels[i] & 0xff) / 255.0;
         }
-        return new Tensor(new JavaArray(data, new Shape(images, rows, cols, 1)),
+        return new Tensor(array(data, shape(images, rows, cols, 1)),
                 Tensor.GradientMode.NONE);
     }
 }

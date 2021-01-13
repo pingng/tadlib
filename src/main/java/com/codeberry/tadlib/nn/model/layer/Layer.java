@@ -1,22 +1,23 @@
 package com.codeberry.tadlib.nn.model.layer;
 
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.tensor.Ops;
 import com.codeberry.tadlib.tensor.Tensor;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 
 import static java.util.Arrays.stream;
+import static java.util.Collections.emptyList;
 
 public interface Layer {
     Shape getOutputShape();
 
-    default int getTotalParamValues() {
+    default long getTotalParamValues() {
         return stream(getTrainableParams())
-                .mapToInt(p -> p.getShape().size)
+                .mapToLong(p -> p.getShape().getSize())
                 .sum();
     }
 
@@ -56,7 +57,14 @@ public interface Layer {
         return null;
     }
 
-    class ForwardResult {
+    /**
+     * @return Objects that are needed for the model to work and thus must not be disposed
+     */
+    default List<? extends DisposalRegister.Disposable> getNonDisposedObjects() {
+        return emptyList();
+    }
+
+    class ForwardResult implements DisposalRegister.DisposableContainer {
         public final Tensor output;
         public final Runnable[] trainingTasks;
 
@@ -83,6 +91,11 @@ public interface Layer {
                     target.add(tt);
                 }
             }
+        }
+
+        @Override
+        public List<DisposalRegister.Disposable> getDisposables() {
+            return output.getDisposables();
         }
     }
 }

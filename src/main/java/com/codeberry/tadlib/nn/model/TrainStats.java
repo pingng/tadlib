@@ -5,6 +5,7 @@ import com.codeberry.tadlib.tensor.Tensor;
 import static com.codeberry.tadlib.util.AccuracyUtils.softmaxAccuracy;
 
 public class TrainStats {
+    private final long createdAt = System.currentTimeMillis();
     private double costTotal;
     private double costL2Total;
 
@@ -25,6 +26,7 @@ public class TrainStats {
                 ", accuracy=" + (accTotal / iterations) +
                 ", costTotal=" + (costTotal / iterations) +
                 ", costL2Total=" + (costL2Total / iterations) +
+                ", createdSince=" + ((double)(System.currentTimeMillis() - createdAt)/1000.0) +
                 '}';
     }
 

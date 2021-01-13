@@ -1,7 +1,7 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.JavaArray;
+import com.codeberry.tadlib.array.NDArray;
 
 public interface GradFunc {
-    JavaArray calcGradient(JavaArray gradient);
+    NDArray calcGradient(NDArray gradient);
 }

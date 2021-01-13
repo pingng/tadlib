@@ -1,12 +1,18 @@
 package com.codeberry.tadlib.tensor;
 
+import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.array.JavaArray;
+import com.codeberry.tadlib.memorymanagement.DisposalRegister;
+
+import java.util.List;
+
+import static com.codeberry.tadlib.memorymanagement.DisposalRegister.*;
+import static java.util.Arrays.asList;
 
 public abstract class OpsExtended {
     public static int guessParamLength(Shape shape) {
-        int dimCount = shape.dimCount;
-        if (dimCount == 2 || dimCount == 4){
+        int dimCount = shape.getDimCount();
+        if (dimCount == 2 || dimCount == 4) {
             int channels = shape.at(-1);
 
             return channels;
@@ -15,12 +21,12 @@ public abstract class OpsExtended {
     }
 
     public static BatchNormResult batchNorm(Tensor input, Tensor beta, Tensor gamma, BatchNormRunningAverages averages, Ops.RunMode runMode) {
-        Shape shape = input.vals.shape;
-        if (shape.dimCount != 2 && shape.dimCount != 4) {
+        Shape shape = input.getVals().getShape();
+        if (shape.getDimCount() != 2 && shape.getDimCount() != 4) {
             throw new IllegalArgumentException("Valid dims are 2 an 4");
         }
 
-        if (shape.dimCount == 4) {
+        if (shape.getDimCount() == 4) {
             int channels = shape.at(-1);
 
             Tensor mean;
@@ -45,7 +51,7 @@ public abstract class OpsExtended {
             Tensor _scaled = Ops.mul(_normalized, gamma);
             Tensor scaledAndShifted = Ops.add(_scaled, beta);
 
-            return new BatchNormResult(scaledAndShifted, mean.vals, variance.vals);
+            return new BatchNormResult(scaledAndShifted, mean.getVals(), variance.getVals());
         } else {
             Tensor mean;
             Tensor _diff;
@@ -67,36 +73,36 @@ public abstract class OpsExtended {
             Tensor _scaled = Ops.mul(_normalized, gamma);
             Tensor scaledAndShifted = Ops.add(_scaled, beta);
 
-            return new BatchNormResult(scaledAndShifted, mean.vals, variance.vals);
+            return new BatchNormResult(scaledAndShifted, mean.getVals(), variance.getVals());
         }
     }
 
-    public static class BatchNormRunningAverages {
-        final JavaArray runningMean;
-        final JavaArray runningVariance;
+    public static class BatchNormRunningAverages implements DisposableContainer {
+        public final NDArray runningMean;
+        public final NDArray runningVariance;
 
         public BatchNormRunningAverages() {
             this(null, null);
         }
 
-        public BatchNormRunningAverages(JavaArray runningMean, JavaArray runningVariance) {
+        public BatchNormRunningAverages(NDArray runningMean, NDArray runningVariance) {
             this.runningMean = runningMean;
             this.runningVariance = runningVariance;
         }
 
         public BatchNormRunningAverages updateWith(BatchNormResult result, double momentum) {
-            JavaArray newVariance = update(this.runningVariance, result.variance, momentum);
-            JavaArray newMean = update(this.runningMean, result.mean, momentum);
+            NDArray newVariance = update(this.runningVariance, result.variance, momentum);
+            NDArray newMean = update(this.runningMean, result.mean, momentum);
 
             return new BatchNormRunningAverages(newMean, newVariance);
         }
 
-        private static JavaArray update(JavaArray old, JavaArray current, double momentum) {
+        private static NDArray update(NDArray old, NDArray current, double momentum) {
             if (old == null) {
                 return current;
             } else {
-                JavaArray newAmount = current.mul(1.0 - momentum);
-                JavaArray keptFromOld = old.mul(momentum);
+                NDArray newAmount = current.mul(1.0 - momentum);
+                NDArray keptFromOld = old.mul(momentum);
                 return keptFromOld.add(newAmount);
             }
         }
@@ -106,17 +112,31 @@ public abstract class OpsExtended {
             return "Mean: " + runningMean + "\n" +
                     "Variance: " + runningVariance;
         }
+
+        @Override
+        public List<NDArray> getDisposables() {
+            return asList(runningMean, runningVariance);
+        }
+
+        public void registerForDisposal() {
+            DisposalRegister.registerForDisposal(this.runningMean, this.runningVariance);
+        }
     }
 
-    public static class BatchNormResult {
+    public static class BatchNormResult implements DisposableContainer<NDArray> {
         public final Tensor output;
-        public final JavaArray mean;
-        public final JavaArray variance;
+        public final NDArray mean;
+        public final NDArray variance;
 
-        BatchNormResult(Tensor output, JavaArray mean, JavaArray variance) {
+        BatchNormResult(Tensor output, NDArray mean, NDArray variance) {
             this.output = output;
             this.mean = mean;
             this.variance = variance;
+        }
+
+        @Override
+        public List<NDArray> getDisposables() {
+            return asList(output.getVals(), output.getGradient(), mean, variance);
         }
     }
 }

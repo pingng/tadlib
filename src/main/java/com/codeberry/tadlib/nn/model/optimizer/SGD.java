@@ -1,4 +1,4 @@
-package com.codeberry.tadlib.nn.model;
+package com.codeberry.tadlib.nn.model.optimizer;
 
 import com.codeberry.tadlib.tensor.Tensor;
 

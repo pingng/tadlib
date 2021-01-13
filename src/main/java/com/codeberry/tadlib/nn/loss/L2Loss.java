@@ -1,6 +1,5 @@
 package com.codeberry.tadlib.nn.loss;
 
-import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.tensor.Ops;
 import com.codeberry.tadlib.tensor.Tensor;
 

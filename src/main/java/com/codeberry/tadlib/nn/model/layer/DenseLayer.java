@@ -2,12 +2,14 @@ package com.codeberry.tadlib.nn.model.layer;
 
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.nn.loss.L2Loss;
+import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.tensor.Tensor;
+import com.codeberry.tadlib.util.StringUtils;
 
 import java.util.Random;
 
-import static com.codeberry.tadlib.array.Shape.shape;
 import static com.codeberry.tadlib.nn.model.layer.Layer.ForwardResult.result;
+import static com.codeberry.tadlib.provider.ProviderStore.shape;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.Tensor.TensorFactories.randomWeight;
 import static com.codeberry.tadlib.tensor.Tensor.TensorFactories.zeros;

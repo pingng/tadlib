@@ -1,9 +1,10 @@
 package com.codeberry.tadlib.util;
 
-import com.codeberry.tadlib.array.TMutableArray;
+import com.codeberry.tadlib.provider.java.TMutableArray;
+import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.tensor.Tensor;
 
-import static com.codeberry.tadlib.array.Shape.*;
+import static com.codeberry.tadlib.provider.ProviderStore.shape;
 
 public abstract class TrainingDataUtils {
     public static Tensor toOneHot(Tensor yTrain, int outputUnits) {
@@ -15,6 +16,6 @@ public abstract class TrainingDataUtils {
             indices[1] = (int) yTrain.dataAt(i, 0);
             out.setAt(indices, 1.0);
         }
-        return new Tensor(out.migrateToImmutable(), Tensor.GradientMode.NONE);
+        return new Tensor(ProviderStore.array(out.getData(), shape(examples, outputUnits)), Tensor.GradientMode.NONE);
     }
 }

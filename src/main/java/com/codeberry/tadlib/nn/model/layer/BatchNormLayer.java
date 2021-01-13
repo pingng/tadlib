@@ -1,13 +1,15 @@
 package com.codeberry.tadlib.nn.model.layer;
 
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.tensor.OpsExtended;
 import com.codeberry.tadlib.tensor.Tensor;
 
+import java.util.List;
 import java.util.Random;
 
-import static com.codeberry.tadlib.array.Shape.shape;
 import static com.codeberry.tadlib.nn.model.layer.Layer.ForwardResult.result;
+import static com.codeberry.tadlib.provider.ProviderStore.shape;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.Tensor.TensorFactories.*;
 
@@ -36,7 +38,10 @@ public class BatchNormLayer implements Layer {
 
         if (runMode == RunMode.TRAINING) {
             return result(result.output,
-                    () -> this.runningAverages = this.runningAverages.updateWith(result, runningAverageMomentum));
+                    () -> {
+                        this.runningAverages.registerForDisposal();
+                        this.runningAverages = this.runningAverages.updateWith(result, runningAverageMomentum);
+                    });
         }
         return result(result.output);
     }
@@ -54,6 +59,11 @@ public class BatchNormLayer implements Layer {
     @Override
     public Tensor[] getTrainableParams() {
         return new Tensor[]{beta, gamma};
+    }
+
+    @Override
+    public List<? extends DisposalRegister.Disposable> getNonDisposedObjects() {
+        return runningAverages.getDisposables();
     }
 
     public static class Builder implements LayerBuilder {
@@ -74,9 +84,5 @@ public class BatchNormLayer implements Layer {
             return new Builder();
         }
 
-    }
-
-    public enum BiasParam {
-        USE_BIAS, NO_BIAS
     }
 }

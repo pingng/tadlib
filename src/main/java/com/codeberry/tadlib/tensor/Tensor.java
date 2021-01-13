@@ -1,66 +1,63 @@
 package com.codeberry.tadlib.tensor;
 
+import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.array.JavaArray;
 import com.codeberry.tadlib.array.TArrayFactory;
+import com.codeberry.tadlib.memorymanagement.DisposalRegister;
+import com.codeberry.tadlib.memorymanagement.DisposalRegister.Disposable;
+import com.codeberry.tadlib.memorymanagement.DisposalRegister.DisposableContainer;
+import com.codeberry.tadlib.provider.ProviderStore;
 
 import java.util.List;
 import java.util.Random;
 import java.util.function.BiFunction;
 
-import static com.codeberry.tadlib.array.TArrayFactory.*;
+import static com.codeberry.tadlib.tensor.Tensor.GradientMode.*;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
-public class Tensor {
-    public static final Tensor ZERO = new Tensor(JavaArray.ZERO, GradientMode.NONE);
+public class Tensor implements DisposableContainer<Disposable> {
+    public static final Tensor ZERO = new Tensor(ProviderStore.array(0), NONE);
 
     private final List<ParentLink> links;
     private final GradientMode gradientMode;
 
-    JavaArray vals;
-    JavaArray gradient;
+    private NDArray vals;
+    private NDArray gradient;
 
     public Tensor(double val) {
-        this(val, GradientMode.CALCULATE_GRAD);
+        this(val, CALCULATE_GRAD);
     }
 
     public Tensor(double val, GradientMode mode) {
-        vals = new JavaArray(val);
-        links = emptyList();
-        gradientMode = mode;
+        this(ProviderStore.array(val), emptyList(), mode);
     }
 
     public Tensor(double[][] vals) {
-        this.vals = array(vals);
-        links = emptyList();
-        gradientMode = GradientMode.CALCULATE_GRAD;
+        this(ProviderStore.array(vals), emptyList(), CALCULATE_GRAD);
     }
 
     public Tensor(double[] vals) {
-        this.vals = new JavaArray(vals);
-        links = emptyList();
-        gradientMode = GradientMode.CALCULATE_GRAD;
+        this(ProviderStore.array(vals), emptyList(), CALCULATE_GRAD);
     }
 
     public Tensor(double[][][][] vals) {
-        this.vals = array(vals);
-        links = emptyList();
-        gradientMode = GradientMode.CALCULATE_GRAD;
+        this(ProviderStore.array(vals), emptyList(), CALCULATE_GRAD);
     }
 
-    public Tensor(JavaArray vals) {
-        this(vals, GradientMode.CALCULATE_GRAD);
+    public Tensor(NDArray vals) {
+        this(vals, CALCULATE_GRAD);
     }
 
-    public Tensor(JavaArray vals, GradientMode gradientMode) {
+    public Tensor(NDArray vals, GradientMode gradientMode) {
         this(vals, emptyList(), gradientMode);
     }
 
-    Tensor(JavaArray vals, List<ParentLink> links) {
-        this(vals, links, GradientMode.CALCULATE_GRAD);
+    Tensor(NDArray vals, List<ParentLink> links) {
+        this(vals, links, CALCULATE_GRAD);
     }
 
-    Tensor(JavaArray vals, List<ParentLink> links, GradientMode gradientMode) {
+    private Tensor(NDArray vals, List<ParentLink> links, GradientMode gradientMode) {
         this.vals = vals;
         this.links = links;
         this.gradientMode = gradientMode;
@@ -78,17 +75,26 @@ public class Tensor {
         return new Tensor(val);
     }
 
-    public static Tensor tensor(JavaArray tArray) {
+    public static Tensor tensor(NDArray tArray) {
         return new Tensor(tArray);
     }
 
     public static Tensor constant(double val) {
-        return new Tensor(val, GradientMode.NONE);
+        return new Tensor(val, NONE);
+    }
+
+    @Override
+    public List<Disposable> getDisposables() {
+        return asList(vals, gradient);
+    }
+
+    public NDArray getVals() {
+        return vals;
     }
 
     public static abstract class TensorFactories {
         public static Tensor randomWeight(Random r, Shape shape) {
-            return tensor(randWeight(r, shape));
+            return tensor(TArrayFactory.randomWeight(r, shape));
         }
 
         public static Tensor zeros(Shape shape) {
@@ -101,22 +107,23 @@ public class Tensor {
     }
 
     public void backward() {
-        backward(ones(this.vals.shape));
+        backward(TArrayFactory.ones(this.vals.getShape()));
     }
 
-    public void backward(JavaArray gradient) {
-        if (gradientMode == GradientMode.CALCULATE_GRAD) {
-            if (!gradient.shape.correspondsTo(this.vals.shape)) {
-                throw new IllegalArgumentException("Wrong shape: param:" + this.vals.shape + " vs grad:" + gradient.shape);
+    public void backward(NDArray gradient) {
+        if (gradientMode == CALCULATE_GRAD) {
+            if (!gradient.getShape().correspondsTo(this.vals.getShape())) {
+                throw new IllegalArgumentException("Wrong shape: param:" + this.vals.getShape() + " vs grad:" + gradient.getShape());
             }
 
             this.gradient = this.gradient == null ?
                     gradient :
                     this.gradient.add(gradient);
+//            System.out.println("Assigned gradient: "+getShape()+", "+gradient);
 
             for (ParentLink link : links) {
-                if (link.parent.gradientMode == GradientMode.CALCULATE_GRAD) {
-                    JavaArray linkGrad = link.gradFunc.calcGradient(gradient);
+                if (link.parent.gradientMode == CALCULATE_GRAD) {
+                    NDArray linkGrad = link.gradFunc.calcGradient(gradient);
 
                     link.parent.backward(linkGrad);
                 }
@@ -130,25 +137,44 @@ public class Tensor {
 
     @Override
     public String toString() {
-        return "Tensor{" + vals.shape + "}";
+        return "Tensor{" + vals.getShape() + "}";
     }
 
     public Tensor subBatch(int batchId, int batchSize) {
         return new Tensor(this.vals.subBatch(batchId, batchSize), this.gradientMode);
     }
 
-    public void update(BiFunction<JavaArray, JavaArray, JavaArray> convertFunc) {
-        this.vals = convertFunc.apply(this.vals, this.gradient);
+    public void update(BiFunction<NDArray, NDArray, NDArray> convertFunc) {
+        testNan(vals);
+        testNan(gradient);
+
+        NDArray old = this.vals;
+        this.vals = convertFunc.apply(old, this.gradient);
+        testNan(this.vals);
+
+        DisposalRegister.registerForDisposal(old);
 
         resetGradient();
     }
 
-    public Tensor copy() {
-        return new Tensor(vals.normalOrderedCopy(), gradientMode);
+    public static void testNan(NDArray vals) {
+//        if (vals != null) {
+//            double[] d = vals.getInternalData();
+//            for (int i = 0; i < d.length; i++) {
+//                double v = d[i];
+//                if (Double.isNaN(v)) {
+//                    throw new RuntimeException("NAN at " + i);
+//                }
+//            }
+//        }
     }
 
+//    public Tensor copy() {
+//        return new Tensor(vals.normalOrderedCopy(), gradientMode);
+//    }
+
     public Shape getShape() {
-        return vals.shape;
+        return vals.getShape();
     }
 
     public double[] getInternalData() {
@@ -159,11 +185,14 @@ public class Tensor {
         return vals.dataAt(indices);
     }
 
-    public JavaArray getGradient() {
+    public NDArray getGradient() {
         return gradient;
     }
 
     public void resetGradient() {
+        if (gradient != null) {
+            DisposalRegister.registerForDisposal(gradient);
+        }
         this.gradient = null;
     }
 

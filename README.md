@@ -1,6 +1,8 @@
 TADLib - Tiny Automatic Differentiation Library
 ===
 
+TODO: REWRITE TO ABOUT SUPPORT FOR OpenCL!!!
+
 What is TADLib?
 ---
 TADLib is a simple library for **understanding how neural networks works**. It provides 
@@ -106,6 +108,7 @@ Other refs:
 - https://youtu.be/pHMzNW8Agq4 \
   ("Neural Networks Demystified \[Part 5: Numerical Gradient Checking]")
 - https://towardsdatascience.com/understanding-the-scaling-of-l%C2%B2-regularization-in-the-context-of-neural-networks-e3d25f8b50db
+- https://medium.com/@2017csm1006/forward-and-backpropagation-in-convolutional-neural-network-4dfa96d7b37e
 
 License
 ---

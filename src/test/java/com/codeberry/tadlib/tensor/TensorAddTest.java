@@ -1,8 +1,10 @@
 package com.codeberry.tadlib.tensor;
 
+import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static com.codeberry.tadlib.array.TArrayFactory.array;
 import static com.codeberry.tadlib.tensor.Tensor.tensor;
 import static java.util.Arrays.deepEquals;
 import static java.util.Arrays.deepToString;
@@ -10,6 +12,12 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TensorAddTest {
+    @BeforeEach
+    public void init() {
+//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
+        ProviderStore.setProvider(new OpenCLProvider());
+    }
+
     @Test
     public void add() {
         Tensor a = tensor(new double[][]
@@ -28,11 +36,11 @@ class TensorAddTest {
                 {3, 2, 1},
                 {6, 5, 4}
         };
-        c.backward(array(gradient));
+        c.backward(ProviderStore.array(gradient));
 
-        assertTrue(deepEquals(gradient, (Object[]) c.gradient.toDoubles()));
-        assertTrue(deepEquals(gradient, (Object[]) a.gradient.toDoubles()));
-        assertTrue(deepEquals(gradient, (Object[]) b.gradient.toDoubles()));
+        assertTrue(deepEquals(gradient, (Object[]) c.getGradient().toDoubles()));
+        assertTrue(deepEquals(gradient, (Object[]) a.getGradient().toDoubles()));
+        assertTrue(deepEquals(gradient, (Object[]) b.getGradient().toDoubles()));
     }
 
     @Test
@@ -49,18 +57,18 @@ class TensorAddTest {
                 {
                         {13+1, 17+2, 19+3},
                         {13+0.1, 17+0.2, 19+0.3}
-                }, (Object[]) c.vals.toDoubles()));
+                }, (Object[]) c.getVals().toDoubles()));
 
         double[][] gradient = {
                 {1, 2, 3},
                 {10, 20, 30}
         };
-        c.backward(array(gradient));
+        c.backward(ProviderStore.array(gradient));
 
-        assertTrue(deepEquals(gradient, (Object[]) c.gradient.toDoubles()));
-        assertTrue(deepEquals(gradient, (Object[]) a.gradient.toDoubles()));
+        assertTrue(deepEquals(gradient, (Object[]) c.getGradient().toDoubles()));
+        assertTrue(deepEquals(gradient, (Object[]) a.getGradient().toDoubles()));
         double[] doubles = {11, 22, 33};
-        assertArrayEquals( doubles, (double[]) b.gradient.toDoubles());
+        assertArrayEquals( doubles, (double[]) b.getGradient().toDoubles());
     }
 
     @Test
@@ -76,18 +84,18 @@ class TensorAddTest {
                 {
                         {5+1, 7+2, 11+3},
                         {13+1, 17+2, 19+3}
-                }, (Object[]) c.vals.toDoubles()));
+                }, (Object[]) c.getVals().toDoubles()));
 
         double[][] gradient = {
                 {1, 2, 3},
                 {10, 20, 30}
         };
-        c.backward(array(gradient));
+        c.backward(ProviderStore.array(gradient));
 
-        assertTrue(deepEquals(gradient, (Object[]) c.gradient.toDoubles()));
-        assertTrue(deepEquals(gradient, (Object[]) b.gradient.toDoubles()));
+        assertTrue(deepEquals(gradient, (Object[]) c.getGradient().toDoubles()));
+        assertTrue(deepEquals(gradient, (Object[]) b.getGradient().toDoubles()));
         double[] doubles = {11, 22, 33};
-        assertArrayEquals( doubles, (double[]) a.gradient.toDoubles());
+        assertArrayEquals( doubles, (double[]) a.getGradient().toDoubles());
     }
 
     @Test
@@ -104,17 +112,17 @@ class TensorAddTest {
                 {
                         {13+1, 17+2, 19+3},
                         {13+0.1, 17+0.2, 19+0.3}
-                }, (Object[]) c.vals.toDoubles()));
+                }, (Object[]) c.getVals().toDoubles()));
 
         double[][] gradient = {
                 {1, 2, 3},
                 {10, 20, 30}
         };
-        c.backward(array(gradient));
+        c.backward(ProviderStore.array(gradient));
 
-        assertTrue(deepEquals(gradient, (Object[]) c.gradient.toDoubles()));
-        assertTrue(deepEquals(gradient, (Object[]) a.gradient.toDoubles()));
-        Object[] a2 = (Object[]) b.gradient.toDoubles();
+        assertTrue(deepEquals(gradient, (Object[]) c.getGradient().toDoubles()));
+        assertTrue(deepEquals(gradient, (Object[]) a.getGradient().toDoubles()));
+        Object[] a2 = (Object[]) b.getGradient().toDoubles();
         System.out.println(deepToString(a2));
         assertTrue(deepEquals(new double[][]{{11, 22, 33}}, a2));
     }

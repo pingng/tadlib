@@ -1,67 +1,62 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.JavaArray;
+import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.example.mnist.MNISTFullyConnectedModel;
 import com.codeberry.tadlib.nn.model.*;
+import com.codeberry.tadlib.nn.model.optimizer.SGD;
+import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.java.JavaProvider;
+import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import com.codeberry.tadlib.util.MatrixTestUtils;
-import com.codeberry.tadlib.util.MultiThreadingSupport;
-import org.junit.jupiter.api.AfterEach;
+import com.codeberry.tadlib.util.StringUtils;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 import static com.codeberry.tadlib.example.mnist.MNISTFullyConnectedModel.Factory.Builder.factoryBuilder;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.*;
 import static com.codeberry.tadlib.example.mnist.TrainConfiguredConvMNISTMain.*;
-import static java.lang.Math.*;
+import static com.codeberry.tadlib.provider.java.JavaProvider.ThreadMode.MULTI_THREADED;
+import static com.codeberry.tadlib.provider.java.JavaProvider.ThreadMode.SINGLE_THREADED;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class LargeGradientTest {
 
     public static final int TEST_EPOCHS = 3;
-    private int threadCount;
-    private ExecutorService execSrv;
     public static final int TRAINING_EXAMPLES = 16;
     public static final double LEARNING_RATE = 0.1;
 
-    @AfterEach
-    public void destroy() {
-        execSrv.shutdown();
-    }
-
-    private void initTestThreads(int threadCount) {
-        this.threadCount = max(threadCount, 1);
-        execSrv = Executors.newFixedThreadPool(this.threadCount);
-    }
-
     @Test
-    public void testGradientWhileTrainingModel_SingleThreaded() throws ExecutionException, InterruptedException {
-        MultiThreadingSupport.disableMultiThreading();
-        // use many threads since the calculations are single threaded
-        initTestThreads(Runtime.getRuntime().availableProcessors() - 1);
+    public void testGradientWhileTrainingModel_SingleThreaded() {
+        ProviderStore.setProvider(new JavaProvider(SINGLE_THREADED));
 
         doTest();
     }
 
     @Test
-    public void testGradientWhileTrainingModel_MultiThreaded() throws ExecutionException, InterruptedException {
-        MultiThreadingSupport.enableMultiThreading();
-        // use a single test thread since the calculations are multi threaded
-        initTestThreads(1);
+    public void testGradientWhileTrainingModel_MultiThreaded() {
+        ProviderStore.setProvider(new JavaProvider(MULTI_THREADED));
 
         doTest();
     }
 
-    private void doTest() throws ExecutionException, InterruptedException {
+    @Test
+    public void testGradientWhileTrainingModel_OpenCL() {
+        ProviderStore.setProvider(new OpenCLProvider());
+
+        doTest();
+    }
+
+    private void doTest() {
         Random rand = new Random(4);
         TrainingData data = generate(rand, TRAINING_EXAMPLES);
 
         ModelFactory modelFactory =
                 createConvolutionModelFactory()
-                //createFullyConnectedModelFactory()
+//                createFullyConnectedModelFactory()
                 ;
 
         Model model = modelFactory.createModel();
@@ -89,21 +84,20 @@ public class LargeGradientTest {
         return createModelFactory(ModelSize.TINY);
     }
 
-    private double testGradients(TrainingData trainingData, Model model, int epoch) throws ExecutionException, InterruptedException {
+    private double testGradients(TrainingData trainingData, Model model, int epoch) {
         model.calcGradient(new Random(epoch), trainingData);
-        List<JavaArray> gradients = model.getGradients();
+        List<NDArray> gradients = model.getGradients();
+        List<Object> gradientDoubles = gradients.stream()
+                .map(NDArray::toDoubles)
+                .collect(Collectors.toList());
 
         ErrorValidator errorValidator = new ErrorValidator();
-        NumericalGradientEstimator estimator = new NumericalGradientEstimator(trainingData, model, epoch, execSrv, threadCount);
-        for (int i = 0; i < gradients.size(); i++) {
-            JavaArray backpropGrad = gradients.get(i);
-            if (backpropGrad != null) {
-                JavaArray numericalEstimatedGrad = estimator.estimateParamGradIndex(i);
+        NumericalGradientEstimator estimator = new NumericalGradientEstimator(trainingData, model, epoch);
+        for (int i = 0; i < gradientDoubles.size(); i++) {
+            Object autoGradGradient = gradientDoubles.get(i);
+            NDArray numericalEstimatedGrad = estimator.estimateParamGradIndex(i);
 
-                errorValidator.validateAndAccumulateErr(backpropGrad, numericalEstimatedGrad);
-            } else {
-                System.err.println("WARN: missing gradient for param index: " + i);
-            }
+            errorValidator.validateAndAccumulateErr(autoGradGradient, numericalEstimatedGrad);
         }
 
         return errorValidator.getAvgError();
@@ -114,7 +108,7 @@ public class LargeGradientTest {
         private static final double MAX_ERR_ASPECT = 0.055;
         private static final int MAX_CONSECUTIVE_LARGE_ASPECT_TIMES = 4;
 
-        private int largeAspectCount = 0;
+        private int consecutiveLargeAspectCount = 0;
         private int sumErrorCount;
         private double sumError;
 
@@ -124,13 +118,13 @@ public class LargeGradientTest {
 
         public void failWhenTooLargeOrTooOften(double errAspect) {
             if (isNotOk(errAspect)) {
-                largeAspectCount++;
+                consecutiveLargeAspectCount++;
             } else {
-                largeAspectCount = 0;
+                consecutiveLargeAspectCount = 0;
             }
-            System.out.println("errAspect = " + errAspect + " largeAspectCount=" + largeAspectCount);
+            System.out.println("errAspect = " + errAspect + " consecutiveLargeAspectCount=" + consecutiveLargeAspectCount);
 
-            if (largeAspectCount > MAX_CONSECUTIVE_LARGE_ASPECT_TIMES) {
+            if (consecutiveLargeAspectCount > MAX_CONSECUTIVE_LARGE_ASPECT_TIMES) {
                 fail("Err Aspect was big too often!");
             }
             if (errAspect > MAX_ERR_ASPECT) {
@@ -138,12 +132,16 @@ public class LargeGradientTest {
             }
         }
 
-        private void validateAndAccumulateErr(JavaArray backpropGrad, JavaArray numericalGrad) {
-            double errAspect = MatrixTestUtils.calcErrAspect(backpropGrad.toDoubles(), numericalGrad.toDoubles());
+        private void validateAndAccumulateErr(Object autoGradGradient, NDArray numericalGrad) {
+            Object numericalGradient = numericalGrad.toDoubles();
+            double errAspect = MatrixTestUtils.calcErrAspect(
+                    autoGradGradient,
+                    numericalGradient);
 
             if (isNotOk(errAspect)) {
-                System.out.println("Backprop:  " + backpropGrad);
-                System.out.println("Numerical: " + numericalGrad);
+                System.err.println("ErrAspect: " + errAspect + " (ideally below " + IDEAL_ERR_ASPECT + ")");
+                System.err.println("Backprop:  " + StringUtils.toString(numericalGrad.getShape(), autoGradGradient));
+                System.err.println("Numerical: " + StringUtils.toString(numericalGrad.getShape(), numericalGradient));
             }
 
             failWhenTooLargeOrTooOften(errAspect);

@@ -1,18 +1,23 @@
-package com.codeberry.tadlib.array;
+package com.codeberry.tadlib.provider.java;
 
 import java.util.Arrays;
 
-public class ShapeRot180 extends Shape {
-    public ShapeRot180(Shape parent) {
+public class JavaShapeRot180 extends JavaShape {
+    private final int yAxis;
+    private final int xAxis;
+
+    public JavaShapeRot180(JavaShape parent, int yAxis, int xAxis) {
         super(parent.dims);
+        this.yAxis = yAxis;
+        this.xAxis = xAxis;
     }
 
     @Override
     public int calcDataIndex(int[] indices) {
         int len = indices.length;
         int[] cp = Arrays.copyOf(indices, len);
-        cp[len - 4] = dims[len-4] - cp[len - 4] - 1;
-        cp[len - 3] = dims[len-3] - cp[len - 3] - 1;
+        cp[yAxis] = dims[yAxis] - cp[yAxis] - 1;
+        cp[xAxis] = dims[xAxis] - cp[xAxis] - 1;
         return super.calcDataIndex(cp);
     }
 

@@ -1,73 +1,141 @@
 package com.codeberry.tadlib.array;
 
-import com.codeberry.tadlib.provider.JavaProvider;
 import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.array.TArrayFactory.*;
+import static com.codeberry.tadlib.provider.ProviderStore.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TArrayAdd {
 
     @BeforeEach
     public void init() {
-        ProviderStore.setProvider(new JavaProvider());
+//        ProviderStore.setProvider(new JavaProvider());
+        setProvider(new OpenCLProvider());
     }
 
     @Test
     public void plainValue() {
-        JavaArray a = new JavaArray(2.0);
-        JavaArray b = new JavaArray(6.0);
+        NDArray a = array(2.0);
+        NDArray b = array(6.0);
 
-        JavaArray c = a.add(b);
+        NDArray c = a.add(b);
 
         assertEquals(8.0, (double) c.toDoubles());
     }
 
     @Test
+    public void memoryIsGCedCorrectly_MeantForOpenCL() {
+        double[] vals = rangeDoubles(100000);
+        NDArray a = array(vals);
+        NDArray b = array(6.0);
+
+        NDArray c = a.add(b);
+
+        for (int i = 0; i < 40000; i++) {
+            NDArray old = c;
+            c = old
+                    .add(a)
+                    .add(a);
+            c.waitForValueReady();
+//            System.out.println("i = " + i);
+//            ((OclArray)old).dispose();
+//            System.gc();
+        }
+
+        System.out.println(c);
+    }
+
+    @Test
     public void addSingle() {
-        JavaArray a = array(new double[][]{
+        NDArray a = ProviderStore.array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
-        JavaArray b = new JavaArray(new double[]{10.0});
+        NDArray b = array(new double[]{10.0});
 
-        JavaArray c = a.add(b);
+        NDArray c = a.add(b);
 
         double[][] out = (double[][]) c.toDoubles();
-        assertArrayEquals(new double[] {10, 11, 12}, out[0]);
-        assertArrayEquals(new double[] {13, 14, 15}, out[1]);
+        assertArrayEquals(new double[]{10, 11, 12}, out[0]);
+        assertArrayEquals(new double[]{13, 14, 15}, out[1]);
     }
 
     @Test
     public void addRow() {
-        JavaArray a = array(new double[][]{
+        NDArray a = ProviderStore.array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
-        JavaArray b = new JavaArray(new double[]{1, 10, 100});
+        NDArray b = array(new double[]{1, 10, 100});
 
-        JavaArray c = a.add(b);
+        NDArray c = a.add(b);
 
         double[][] out = (double[][]) c.toDoubles();
-        assertArrayEquals(new double[] {1, 11, 102}, out[0]);
-        assertArrayEquals(new double[] {4, 14, 105}, out[1]);
+        assertArrayEquals(new double[]{1, 11, 102}, out[0]);
+        assertArrayEquals(new double[]{4, 14, 105}, out[1]);
     }
 
     @Test
-    public void add() {
-        JavaArray a = array(new double[][]{
+    public void addColumn() {
+        NDArray a = ProviderStore.array(new double[][]{
                 {0, 1, 2},
                 {3, 4, 5}
         });
-        JavaArray b = range(6).reshape(2, 3);
+        NDArray b = ProviderStore.array(new double[][]{
+                {1},
+                {10},
+        });
 
-        JavaArray c = a.add(b);
+        NDArray c = a.add(b);
 
         double[][] out = (double[][]) c.toDoubles();
-        assertArrayEquals(new double[] {0, 2, 4}, out[0]);
-        assertArrayEquals(new double[] {6, 8, 10}, out[1]);
+        assertArrayEquals(new double[]{1, 2, 3}, out[0]);
+        assertArrayEquals(new double[]{13, 14, 15}, out[1]);
+    }
+
+    @Test
+    public void addSequence() {
+        NDArray a = ProviderStore.array(new double[][]{
+                {0, 1, 2},
+                {3, 4, 5}
+        });
+        NDArray b = ProviderStore.array(new double[][]{
+                {1},
+                {10},
+        });
+
+        NDArray c = a.add(b);
+        NDArray d = c.add(ProviderStore.array(new double[][]{
+                {100},
+        }));
+
+        double[][] out = (double[][]) d.toDoubles();
+        assertArrayEquals(new double[]{101, 102, 103}, out[0]);
+        assertArrayEquals(new double[]{113, 114, 115}, out[1]);
+    }
+
+    @Test
+    public void addSameShape() {
+        NDArray a = ProviderStore.array(new double[][]{
+                {0, 1, 2},
+                {3, 4, 5}
+        });
+        NDArray b = ProviderStore.array(new double[][]{
+                {0, 1, 2},
+                {3, 4, 10}
+        });
+        ;
+        assertEquals(a.getShape(), b.getShape());
+
+        NDArray c = a.add(b);
+
+        double[][] out = (double[][]) c.toDoubles();
+        assertArrayEquals(new double[]{0, 2, 4}, out[0]);
+        assertArrayEquals(new double[]{6, 8, 15}, out[1]);
     }
 
 }

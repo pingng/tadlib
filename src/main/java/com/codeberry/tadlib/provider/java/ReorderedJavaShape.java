@@ -1,15 +1,14 @@
-package com.codeberry.tadlib.array;
+package com.codeberry.tadlib.provider.java;
 
-import java.lang.reflect.Array;
-
+import static com.codeberry.tadlib.array.util.DimensionUtils.validateTransposeAxes;
 import static java.lang.Math.min;
 import static java.util.Arrays.copyOf;
 
-public class ReorderedShape extends Shape {
+public class ReorderedJavaShape extends JavaShape {
     private final int[] order;
     private final int[] blockSizes;
 
-    public ReorderedShape(int[] dims, int[] order) {
+    public ReorderedJavaShape(int[] dims, int[] order) {
         super(dims);
         this.order = order;
         blockSizes = new int[dims.length];
@@ -26,19 +25,14 @@ public class ReorderedShape extends Shape {
         return super.at(order[wrapIndex(dim)]);
     }
 
-    @Override
-    public int atOrNeg(int dim) {
-        return super.atOrNeg(order[wrapIndex(dim)]);
-    }
-
-    @Override
-    public Object newValueArray() {
-        int[] d = new int[dimCount];
-        for (int i = 0; i < d.length; i++) {
-            d[i] = dims[order[i]];
-        }
-        return Array.newInstance(double.class, d);
-    }
+//    @Override
+//    public Object newValueArray() {
+//        int[] d = new int[dimCount];
+//        for (int i = 0; i < d.length; i++) {
+//            d[i] = dims[order[i]];
+//        }
+//        return Array.newInstance(double.class, d);
+//    }
 
     @Override
     public int calcDataIndex(int[] indices) {
@@ -63,17 +57,17 @@ public class ReorderedShape extends Shape {
     }
 
     @Override
-    public Shape normalOrderedCopy() {
+    public JavaShape normalOrderedCopy() {
         int[] dims = new int[dimCount];
         for (int i = 0; i < dims.length; i++) {
             dims[i] = at(i);
         }
-        return new Shape(dims);
+        return new JavaShape(dims);
     }
 
     @Override
-    public Shape copy() {
-        return new ReorderedShape(copyOf(dims, dimCount), copyOf(order,dimCount));
+    public JavaShape copy() {
+        return new ReorderedJavaShape(copyOf(dims, dimCount), copyOf(order,dimCount));
     }
 
     @Override
@@ -86,35 +80,18 @@ public class ReorderedShape extends Shape {
         return true;
     }
 
-    public static ReorderedShape reverseOf(Shape shape) {
+    public static ReorderedJavaShape reverseOf(JavaShape shape) {
         int[] order = new int[shape.dimCount];
         for (int i = 0; i < order.length; i++) {
             order[i] = order.length - 1 - i;
         }
-        return new ReorderedShape(shape.dims, order);
+        return new ReorderedJavaShape(shape.dims, order);
     }
 
-    public static ReorderedShape customOrder(Shape shape, int[] axes) {
-        if (shape.dimCount != axes.length) {
-            throw new JavaArray.DimensionMismatch();
-        }
-        if (!hasAllAxis(axes)) {
-            throw new JavaArray.DimensionMissing();
-        }
-        return new ReorderedShape(shape.dims, axes);
+    public static ReorderedJavaShape customOrder(JavaShape shape, int[] axes) {
+        validateTransposeAxes(shape, axes);
+
+        return new ReorderedJavaShape(shape.dims, axes);
     }
 
-    private static boolean hasAllAxis(int[] axes) {
-        boolean[] checked = new boolean[axes.length];
-        int seen = 0;
-
-        for (int axis : axes) {
-            if (!checked[axis]) {
-                seen++;
-                checked[axis] = true;
-            }
-        }
-
-        return seen == axes.length;
-    }
 }

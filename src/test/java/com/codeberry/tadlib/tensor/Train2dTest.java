@@ -1,6 +1,10 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.JavaArray;
+import com.codeberry.tadlib.array.NDArray;
+import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Random;
@@ -12,6 +16,12 @@ import static com.codeberry.tadlib.util.StringUtils.toJson;
 import static java.util.Arrays.deepToString;
 
 public class Train2dTest {
+    @BeforeEach
+    public void init() {
+//        ProviderStore.setProvider(new JavaProvider());
+        ProviderStore.setProvider(new OpenCLProvider());
+    }
+
     @Test
     public void testMethod() {
         Random rand = new Random(4);
@@ -33,6 +43,9 @@ public class Train2dTest {
                 .reshape(2 * 2 * hiddenOut, out));
         Tensor fullB = new Tensor(randMatrix(nr, out));
 
+        Double initialError = null;
+        Double lastError = null;
+
         double lrBase = 0.03 / examples;
         for (int i = 0; i <= 5000; i++) {
             double lr = (i < 1000 ? lrBase * 0.2 : lrBase);
@@ -49,10 +62,14 @@ public class Train2dTest {
             Tensor diff = sub(y, y_train);
             Tensor squared = mul(diff, diff);
             Tensor totalErr = sum(squared);
-            totalErr.backward(new Tensor(1).vals);
+            totalErr.backward(new Tensor(1).getVals());
 
+            lastError = (Double) totalErr.toDoubles();
+            if (initialError == null) {
+                initialError = lastError;
+            }
             if ((i % 500) == 0) {
-                System.out.println("=== " + i + " Err: " + totalErr.toDoubles());
+                System.out.println("=== " + i + " Err: " + lastError);
                 System.out.println("h: " + toJson(h.toDoubles(), COMPACT));
                 System.out.println("Flatten: " + toJson(flattened.toDoubles(), COMPACT));
                 System.out.println("fW: " + deepToString((Object[]) fullW.toDoubles()));
@@ -67,16 +84,17 @@ public class Train2dTest {
             fullB = updateParam(fullB, lr);
         }
 
+        Assertions.assertTrue(lastError < initialError);
         //System.out.println(y_b.m.shape);
         //System.out.println(Arrays.deepToString((Object[]) y_b.m.toArray()));
     }
 
     private static Tensor updateParam(Tensor w, double lr) {
-        return new Tensor(w.vals.sub(w.gradient.mul(lr)));
+        return new Tensor(w.getVals().sub(w.getGradient().mul(lr)));
         //return new Tensor(w.m.sub(w.gradient.m.mul(lr)));
     }
 
-    private JavaArray randMatrix(Random rand, int size) {
-        return new JavaArray(random(rand, size));
+    private NDArray randMatrix(Random rand, int size) {
+        return ProviderStore.array(random(rand, size));
     }
 }

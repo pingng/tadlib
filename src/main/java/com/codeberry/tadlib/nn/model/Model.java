@@ -1,14 +1,17 @@
 package com.codeberry.tadlib.nn.model;
 
-import com.codeberry.tadlib.array.JavaArray;
+import com.codeberry.tadlib.array.NDArray;
+import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.example.TrainingData;
+import com.codeberry.tadlib.nn.model.optimizer.Optimizer;
 import com.codeberry.tadlib.tensor.Tensor;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static com.codeberry.tadlib.array.TArrayFactory.value;
+import static com.codeberry.tadlib.provider.ProviderStore.array;
+import static java.util.Collections.emptyList;
 
 public interface Model {
     default PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, Optimizer optimizer) {
@@ -35,7 +38,7 @@ public interface Model {
         resetGradients();
 
         PredictionAndLosses l = calcCost(rnd, trainingData);
-        l.totalLoss.backward(value(1.0));
+        l.totalLoss.backward(array(1.0));
 
         return l;
     }
@@ -47,10 +50,10 @@ public interface Model {
         }
     }
 
-    default List<JavaArray> getGradients() {
+    default List<NDArray> getGradients() {
         List<Tensor> params = getParams();
 
-        List<JavaArray> grads = new ArrayList<>();
+        List<NDArray> grads = new ArrayList<>();
         for (Tensor p : params) {
             grads.add(p.getGradient());
         }
@@ -59,7 +62,12 @@ public interface Model {
 
     List<Tensor> getParams();
 
-    Model copy();
+    /**
+     * @return Objects that are needed for the model to work and thus must not be disposed
+     */
+    default List<DisposalRegister.Disposable> getNonDisposedObjects() {
+        return emptyList();
+    }
 
     class PredictionAndLosses {
         public final Tensor prediction;

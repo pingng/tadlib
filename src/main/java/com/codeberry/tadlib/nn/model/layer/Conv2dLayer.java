@@ -7,8 +7,8 @@ import com.codeberry.tadlib.tensor.Tensor;
 
 import java.util.Random;
 
-import static com.codeberry.tadlib.array.Shape.shape;
 import static com.codeberry.tadlib.nn.model.layer.Layer.ForwardResult.result;
+import static com.codeberry.tadlib.provider.ProviderStore.shape;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.Tensor.TensorFactories.*;
 

@@ -1,4 +1,8 @@
-package com.codeberry.tadlib.array;
+package com.codeberry.tadlib.provider.java;
+
+import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.provider.java.JavaArray;
+import com.codeberry.tadlib.provider.java.JavaShape;
 
 import java.util.Arrays;
 
@@ -6,18 +10,13 @@ public class TMutableArray {
     private volatile double[] data;
     public final Shape shape;
 
-    public TMutableArray(Shape shape) {
+    public TMutableArray(JavaShape shape) {
         this(new double[shape.size], shape);
     }
 
     public TMutableArray(double[] data, Shape shape) {
         this.data = data;
         this.shape = shape;
-    }
-
-    public static TMutableArray copyOf(JavaArray src) {
-        double[] data = src.getInternalData();
-        return new TMutableArray(Arrays.copyOf(data, data.length), src.shape.copy());
     }
 
     /**
@@ -33,14 +32,22 @@ public class TMutableArray {
 
     public void setAt(int[] indices, double v) {
         int offset = shape.calcDataIndex(indices);
+        setAtOffset(offset, v);
+    }
+
+    public void setAtOffset(int offset, double v) {
         data[offset] = v;
+    }
+
+    public double[] getData() {
+        return data;
     }
 
     /**
      * The current instance cannot be used after this call.
      */
     public synchronized JavaArray migrateToImmutable() {
-        JavaArray immutable = new JavaArray(this.data, shape.copy());
+        JavaArray immutable = new JavaArray(this.data, (JavaShape) shape);
 
         this.data = null;
 

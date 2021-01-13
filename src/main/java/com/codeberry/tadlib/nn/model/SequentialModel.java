@@ -1,11 +1,11 @@
 package com.codeberry.tadlib.nn.model;
 
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.layer.Layer;
 import com.codeberry.tadlib.nn.model.layer.LayerBuilder;
 import com.codeberry.tadlib.tensor.Tensor;
-import com.codeberry.tadlib.util.ReflectionUtils;
 import com.codeberry.tadlib.util.TrainingDataUtils;
 
 import java.util.*;
@@ -38,24 +38,24 @@ public class SequentialModel implements Model {
         }
         this.layers = layers;
 
-        int totalParams = layers.stream()
-                .mapToInt(Layer::getTotalParamValues)
+        long totalParams = layers.stream()
+                .mapToLong(Layer::getTotalParamValues)
                 .sum();
         System.out.println("Total params(doubles): " + totalParams);
     }
 
 
-    private SequentialModel(SequentialModel src) {
-        // init with dummy tensors for weights
-        this(src.cfg);
-
-        for (int i = 0; i < src.layers.size(); i++) {
-            // overwrite weights using reflection
-            ReflectionUtils.copyFieldOfClass(Tensor.class,
-                    src.layers.get(i), layers.get(i),
-                    Tensor::copy);
-        }
-    }
+//    private SequentialModel(SequentialModel src) {
+//        // init with dummy tensors for weights
+//        this(src.cfg);
+//
+//        for (int i = 0; i < src.layers.size(); i++) {
+//            // overwrite weights using reflection
+//            ReflectionUtils.copyFieldOfClass(Tensor.class,
+//                    src.layers.get(i), layers.get(i),
+//                    Tensor::copy);
+//        }
+//    }
 
     @Override
     public String getTrainingLogText() {
@@ -118,6 +118,14 @@ public class SequentialModel implements Model {
                 .collect(toList());
     }
 
+    public List<DisposalRegister.Disposable> getNonDisposedObjects() {
+        return layers.stream()
+                .map(Layer::getNonDisposedObjects)
+                .flatMap(List::stream)
+                .filter(Objects::nonNull)
+                .collect(toList());
+    }
+
     public Tensor predict(Tensor x_train) {
         return forward(null, x_train, RunMode.INFERENCE).output;
     }
@@ -126,11 +134,25 @@ public class SequentialModel implements Model {
         List<Runnable> tasks = new ArrayList<>();
 
         Tensor output = inputs;
-        for (Layer l : layers) {
+        for (int i = 0, layersSize = layers.size(); i < layersSize; i++) {
+//            double[] d = output.getInternalData();
+//            for (double v : d) {
+//                if (Double.isNaN(v)) {
+//                    throw new RuntimeException("NAN!");
+//                }
+//            }
+
+            Layer l = layers.get(i);
             Layer.ForwardResult result = l.forward(rnd, output, runMode);
             result.putTasksInto(tasks);
 
             output = result.output;
+//            d = output.getInternalData();
+//            for (double v : d) {
+//                if (Double.isNaN(v)) {
+//                    throw new RuntimeException("NAN!");
+//                }
+//            }
         }
 
         return new OutputWithTasks(output, tasks);
@@ -146,9 +168,9 @@ public class SequentialModel implements Model {
         }
     }
 
-    public Model copy() {
-        return new SequentialModel(this);
-    }
+//    public Model copy() {
+//        return new SequentialModel(this);
+//    }
 
     public static class Factory implements ModelFactory {
         private final Shape inputShape;

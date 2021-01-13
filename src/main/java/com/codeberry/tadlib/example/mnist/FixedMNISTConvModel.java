@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.example.mnist;
 
 import com.codeberry.tadlib.example.TrainingData;
+import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;
 import com.codeberry.tadlib.tensor.Tensor;
@@ -11,9 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static com.codeberry.tadlib.array.Shape.shape;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.*;
 import static com.codeberry.tadlib.nn.loss.L2Loss.l2LossOf;
+import static com.codeberry.tadlib.provider.ProviderStore.shape;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.OpsExtended.*;
 import static com.codeberry.tadlib.tensor.Tensor.TensorFactories.*;
@@ -56,8 +57,8 @@ public class FixedMNISTConvModel implements Model {
 
             this.sec_bn_beta = zeros(shape(cfg.secondConvChannels));
             this.sec_bn_gamma = ones(shape(cfg.secondConvChannels));
-            this.full_bn_beta = zeros(shape(1));
-            this.full_bn_gamma = ones(shape(1));
+            this.full_bn_beta = zeros(shape(cfg.fullyConnectedSize));
+            this.full_bn_gamma = ones(shape(cfg.fullyConnectedSize));
         } else {
             this.sec_b = zeros(shape(cfg.secondConvChannels));
             this.fullB = zeros(shape(cfg.fullyConnectedSize));
@@ -76,24 +77,6 @@ public class FixedMNISTConvModel implements Model {
         this.finalW = randomWeight(r, shape(cfg.fullyConnectedSize, OUTPUTS));
         this.finalB = zeros(shape(OUTPUTS));
     }
-
-    private FixedMNISTConvModel(FixedMNISTConvModel src) {
-        // init with dummy tensors for weights
-        this(src.cfg);
-
-        // overwrite weights using reflection
-        ReflectionUtils.copyFieldOfClass(Tensor.class,
-                src, this,
-                Tensor::copy);
-    }
-
-//    public PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, double learningRate) {
-//        PredictionAndLosses l = calcGradient(rnd, batchData);
-//
-//        updateWeights(learningRate);
-//
-//        return l;
-//    }
 
     @Override
     public String getTrainingLogText() {
@@ -120,29 +103,23 @@ public class FixedMNISTConvModel implements Model {
         return new PredictionAndLosses(y, trainingTasks, totalLoss, l2Loss);
     }
 
+    @Override
+    public List<DisposalRegister.Disposable> getNonDisposedObjects() {
+        List<DisposalRegister.Disposable> r = new ArrayList<>();
+        r.addAll(secondConvBnAverages.getDisposables());
+        r.addAll(this.fullyConBnAverages.getDisposables());
+        return r;
+    }
+
     public List<Tensor> getParams() {
         return ReflectionUtils.getFieldValues(Tensor.class, this);
     }
-
-//    public void updateWeights(double lr) {
-//        List<Tensor> params = getParams();
-//
-//        for (Tensor p : params) {
-//            p.update((values, gradient) -> values.sub(gradient.mul(lr)));
-//        }
-//        for (Runnable update : additionalUpdatesOnWeightUpdate) {
-//            update.run();
-//        }
-//        additionalUpdatesOnWeightUpdate.clear();
-//    }
 
     public Tensor predict(Tensor x_train) {
         return forward(null, x_train, new ArrayList<>(), RunMode.INFERENCE);
     }
 
     private Tensor forward(Random rnd, Tensor inputs, List<Runnable> trainingTasks, RunMode runMode) {
-        //additionalUpdatesOnWeightUpdate.clear();
-
         Tensor firstLayerOut = firstConvLayer(inputs);
         Tensor secondLayerOut = secondConvLayer(runMode, firstLayerOut, trainingTasks);
         Tensor fullyLayerOut = fullyConnectedLayer(rnd, secondLayerOut, runMode, trainingTasks);
@@ -200,10 +177,6 @@ public class FixedMNISTConvModel implements Model {
         Tensor y_w = matmul(inputs, finalW);
 
         return add(y_w, finalB);
-    }
-
-    public FixedMNISTConvModel copy() {
-        return new FixedMNISTConvModel(this);
     }
 
     public static class Factory implements ModelFactory {
@@ -284,5 +257,4 @@ public class FixedMNISTConvModel implements Model {
             }
         }
     }
-
 }

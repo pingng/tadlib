@@ -1,20 +1,31 @@
 package com.codeberry.tadlib.tensor;
 
+import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import com.codeberry.tadlib.tensor.conv2ddata.*;
 import com.google.gson.Gson;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
-import static com.codeberry.tadlib.array.TArrayFactory.array;
+import static com.codeberry.tadlib.provider.ProviderStore.array;
 import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.deepEquals;
 import static java.util.Arrays.deepToString;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TensorConv2DTest {
+    @BeforeEach
+    public void init() {
+//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
+        ProviderStore.setProvider(new OpenCLProvider());
+    }
+
     @Test
     public void testFromFile() {
         Gson gson = new Gson();
@@ -24,13 +35,30 @@ public class TensorConv2DTest {
         for (Conv2DExample ex : list) {
             ex.convertListsToArrays();
         }
+        boolean failed = false;
+        List<Boolean> failedExamples = new ArrayList<>();
         for (Conv2DExample ex : list) {
-            testExample(ex);
+            try {
+                testExample(ex);
+                failedExamples.add(true);
+            } catch (AssertionError e) {
+                failedExamples.add(false);
+                e.printStackTrace();
+                failed = true;
+            }
         }
+
+        for (int i = 0; i < list.length; i++) {
+            Conv2DExample.Config cfg = list[i].config;
+            System.out.println("Filer=" + cfg.filter_size + " input=" + cfg.input_size +
+                    " chanIn=" + cfg.input_channels +
+                    " chanOut=" + cfg.output_channels + (failedExamples.get(i) == false ? " FAIL" : ""));
+        }
+        assertFalse(failed);
     }
 
     private void testExample(Conv2DExample ex) {
-        System.out.println(ex.config.name);
+        System.out.println("'" + ex.config.name + "'");
 
         Tensor input = new Tensor((double[][][][]) ex.input);
         Tensor filter = new Tensor((double[][][][]) ex.filter);
@@ -40,16 +68,15 @@ public class TensorConv2DTest {
 
         //System.out.println(deepToString(Conv2DData_3x3_2x2_Filter.y));
         //System.out.println(deepToString((Object[]) y.m.toArray()));
-        assertEqualsMatrix(ex.y, y.vals.toDoubles());
-
-        //System.out.println(deepToString(Conv2DData_3x3_2x2_Filter.grad_filter));
-        //System.out.println(deepToString((Object[]) filter.gradient.m.toArray()));
-        assertEqualsMatrix(ex.grad_filter, filter.gradient.toDoubles());
+        assertEqualsMatrix(ex.y, y.getVals().toDoubles());
 
         //System.out.println(deepToString((Object[]) ex.grad_input));
         //System.out.println(deepToString((Object[]) input.gradient.m.toArray()));
-        assertEqualsMatrix(ex.grad_input, input.gradient.toDoubles());
+        assertEqualsMatrix(ex.grad_input, input.getGradient().toDoubles());
 
+        //System.out.println(deepToString(Conv2DData_3x3_2x2_Filter.grad_filter));
+        //System.out.println(deepToString((Object[]) filter.gradient.m.toArray()));
+        assertEqualsMatrix(ex.grad_filter, filter.getGradient().toDoubles());
     }
     @Test
     public void conv2D_Simple() {
@@ -61,18 +88,18 @@ public class TensorConv2DTest {
 
         //System.out.println(deepToString(Conv2DData_3x3_2x2_Filter.y));
         //System.out.println(deepToString((Object[]) y.m.toArray()));
-        assertTrue(deepEquals(Conv2DData_3x3_2x2_Filter.y,
-                (Object[]) y.vals.toDoubles()));
+        assertEqualsMatrix(Conv2DData_3x3_2x2_Filter.y,
+                y.getVals().toDoubles());
 
         //System.out.println(deepToString(Conv2DData_3x3_2x2_Filter.grad_filter));
         //System.out.println(deepToString((Object[]) filter.gradient.m.toArray()));
-        assertTrue(deepEquals(Conv2DData_3x3_2x2_Filter.grad_filter,
-                (Object[]) filter.gradient.toDoubles()));
+        assertEqualsMatrix(Conv2DData_3x3_2x2_Filter.grad_filter,
+                filter.getGradient().toDoubles());
 
         System.out.println(deepToString(Conv2DData_3x3_2x2_Filter.grad_input));
-        System.out.println(deepToString((Object[]) input.gradient.toDoubles()));
-        assertTrue(deepEquals(Conv2DData_3x3_2x2_Filter.grad_input,
-                (Object[]) input.gradient.toDoubles()));
+        System.out.println(deepToString((Object[]) input.getGradient().toDoubles()));
+        assertEqualsMatrix(Conv2DData_3x3_2x2_Filter.grad_input,
+                input.getGradient().toDoubles());
 
     }
 
@@ -85,17 +112,17 @@ public class TensorConv2DTest {
         y.backward(array(Conv2DData_1_Filter.grad_y));
 
         assertTrue(deepEquals(Conv2DData_1_Filter.y,
-                (Object[]) y.vals.toDoubles()));
+                (Object[]) y.getVals().toDoubles()));
 
         System.out.println(deepToString(Conv2DData_1_Filter.grad_filter));
-        System.out.println(deepToString((Object[]) filter.gradient.toDoubles()));
+        System.out.println(deepToString((Object[]) filter.getGradient().toDoubles()));
         assertTrue(deepEquals(Conv2DData_1_Filter.grad_filter,
-                (Object[]) filter.gradient.toDoubles()));
+                (Object[]) filter.getGradient().toDoubles()));
 
         //System.out.println(deepToString(Conv2DData_1_Filter.grad_input));
         //System.out.println(deepToString((Object[]) input.gradient.m.toArray()));
         assertTrue(deepEquals(Conv2DData_1_Filter.grad_input,
-                (Object[]) input.gradient.toDoubles()));
+                (Object[]) input.getGradient().toDoubles()));
 
     }
 
@@ -110,17 +137,17 @@ public class TensorConv2DTest {
         //System.out.println(deepToString(Conv2DData_2in_1out.y));
         //System.out.println(deepToString((Object[]) y.m.toArray()));
         assertTrue(deepEquals(Conv2DData_2in_1out.y,
-                (Object[]) y.vals.toDoubles()));
+                (Object[]) y.getVals().toDoubles()));
 
         System.out.println(deepToString(Conv2DData_2in_1out.grad_input));
-        System.out.println(deepToString((Object[]) filter.gradient.toDoubles()));
+        System.out.println(deepToString((Object[]) filter.getGradient().toDoubles()));
         assertTrue(deepEquals(Conv2DData_2in_1out.grad_filter,
-                (Object[]) filter.gradient.toDoubles()));
+                (Object[]) filter.getGradient().toDoubles()));
 
         //System.out.println(deepToString(Conv2DData_2in_1out.grad_input));
         //System.out.println(deepToString((Object[]) input.gradient.m.toArray()));
         assertTrue(deepEquals(Conv2DData_2in_1out.grad_input,
-                (Object[]) input.gradient.toDoubles()));
+                (Object[]) input.getGradient().toDoubles()));
     }
 
     @Test
@@ -132,17 +159,17 @@ public class TensorConv2DTest {
         y.backward(array(Conv2DData_2in_2out.grad_y));
 
         assertTrue(deepEquals(Conv2DData_2in_2out.y,
-                (Object[]) y.vals.toDoubles()));
+                (Object[]) y.getVals().toDoubles()));
 
         //System.out.println(deepToString(Conv2DData_3x3_2x2_Filter.grad_filter));
         //System.out.println(deepToString((Object[]) filter.gradient.m.toArray()));
         assertTrue(deepEquals(Conv2DData_2in_2out.grad_filter,
-                (Object[]) filter.gradient.toDoubles()));
+                (Object[]) filter.getGradient().toDoubles()));
 
         System.out.println(deepToString(Conv2DData_2in_2out.grad_input));
-        System.out.println(deepToString((Object[]) input.gradient.toDoubles()));
+        System.out.println(deepToString((Object[]) input.getGradient().toDoubles()));
         assertTrue(deepEquals(Conv2DData_2in_2out.grad_input,
-                (Object[]) input.gradient.toDoubles()));
+                (Object[]) input.getGradient().toDoubles()));
     }
 
     @Test
@@ -154,16 +181,16 @@ public class TensorConv2DTest {
         y.backward(array(Conv2DData_2x2_4x4.grad_y));
 
         assertTrue(deepEquals(Conv2DData_2x2_4x4.y,
-                (Object[]) y.vals.toDoubles()));
+                (Object[]) y.getVals().toDoubles()));
 
         System.out.println(deepToString(Conv2DData_2x2_4x4.grad_filter));
-        System.out.println(deepToString((Object[]) filter.gradient.toDoubles()));
+        System.out.println(deepToString((Object[]) filter.getGradient().toDoubles()));
         assertTrue(deepEquals(Conv2DData_2x2_4x4.grad_filter,
-                (Object[]) filter.gradient.toDoubles()));
+                (Object[]) filter.getGradient().toDoubles()));
 
         System.out.println(deepToString(Conv2DData_2x2_4x4.grad_input));
-        System.out.println(deepToString((Object[]) input.gradient.toDoubles()));
+        System.out.println(deepToString((Object[]) input.getGradient().toDoubles()));
         assertTrue(deepEquals(Conv2DData_2x2_4x4.grad_input,
-                (Object[]) input.gradient.toDoubles()));
+                (Object[]) input.getGradient().toDoubles()));
     }
 }

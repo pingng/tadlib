@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.nn.model.layer;
 
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.array.util.DimensionUtils;
 import com.codeberry.tadlib.tensor.Tensor;
 
 import java.util.Random;
@@ -15,7 +16,7 @@ public class MaxPool2dLayer implements Layer {
     public MaxPool2dLayer(Shape inputShape, Builder params) {
         this.size = params.size;
 
-        outputShape = getMaxPool2dOutputSize(inputShape, size);
+        outputShape = DimensionUtils.getMaxPool2dResultShape(inputShape, size);
     }
 
     @Override

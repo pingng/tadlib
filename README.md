@@ -1,12 +1,11 @@
 TADLib - Tiny Automatic Differentiation Library
 ===
 
-TODO: REWRITE TO ABOUT SUPPORT FOR OpenCL!!!
-
 What is TADLib?
 ---
-TADLib is a simple library for **understanding how neural networks works**. It provides 
-Automatic Differentiation (AD) like Tensorflow and PyTorch, but is implemented in pure Java.
+TADLib was created for **understanding how 'autograd' and basic neural networks are implemented**. It provides 
+Automatic Differentiation (AD) like Tensorflow and PyTorch, but is implemented in pure Java. It also supports 
+hardware acceleration with [OpenCL](https://www.khronos.org/opencl/).
 
 Examples
 ---
@@ -30,8 +29,8 @@ Tensor outLayer = add(
         matmul(firstLayer, outW),
         outB);
 ```
-The _outLayer_ is the output, [logits](https://stackoverflow.com/questions/34240703/what-is-logits-softmax-and-softmax-cross-entropy-with-logits)
-for each of the output classes.
+The _outLayer_ is the output [logits](https://stackoverflow.com/questions/34240703/what-is-logits-softmax-and-softmax-cross-entropy-with-logits)
+for each output classes.
 
 We must then calculate the loss (scaled by the number of examples in the batch):
 ```java
@@ -39,7 +38,7 @@ Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(batchData.yTrain), out
 Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(actualBatchSize));
 ```
 
-Then trigger backpropagation of the gradients:
+Then we trigger backpropagation of the gradients:
 ```java
 avgSoftmaxCost.backward();
 ```
@@ -61,6 +60,20 @@ This is a hardcoded model.
 
 [TrainConfiguredConvMNISTMain](src/main/java/com/codeberry/tadlib/example/mnist/TrainConfiguredConvMNISTMain.java)
 is an example of a conv model built/configured in runtime using layers.
+
+OpenCL support
+===
+OpenCL support can be enabled by assigning the provider:
+```java
+ProviserStore.setProvider(new OpenCLProvider());
+```
+Operations will run **a lot** faster using OpenCL.
+
+The OpenCL integration, as with the java code, is kept minimal to allow for (hopefully)
+more readable code. The performance will certainly not reach the level of Tensorflow nor PyTorch,
+but it will be fast enough for more experimentation and less time waiting.
+
+See the [opencl package](src/main/java/com/codeberry/tadlib/provider/opencl/README.md) for more details.
 
 Scalar implementation
 ===

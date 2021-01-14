@@ -21,6 +21,8 @@ import static java.util.stream.Collectors.toList;
 
 public class OpenCLProvider implements Provider {
 
+    public static final String PROP_TAD_OPENCL_DEVICES = "tad.opencl.devices";
+
     static {
         System.out.println(OpenCL.INSTANCE);
     }
@@ -46,7 +48,7 @@ public class OpenCLProvider implements Provider {
             System.out.println("  " + i + ": " + devices.get(i).info.name);
         }
 
-        String devSelectProp = System.getProperty("tad.opencl.devices", "");
+        String devSelectProp = System.getProperty(PROP_TAD_OPENCL_DEVICES, "");
         String[] devSelectArr = devSelectProp.split(",");
         List<Device> selectedDevices = selectDevices(devices, devSelectArr);
 

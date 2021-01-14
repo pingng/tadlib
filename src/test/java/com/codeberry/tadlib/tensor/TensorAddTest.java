@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TensorAddTest {
     @BeforeEach
     public void init() {
-//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
+//        ProviderStore.setProvider(new JavaProvider());
         ProviderStore.setProvider(new OpenCLProvider());
     }
 

@@ -38,7 +38,7 @@ public class DisposalRegister {
             List<Disposable> keeps = new ArrayList<>();
             try {
                 TRAINING_ITERATION_DISPOSABLE.set(disposables);
-                keeps.addAll(disposeAllExceptReturnArrays(callable));
+                keeps.addAll(disposeAllExceptContainedReturnValues(callable));
             } finally {
                 for (Disposable d : disposables) {
                     if (!keeps.contains(d)) {
@@ -89,12 +89,12 @@ public class DisposalRegister {
      */
     @SuppressWarnings("unchecked")
     public static <T extends DisposableContainer<R>, R extends Disposable> R disposeAllExceptReturnedValues(Callable<T> callable) {
-        List<Disposable> returnArrays = disposeAllExceptReturnArrays(() -> singletonList(callable.call()));
+        List<Disposable> returnArrays = disposeAllExceptContainedReturnValues(() -> singletonList(callable.call()));
 
         return (R) returnArrays.get(0);
     }
 
-    public static <T extends DisposableContainer<? extends Disposable>> List<Disposable> disposeAllExceptReturnArrays(Callable<List<T>> callable) {
+    public static <T extends DisposableContainer<? extends Disposable>> List<Disposable> disposeAllExceptContainedReturnValues(Callable<List<T>> callable) {
         Stack<List<Disposable>> stack = CREATED_ARRAYS.get();
 
         List<Disposable> instantiatedDisposablesToKeep = new ArrayList<>();

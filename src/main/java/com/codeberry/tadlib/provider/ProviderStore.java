@@ -2,12 +2,13 @@ package com.codeberry.tadlib.provider;
 
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.provider.java.JavaProvider;
 
 import java.util.Stack;
 import java.util.concurrent.Callable;
 
 public class ProviderStore {
-    private static Provider provider;
+    private static Provider provider = new JavaProvider();
 
     public static void setProvider(Provider provider) {
         ProviderStore.provider = provider;

@@ -85,11 +85,7 @@ public abstract class Ops {
     public static Tensor sqr(Tensor a) {
         NDArray y = a.getVals().sqr();
 
-        GradFunc gF = grad -> disposeAllExceptReturnedValues(() -> {
-            NDArray grad2 = grad.mul(a.getVals()).mul(2.0);
-
-            return aggregateBroadcastedDims(a, grad2);
-        });
+        GradFunc gF = grad -> disposeAllExceptReturnedValues(() -> grad.mul(a.getVals()).mul(2.0));
 
         return new Tensor(y, singletonList(parentLink(a, gF)));
     }
@@ -97,11 +93,7 @@ public abstract class Ops {
     public static Tensor sqrt(Tensor a) {
         NDArray y = a.getVals().sqrt();
 
-        GradFunc gF = grad -> disposeAllExceptReturnedValues(() -> {
-            NDArray gr = grad.mul(a.getVals().pow(-0.5).mul(0.5));
-
-            return aggregateBroadcastedDims(a, gr);
-        });
+        GradFunc gF = grad -> disposeAllExceptReturnedValues(() -> grad.mul(a.getVals().pow(-0.5).mul(0.5)));
 
         return new Tensor(y, singletonList(parentLink(a, gF)));
     }
@@ -247,8 +239,7 @@ public abstract class Ops {
         NDArray softmax = prediction.getVals().softmax();
 
         NDArray oneHotArray = labelsOneHot.getVals();
-        double cost = SoftmaxCrossEntropyLoss.sumSoftmaxCrossEntropy(softmax, softmax.getShape().newIndexArray(),
-                oneHotArray, 0);
+        NDArray cost = SoftmaxCrossEntropyLoss.sumSoftmaxCrossEntropy(softmax, oneHotArray);
 
         GradFunc gF = grad -> {
 //            TMutableArray tgt = TMutableArray.copyOf(softmax);
@@ -258,7 +249,7 @@ public abstract class Ops {
             return grad.softMaxGrad(softmax, oneHotArray);
         };
 
-        return new Tensor(ProviderStore.array(cost), singletonList(parentLink(prediction, gF)));
+        return new Tensor(cost, singletonList(parentLink(prediction, gF)));
     }
 
     public static Tensor dropout(Tensor input, Random rnd, double dropoutKeep, RunMode runMode) {
@@ -308,6 +299,14 @@ public abstract class Ops {
         });
 
         return new Tensor(mean, singletonList(parentLink(input, gF)));
+    }
+
+    public static Tensor log(Tensor input) {
+        NDArray y = input.getVals().log();
+
+        GradFunc gF = grad -> disposeAllExceptReturnedValues(() -> grad.div(input.getVals()));
+
+        return new Tensor(y, singletonList(parentLink(input, gF)));
     }
 
     public enum RunMode {

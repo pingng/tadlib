@@ -18,6 +18,8 @@ import static com.codeberry.tadlib.array.util.DimensionUtils.*;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.multiThreadingSupportRun;
 import static java.lang.Boolean.TRUE;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 import static java.util.Arrays.*;
 
 public class JavaArray implements NDArray {
@@ -281,6 +283,33 @@ public class JavaArray implements NDArray {
             output.setAtOffset(update.offset, update.value);
         }
         return output.migrateToImmutable();
+    }
+
+    @Override
+    public NDArray clip(Double min, Double max) {
+        JavaArray copy = normalOrderedCopy();
+
+        for (int i = 0; i < copy.data.length; i++) {
+            if (min != null) {
+                copy.data[i] = max(copy.data[i], min);
+            }
+            if (max != null) {
+                copy.data[i] = min(copy.data[i], max);
+            }
+        }
+
+        return copy;
+    }
+
+    @Override
+    public NDArray log() {
+        JavaArray copy = normalOrderedCopy();
+
+        for (int i = 0; i < copy.data.length; i++) {
+            copy.data[i] = Math.log(copy.data[i]);
+        }
+
+        return copy;
     }
 
     private static void fillSoftMax(JavaArray src, TMutableArray tgt, int[] indices, int dim) {

@@ -158,6 +158,14 @@ public class Kernel extends Pointer {
             return this;
         }
 
+        public ArgSetter nextArg(boolean v) {
+            throwOnError(() -> OpenCL.INSTANCE.clSetKernelArg(owner, paramIndex++,
+                    new SizeT(cl_int.sizeOfElements(1)),
+                    resources.argBoolean(v)));
+
+            return this;
+        }
+
         public ArgSetter nextArgLocalDoubles(int size) {
             throwOnError(() -> OpenCL.INSTANCE.clSetKernelArg(owner, paramIndex++,
                     new SizeT(cl_double.sizeOfElements(size)),

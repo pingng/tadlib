@@ -14,6 +14,7 @@ public class KernelCollector {
                 Div.class,
                 Sum.class,
                 Simple.class,
+                Clip.class,
                 MaxPool.class,
                 Relu.class,
                 Softmax.class,

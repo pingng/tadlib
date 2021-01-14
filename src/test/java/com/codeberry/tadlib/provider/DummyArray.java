@@ -128,6 +128,16 @@ class DummyArray implements NDArray {
     }
 
     @Override
+    public NDArray clip(Double min, Double max) {
+        return null;
+    }
+
+    @Override
+    public NDArray log() {
+        return null;
+    }
+
+    @Override
     public JavaShape getShape() {
         return null;
     }

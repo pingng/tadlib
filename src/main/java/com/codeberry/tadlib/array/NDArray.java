@@ -138,6 +138,10 @@ public interface NDArray extends Disposable, DisposableContainer<NDArray> {
         // do nothing
     }
 
+    NDArray clip(Double min, Double max);
+
+    NDArray log();
+
     enum DimKeepRemove {
         REMOVE_DIM {
             @Override

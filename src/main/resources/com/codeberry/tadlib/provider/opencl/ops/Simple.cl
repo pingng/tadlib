@@ -7,6 +7,15 @@ __kernel void arrayNegate(__global const double *A, long len,
     }
 }
 
+__kernel void arrayLog(__global const double *A, long len,
+                     __global double *C) {
+    size_t i = get_global_id(0);
+
+    if( i < len ) {
+        C[i] = log(A[i]);
+    }
+}
+
 __kernel void arraySqr(__global const double *A, long len,
                      __global double *C) {
     size_t i = get_global_id(0);

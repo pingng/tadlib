@@ -26,6 +26,7 @@ public class Simple implements OclKernelSource {
     public static final String ARRAY_NEGATE = "arrayNegate";
     public static final String ARRAY_SQR = "arraySqr";
     public static final String ARRAY_SQRT = "arraySqrt";
+    public static final String ARRAY_LOG = "arrayLog";
     public static final String ROT_180 = "rot180";
     public static final String ARRAY_POW = "arrayPow";
 
@@ -36,7 +37,11 @@ public class Simple implements OclKernelSource {
 
     @Override
     public List<String> getKernels() {
-        return asList(ARRAY_NEGATE, ARRAY_SQR, ARRAY_SQRT, ROT_180, ARRAY_POW);
+        return asList(ARRAY_NEGATE, ARRAY_SQR, ARRAY_SQRT, ARRAY_LOG, ROT_180, ARRAY_POW);
+    }
+
+    public static NDArray log(Context context, OclArray src) {
+        return runKernel(context, src, ARRAY_LOG);
     }
 
     public static OclArray negate(Context context, OclArray src) {

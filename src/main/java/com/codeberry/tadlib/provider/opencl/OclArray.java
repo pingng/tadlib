@@ -347,6 +347,16 @@ public class OclArray implements NDArray {
     }
 
     @Override
+    public NDArray clip(Double min, Double max) {
+        return Clip.clip(buffer.context, this, min, max);
+    }
+
+    @Override
+    public NDArray log() {
+        return Simple.log(buffer.context, this);
+    }
+
+    @Override
     public NDArray matmul(NDArray b) {
         return MatMul.matmul(buffer.context, this, (OclArray) b);
     }
@@ -528,6 +538,13 @@ public class OclArray implements NDArray {
 
         public Pointer argDouble(double v) {
             DoubleByReference ref = new DoubleByReference(v);
+            references.add(ref);
+
+            return ref.getPointer();
+        }
+
+        public Pointer argBoolean(boolean v) {
+            IntByReference ref = new IntByReference(v ? 1 : 0);
             references.add(ref);
 
             return ref.getPointer();

@@ -4,21 +4,22 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.IntFunction;
 
-public class MultiDimArrayFlattener {
-    public final double[] data;
+public class MultiDimArrayFlattener<E> {
+    public final E data;
     public final int[] dimensions;
 
-    private MultiDimArrayFlattener(double[] data, int[] dimensions) {
+    private MultiDimArrayFlattener(E data, int[] dimensions) {
         this.data = data;
         this.dimensions = dimensions;
     }
 
-    public static MultiDimArrayFlattener prepareFlatData(Object array) {
+    public static <E> MultiDimArrayFlattener<E> prepareFlatData(Object array, IntFunction<E> create) {
         int[] dimensions = toDimensions(array);
-        double[] data = toDataArray(dimensions, array);
+        E data = toDataArray(dimensions, array, create);
 
-        return new MultiDimArrayFlattener(data, dimensions);
+        return new MultiDimArrayFlattener<>(data, dimensions);
     }
 
     private static int[] toDimensions(Object array) {
@@ -39,9 +40,9 @@ public class MultiDimArrayFlattener {
         return dims;
     }
 
-    private static double[] toDataArray(int[] dimensions, Object array) {
+    private static <E> E toDataArray(int[] dimensions, Object array, IntFunction<E> create) {
         int size = calcSize(dimensions);
-        double[] data = new double[size];
+        E data = create.apply(size);
         flattenToArray(array, 0, data, 0);
         return data;
     }
@@ -51,11 +52,10 @@ public class MultiDimArrayFlattener {
                 .reduce(1, (a, b) -> a * b);
     }
 
-    private static int flattenToArray(Object array, int currentDim, double[] out, int outIndex) {
+    private static int flattenToArray(Object array, int currentDim, Object out, int outIndex) {
         int len = Array.getLength(array);
         if (!array.getClass().getComponentType().isArray()) {
-            double[] arr = (double[]) array;
-            System.arraycopy(arr, 0, out, outIndex, len);
+            System.arraycopy(array, 0, out, outIndex, len);
             return outIndex + len;
         } else {
             for (int i = 0; i < len; i++) {

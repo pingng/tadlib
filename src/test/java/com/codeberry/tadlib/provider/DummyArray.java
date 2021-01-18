@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.provider;
 
 import com.codeberry.tadlib.array.NDArray;
+import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.provider.java.JavaShape;
 
 import java.util.List;
@@ -134,6 +135,21 @@ class DummyArray implements NDArray {
 
     @Override
     public NDArray log() {
+        return null;
+    }
+
+    @Override
+    public NDIntArray argmax(int axis) {
+        return null;
+    }
+
+    @Override
+    public NDArray getAtIndicesOnAxis(NDIntArray indices, int axis) {
+        return null;
+    }
+
+    @Override
+    public NDArray withUpdateAtIndicesOnAxis(NDIntArray indices, int axis, NDArray change) {
         return null;
     }
 

@@ -153,6 +153,30 @@ public abstract class DimensionUtils {
         return ProviderStore.shape(dims);
     }
 
+    public static void validateAxisWithinBounds(Shape shape, int axis) {
+        int safeAxis = shape.wrapNegIndex(axis);
+        if (safeAxis < 0 || safeAxis >= shape.getDimCount()) {
+            throw new AxisOutOfBounds("Valid axes: [0," + (shape.getDimCount() - 1) + "], but is " + axis);
+        }
+    }
+
+    public static void validateSameDimensionsExcept(String targetName, Shape src, Shape target, int exceptAxis) {
+        int safeAxis = src.wrapNegIndex(exceptAxis);
+        int srcDimCount = src.getDimCount();
+        if (target.getDimCount() != srcDimCount - 1) {
+            throw new DimensionMismatch("Expected " + (srcDimCount - 1) + " dimensions: actual=" + target.getDimCount());
+        }
+        for (int i = 0; i < target.getDimCount(); i++) {
+            int srcI = (i < safeAxis ? i : i + 1);
+            int expected = src.at(srcI);
+            if (expected != target.at(i)) {
+                Shape shouldBe = src.removeDimAt(safeAxis);
+                throw new DimensionMismatch("Expected " + targetName + ".dimension[" + i + "]==" + expected + ":" +
+                        " expectedShape=" + shouldBe + " actualShape=" + target);
+            }
+        }
+    }
+
     public enum ShapeEndType {
         END_WITH__HEIGHT_WIDTH_CHANNEL(3),
         END_WITH__HEIGHT_WIDTH(2);

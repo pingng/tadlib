@@ -17,7 +17,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
 public class Tensor implements DisposableContainer<Disposable> {
-    public static final Tensor ZERO = new Tensor(ProviderStore.array(0), NONE);
+    public static final Tensor ZERO = new Tensor(ProviderStore.array(0.), NONE);
 
     private final List<ParentLink> links;
     private final GradientMode gradientMode;

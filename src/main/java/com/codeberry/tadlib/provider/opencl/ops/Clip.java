@@ -2,6 +2,7 @@ package com.codeberry.tadlib.provider.opencl.ops;
 
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.provider.opencl.InProgressResources;
 import com.codeberry.tadlib.provider.opencl.OclArray;
 import com.codeberry.tadlib.provider.opencl.OclBuffer;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
@@ -9,7 +10,6 @@ import com.codeberry.tadlib.provider.opencl.context.Context;
 import com.codeberry.tadlib.provider.opencl.kernel.Kernel;
 import com.codeberry.tadlib.provider.opencl.queue.CommandQueue;
 
-import java.util.Collections;
 import java.util.List;
 
 import static com.codeberry.tadlib.provider.opencl.OclArray.createNDArray;
@@ -39,7 +39,7 @@ public class Clip implements OclKernelSource {
         long size = shape.getSize();
 
         OclBuffer buf = createBuffer(context, sizeOf(cl_double, shape.getSize()), BufferMemFlags.CL_MEM_READ_WRITE);
-        OclArray.InProgressResources resources = new OclArray.InProgressResources(context);
+        InProgressResources resources = new InProgressResources(context);
 
         Kernel kernel = context.findKernel(CLIP);
         kernel.createArgSetter(resources)

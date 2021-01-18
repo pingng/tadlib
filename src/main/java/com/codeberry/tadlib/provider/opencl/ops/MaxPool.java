@@ -3,6 +3,7 @@ package com.codeberry.tadlib.provider.opencl.ops;
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
+import com.codeberry.tadlib.provider.opencl.InProgressResources;
 import com.codeberry.tadlib.provider.opencl.OclArray;
 import com.codeberry.tadlib.provider.opencl.OclBuffer;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
@@ -42,7 +43,7 @@ public class MaxPool implements OclKernelSource {
         Shape srcShape = src.getShape();
         Shape outShape = getMaxPool2dResultShape(srcShape, maxPoolSize);
 
-        OclArray.InProgressResources resources = new OclArray.InProgressResources(context);
+        InProgressResources resources = new InProgressResources(context);
         OclBuffer buf = createBuffer(context, sizeOf(cl_double, outShape.getSize()), BufferMemFlags.CL_MEM_READ_WRITE);
         OclBuffer bufId = createBuffer(context, sizeOf(cl_int, outShape.getSize()), BufferMemFlags.CL_MEM_READ_WRITE);
 
@@ -105,7 +106,7 @@ public class MaxPool implements OclKernelSource {
         Shape outShape = r.orgShape;
         Shape gradShape = gradSrc.getShape();
 
-        OclArray.InProgressResources resources = new OclArray.InProgressResources(context);
+        InProgressResources resources = new InProgressResources(context);
 
         CommandQueue queue = context.getQueue();
         Kernel kernel = context.findKernel(MAX_POOL_2D_REVERT);

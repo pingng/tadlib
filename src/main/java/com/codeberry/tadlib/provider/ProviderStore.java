@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.provider;
 
 import com.codeberry.tadlib.array.NDArray;
+import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.provider.java.JavaProvider;
 
@@ -40,8 +41,23 @@ public class ProviderStore {
     public static NDArray arrayFillWith(Shape shape, double v) {
         return provider.createArrayWithValue(shape, v);
     }
-
     private static final ThreadLocal<Stack<String>> DEVICE_NAME = ThreadLocal.withInitial(Stack::new);
+
+    public static NDIntArray array(int v) {
+        return provider.createIntArray(v);
+    }
+
+    public static NDIntArray array(int[] v) {
+        return provider.createIntArray(v);
+    }
+
+    public static NDIntArray array(int[][] v) {
+        return provider.createIntArray(v);
+    }
+
+    public static NDIntArray intArrayFillWith(Shape shape, int v) {
+        return provider.createIntArrayWithValue(shape, v);
+    }
 
     public static String getDeviceName() {
         Stack<String> nameStack = DEVICE_NAME.get();

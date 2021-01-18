@@ -2,6 +2,7 @@ package com.codeberry.tadlib.provider.opencl.ops;
 
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.provider.opencl.InProgressResources;
 import com.codeberry.tadlib.provider.opencl.OclArray;
 import com.codeberry.tadlib.provider.opencl.OclBuffer;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
@@ -37,7 +38,7 @@ public class Softmax implements OclKernelSource {
     public static NDArray softmax(Context context, OclArray src) {
         Shape shape = src.getShape();
 
-        OclArray.InProgressResources resources = new OclArray.InProgressResources(context);
+        InProgressResources resources = new InProgressResources(context);
         OclBuffer out = createBuffer(context, sizeOf(cl_double, shape.getSize()), BufferMemFlags.CL_MEM_READ_WRITE);
 
         CommandQueue queue = context.getQueue();

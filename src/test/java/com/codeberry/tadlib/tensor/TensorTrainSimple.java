@@ -40,7 +40,7 @@ public class TensorTrainSimple {
             Tensor squared = mul(diff, diff);
             Tensor sum = sum(squared);
 
-            sum.backward(array(1));
+            sum.backward(array(1.));
 
             System.out.println(sum.toDoubles());
             System.out.println(Arrays.deepToString((Object[]) w.getGradient().toDoubles()));

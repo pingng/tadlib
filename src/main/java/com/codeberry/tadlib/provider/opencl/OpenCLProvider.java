@@ -1,5 +1,6 @@
 package com.codeberry.tadlib.provider.opencl;
 
+import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.provider.java.JavaShape;
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
@@ -98,10 +99,28 @@ public class OpenCLProvider implements Provider {
 
     @Override
     public OclArray createArray(Object multiDimArray) {
-        MultiDimArrayFlattener preparedData = MultiDimArrayFlattener.prepareFlatData(multiDimArray);
+        MultiDimArrayFlattener<double[]> preparedData = MultiDimArrayFlattener.prepareFlatData(multiDimArray, double[]::new);
 
         Shape shape = ProviderStore.shape(preparedData.dimensions);
         return createNDArray(context, shape, preparedData.data);
+    }
+
+    @Override
+    public NDIntArray createIntArray(Object multiDimArray) {
+        MultiDimArrayFlattener<int[]> preparedData = MultiDimArrayFlattener.prepareFlatData(multiDimArray, int[]::new);
+
+        Shape shape = ProviderStore.shape(preparedData.dimensions);
+        return OclIntArray.createNDArray(context, shape, preparedData.data);
+    }
+
+    @Override
+    public NDIntArray createIntArray(int v) {
+        return OclIntArray.createNDArray(context, v);
+    }
+
+    @Override
+    public NDIntArray createIntArrayWithValue(Shape shape, int v) {
+        return OclIntArray.createNDArray(context, shape, v);
     }
 
     @Override

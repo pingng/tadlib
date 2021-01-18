@@ -1,37 +1,36 @@
 package com.codeberry.tadlib.provider.opencl;
 
 import com.codeberry.tadlib.array.NDArray;
+import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.util.FlatToMultiDimArrayConverter;
+import com.codeberry.tadlib.array.util.SoftmaxUtils;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
 import com.codeberry.tadlib.provider.opencl.context.Context;
 import com.codeberry.tadlib.provider.opencl.ops.*;
 import com.codeberry.tadlib.util.StringUtils;
 import com.sun.jna.Memory;
-import com.sun.jna.Native;
 import com.sun.jna.Pointer;
-import com.sun.jna.ptr.*;
 
 import java.util.*;
 
 import static com.codeberry.tadlib.memorymanagement.DisposalRegister.disposeAllExceptReturnedValues;
 import static com.codeberry.tadlib.memorymanagement.DisposalRegister.registerForDisposal;
-import static com.codeberry.tadlib.array.util.SoftmaxUtils.getSoftmaxGradientUpdates;
 import static com.codeberry.tadlib.provider.opencl.OclBuffer.*;
 import static com.codeberry.tadlib.provider.opencl.OclDataType.*;
 import static com.codeberry.tadlib.provider.opencl.OclBuffer.ByteSize.sizeOf;
 import static com.codeberry.tadlib.provider.opencl.consts.ErrorCode.throwOnError;
 import static com.codeberry.tadlib.provider.opencl.ops.Conv.ConvSize.Builder.convSizeBuilder;
 import static java.lang.Math.*;
-import static java.util.stream.Collectors.toList;
 
 
 // for waiting: http://web.engr.oregonstate.edu/~mjb/cs575/Handouts/opencl.events.2pp.pdf
 public class OclArray implements NDArray {
     public final OclBuffer buffer;
-    private final InProgressResources resources;
     public final Shape shape;
+
+    final InProgressResources resources;
 
     private OclArray(Shape shape, OclBuffer buffer, InProgressResources resources) {
         this.shape = shape;
@@ -87,7 +86,7 @@ public class OclArray implements NDArray {
 
     @Override
     public void waitForValueReady() {
-        Pointer ev = getKernelEvent();
+        Pointer ev = resources.getKernelEvent();
         if (ev != null) {
             if (resources.isDisposed()) {
                 throw new RuntimeException("Should not be disposed");
@@ -96,23 +95,6 @@ public class OclArray implements NDArray {
                     resources::getContentStatus);
         }
         resources.disposeDeep();
-    }
-
-    private static void tryReadBuffers(final String prefix, StringBuilder sb, List<OclBuffer> buffers) {
-        for (int i = 0; i < buffers.size(); i++) {
-            OclBuffer buf = buffers.get(i);
-
-            sb.append(prefix).append("[").append(i).append("/").append(buffers.size()).append("]" +
-                    "(").append(buf.getByteCount()).append("):")
-                    .append(buf.canBeRead()).append("\n");
-        }
-    }
-
-    private Pointer getKernelEvent() {
-        if (this.resources != null && this.resources.opEvent != null) {
-            return this.resources.opEvent.getValue();
-        }
-        return null;
     }
 
     @Override
@@ -197,10 +179,11 @@ public class OclArray implements NDArray {
 
     @Override
     public NDArray softMaxGrad(NDArray softmax, NDArray oneHotArray) {
-        List<ValueUpdate> updates = getSoftmaxGradientUpdates(softmax, softmax.getShape().newIndexArray(),
-                oneHotArray, 0);
-
-        return softmax.withUpdates(updates).mul(this);
+//        List<ValueUpdate> updates = getSoftmaxGradientUpdates(softmax, softmax.getShape().newIndexArray(),
+//                oneHotArray, 0);
+//
+//        return softmax.withUpdates(updates).mul(this);
+        return SoftmaxUtils.getSoftmaxGradientUpdatesNEW(softmax, oneHotArray).mul(this);
     }
 
     /**
@@ -357,6 +340,21 @@ public class OclArray implements NDArray {
     }
 
     @Override
+    public NDIntArray argmax(int axis) {
+        return ArgMax.argMax(buffer.context, this, axis);
+    }
+
+    @Override
+    public NDArray getAtIndicesOnAxis(NDIntArray indices, int axis) {
+        return GetAtIndicesOnAxis.getAtIndicesOnAxis(buffer.context, this, (OclIntArray) indices, axis);
+    }
+
+    @Override
+    public NDArray withUpdateAtIndicesOnAxis(NDIntArray indices, int axis, NDArray change) {
+        return UpdateAtIndicesOnAxis.updateAtIndicesOnAxis(buffer.context, this, (OclIntArray) indices, axis, (OclArray) change);
+    }
+
+    @Override
     public NDArray matmul(NDArray b) {
         return MatMul.matmul(buffer.context, this, (OclArray) b);
     }
@@ -387,7 +385,7 @@ public class OclArray implements NDArray {
     private Memory readToNative() {
         Memory nativeBuf = new Memory(cl_double.sizeOfElements(shape.getSize()));
 
-        Pointer kernelEvent = getKernelEvent();
+        Pointer kernelEvent = resources.getKernelEvent();
 
         OpenCL.PointerArray events = (kernelEvent != null ? OpenCL.PointerArray.pointers(kernelEvent) : null);
 
@@ -441,270 +439,4 @@ public class OclArray implements NDArray {
         return StringUtils.toString(this);
     }
 
-
-    /**
-     * Holds on to objects until disposed/finalized.
-     * <p>
-     * For preventing GC of source objects.
-     */
-    public static class InProgressResources {
-        private final Context context;
-
-        public volatile OclEventByReference opEvent;
-        private List<Memory> memoryPointers = new ArrayList<>();
-        private List<ByReference> references = new ArrayList<>();
-        private List<OclEventByReference> events = new ArrayList<>();
-        private List<OclBuffer> disposableBuffers = new ArrayList<>();
-        private List<OclBuffer> strongReferredBuffers = new ArrayList<>();
-        private List<OclArray> strongReferredNDArrays = new ArrayList<>();
-
-        public InProgressResources(Context context) {
-            this.context = context;
-
-            opEvent = new OclEventByReference();
-            events.add(opEvent);
-        }
-
-        public void registerDependency(OclArray dependantArray) {
-            this.strongReferredNDArrays.add(dependantArray);
-        }
-
-        public void registerDisposableBuffer(OclBuffer dependantArray) {
-//            (new Exception("Registered mem: " + Pointer.nativeValue(dependantArray))).printStackTrace();
-            this.disposableBuffers.add(dependantArray);
-        }
-
-        public void registerReferredBuffer(OclBuffer keepRefToBuffer) {
-//            (new Exception("Keep mem: " + Pointer.nativeValue(keepRefToBuffer))).printStackTrace();
-            this.strongReferredBuffers.add(keepRefToBuffer);
-        }
-
-        public OpenCL.PointerArray getDependencyEvents() {
-            Pointer[] events = toEventPointers(strongReferredNDArrays);
-            if (events != null) {
-                return OpenCL.PointerArray.pointers(events);
-            }
-            return null;
-        }
-
-        private static Pointer[] toEventPointers(List<OclArray> arrList) {
-            int count = countEvents(arrList);
-            if (count > 0) {
-                return writeKernelEvents(arrList, count);
-            }
-            return null;
-        }
-
-        private static Pointer[] writeKernelEvents(List<OclArray> arrList, int count) {
-            Pointer[] events = new Pointer[count];
-
-            int evIdx = 0;
-            for (OclArray arr : arrList) {
-                Pointer ev = arr.getKernelEvent();
-                if (ev != null) {
-                    events[evIdx++] = ev;
-                }
-            }
-            if (evIdx == events.length) {
-                return events;
-            }
-            System.err.println("Should not happen");
-            return Arrays.copyOf(events, evIdx);
-        }
-
-        private static int countEvents(List<OclArray> arrList) {
-            int count = 0;
-            for (OclArray arr : arrList) {
-                if (arr.getKernelEvent() != null) {
-                    count++;
-                }
-            }
-            return count;
-        }
-
-        public Pointer argLong(long v) {
-            LongByReference ref = new LongByReference(v);
-            references.add(ref);
-
-            return ref.getPointer();
-        }
-
-        public Pointer argInt(int v) {
-            IntByReference ref = new IntByReference(v);
-            references.add(ref);
-
-            return ref.getPointer();
-        }
-
-        public Pointer argDouble(double v) {
-            DoubleByReference ref = new DoubleByReference(v);
-            references.add(ref);
-
-            return ref.getPointer();
-        }
-
-        public Pointer argBoolean(boolean v) {
-            IntByReference ref = new IntByReference(v ? 1 : 0);
-            references.add(ref);
-
-            return ref.getPointer();
-        }
-
-        public synchronized boolean isDisposed() {
-            return opEvent == null;
-        }
-
-        public synchronized void disposeDeep() {
-            for (OclArray ndArr : strongReferredNDArrays) {
-                ndArr.resources.disposeDeep();
-            }
-            for (OclEventByReference event : events) {
-                event.oclRelease();
-            }
-            for (OclBuffer buf : disposableBuffers) {
-                buf.dispose();
-            }
-
-            strongReferredNDArrays.clear();
-            strongReferredBuffers.clear();
-            disposableBuffers.clear();
-            memoryPointers.clear();
-            references.clear();
-            events.clear();
-            opEvent = null;
-        }
-
-        public Pointer registerReadOnlyArg(int[] v) {
-            if (v != null) {
-                Memory memory = createMemory(v);
-                OclBuffer buf = createBuffer(context, sizeOf(cl_int, v.length), BufferMemFlags.CL_MEM_READ_ONLY);
-                OclEventByReference bufferWriteEvt = new OclEventByReference();
-                throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueWriteBuffer(
-                        context.getQueue(), buf, false, new SizeT(0), new SizeT(memory.size()),
-                        memory, null, bufferWriteEvt));
-
-                Memory pointerToPointer = new Memory(Native.POINTER_SIZE);
-                pointerToPointer.setPointer(0, buf);
-
-                memoryPointers.add(memory);
-                memoryPointers.add(pointerToPointer);
-                events.add(bufferWriteEvt);
-
-                registerDisposableBuffer(buf);
-
-                return pointerToPointer;
-            }
-            return Pointer.NULL;
-        }
-
-        public Pointer registerReadOnlyArg(long[] v) {
-            if (v != null) {
-                Memory memory = createMemory(v);
-                OclBuffer buf = createBuffer(context, sizeOf(cl_long, v.length), BufferMemFlags.CL_MEM_READ_ONLY);
-                OclEventByReference bufferWriteEvt = new OclEventByReference();
-                throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueWriteBuffer(
-                        context.getQueue(), buf, false, new SizeT(0), new SizeT(memory.size()),
-                        memory, null, bufferWriteEvt));
-
-                Memory pointerToPointer = new Memory(Native.POINTER_SIZE);
-                pointerToPointer.setPointer(0, buf);
-
-                memoryPointers.add(memory);
-                memoryPointers.add(pointerToPointer);
-                events.add(bufferWriteEvt);
-
-                registerDisposableBuffer(buf);
-
-                return pointerToPointer;
-            }
-            return Pointer.NULL;
-        }
-
-        public Pointer registerReadOnlyArg(double[] v) {
-            if (v != null) {
-                Memory memory = createMemory(v);
-                OclBuffer buf = createBuffer(context, sizeOf(cl_double, v.length), BufferMemFlags.CL_MEM_READ_ONLY);
-                OclEventByReference bufferWriteEvt = new OclEventByReference();
-                throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueWriteBuffer(
-                        context.getQueue(), buf, false, new SizeT(0), new SizeT(memory.size()),
-                        memory, null, bufferWriteEvt));
-
-                Memory pointerToPointer = new Memory(Native.POINTER_SIZE);
-                pointerToPointer.setPointer(0, buf);
-
-                memoryPointers.add(memory);
-                memoryPointers.add(pointerToPointer);
-                events.add(bufferWriteEvt);
-
-                registerDisposableBuffer(buf);
-
-                return pointerToPointer;
-            }
-            return Pointer.NULL;
-        }
-
-        private static Memory createMemory(int[] intArr) {
-            Memory dimBlockSizesLeftPointer = new Memory(cl_int.sizeOfElements(intArr.length));
-            dimBlockSizesLeftPointer.write(0, intArr, 0, intArr.length);
-            return dimBlockSizesLeftPointer;
-        }
-
-        private static Memory createMemory(long[] longArr) {
-            Memory dimBlockSizesLeftPointer = new Memory(cl_long.sizeOfElements(longArr.length));
-            dimBlockSizesLeftPointer.write(0, longArr, 0, longArr.length);
-            return dimBlockSizesLeftPointer;
-        }
-
-        private static Memory createMemory(double[] doubleArr) {
-            Memory dimBlockSizesLeftPointer = new Memory(cl_double.sizeOfElements(doubleArr.length));
-            dimBlockSizesLeftPointer.write(0, doubleArr, 0, doubleArr.length);
-            return dimBlockSizesLeftPointer;
-        }
-
-        public void registerDependencyEvent(OclEventByReference event) {
-            Objects.requireNonNull(event, "Cannot add NULL dependency event");
-
-            events.add(event);
-        }
-
-        private String getContentStatus() {
-            StringBuilder sb = new StringBuilder();
-            tryReadBuffers("StrongRefBuf", sb, strongReferredBuffers);
-            tryReadBuffers("DisposableRefBuf", sb, disposableBuffers);
-            tryReadBuffers("NDArray.buffer", sb, extractBuffers(strongReferredNDArrays));
-            for (int i = 0; i < memoryPointers.size(); i++) {
-                Memory m = memoryPointers.get(i);
-                sb.append("Memory[").append(i).append("/").append(memoryPointers.size()).append("]:").append(m.size()).append(":readOk=");
-                try {
-                    byte[] tmp = new byte[toIntExact(m.size())];
-                    m.read(0, tmp, 0, tmp.length);
-                    sb.append("true");
-                } catch (Exception e) {
-                    sb.append("false").append(e.toString());
-                }
-                sb.append("\n");
-            }
-            for (int i = 0; i < references.size(); i++) {
-                ByReference ref = references.get(i);
-                sb.append("Reference[").append(i).append("/").append(references.size()).append("]:").append(ref).append("\n");
-            }
-
-            OpenCL.PointerArray events = getDependencyEvents();
-            if (events != null) {
-                for (int i = 0; i < events.length(); i++) {
-                    sb.append("Event[").append(i).append("/").append(events.length()).append("]:waitRet=")
-                            .append(OpenCL.INSTANCE.clWaitForEvents(1, OpenCL.PointerArray.pointers(events.getPointer((long) i * Native.POINTER_SIZE))))
-                            .append("\n");
-                }
-            }
-
-            return sb.toString();
-        }
-
-        private static List<OclBuffer> extractBuffers(List<OclArray> arrays) {
-            return arrays.stream()
-                    .map(arr -> arr.buffer)
-                    .collect(toList());
-        }
-    }
 }

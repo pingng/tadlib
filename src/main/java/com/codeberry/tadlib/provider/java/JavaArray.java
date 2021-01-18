@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.provider.java;
 
 import com.codeberry.tadlib.array.NDArray;
+import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.util.FlatToMultiDimArrayConverter;
 import com.codeberry.tadlib.array.util.SoftmaxUtils;
@@ -18,6 +19,7 @@ import static com.codeberry.tadlib.array.util.DimensionUtils.*;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.multiThreadingSupportRun;
 import static java.lang.Boolean.TRUE;
+import static java.lang.Math.*;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.util.Arrays.*;
@@ -251,10 +253,11 @@ public class JavaArray implements NDArray {
 
     @Override
     public NDArray softMaxGrad(NDArray softmax, NDArray oneHotArray) {
-        List<ValueUpdate> updates = SoftmaxUtils.getSoftmaxGradientUpdates(softmax, softmax.getShape().newIndexArray(),
-                oneHotArray, 0);
-
-        return softmax.withUpdates(updates).mul(this);
+//        List<ValueUpdate> updates = SoftmaxUtils.getSoftmaxGradientUpdates(softmax, softmax.getShape().newIndexArray(),
+//                oneHotArray, 0);
+//
+//        return softmax.withUpdates(updates).mul(this);
+        return SoftmaxUtils.getSoftmaxGradientUpdatesNEW(softmax, oneHotArray).mul(this);
     }
 
     @Override
@@ -312,6 +315,147 @@ public class JavaArray implements NDArray {
         return copy;
     }
 
+    @Override
+    public NDIntArray argmax(int axis) {
+        validateAxisWithinBounds(getShape(), axis);
+
+        JavaArray src = normalOrderedCopy();
+
+        Shape shape = src.getShape();
+        int safeAxis = shape.wrapNegIndex(axis);
+        Shape outShape = shape.removeDimAt(safeAxis);
+
+        int[] data = new int[toIntExact(outShape.getSize())];
+
+        if (outShape.getDimCount() == 0) {
+            data[0] = getMaxIndex(src, shape.newIndexArray(), safeAxis);
+        } else {
+            fillArgMax(src, shape.newIndexArray(), safeAxis, data, outShape, outShape.newIndexArray(), 0);
+        }
+
+        return new JavaIntArray(data, outShape);
+    }
+
+    private static void fillArgMax(JavaArray src, int[] srcIndices, int axis, int[] tgt, Shape tgtShape, int[] tgtIndices, int tgtDim) {
+        int len = tgtShape.at(tgtDim);
+        for (int i = 0; i < len; i++) {
+            tgtIndices[tgtDim] = i;
+            srcIndices[tgtDim + (axis <= tgtDim ? 1 : 0)] = i;
+
+            if (tgtDim == tgtIndices.length - 1) {
+                int maxIndex = getMaxIndex(src, srcIndices, axis);
+                int offset = tgtShape.calcDataIndex(tgtIndices);
+                tgt[offset] = maxIndex;
+            } else {
+                fillArgMax(src, srcIndices, axis, tgt, tgtShape, tgtIndices, tgtDim + 1);
+            }
+        }
+    }
+
+    private static int getMaxIndex(JavaArray src, int[] srcIndices, int axis) {
+        int axisLen = src.getShape().at(axis);
+        double max = Double.NEGATIVE_INFINITY;
+        int maxIndex = Integer.MIN_VALUE;
+        for (int i = 0; i < axisLen; i++) {
+            srcIndices[axis] = i;
+            double srcV = src.dataAt(srcIndices);
+            if (srcV > max) {
+                max = srcV;
+                maxIndex = i;
+            }
+        }
+        return maxIndex;
+    }
+
+    @Override
+    public NDArray getAtIndicesOnAxis(NDIntArray indices, int axis) {
+        validateAxisWithinBounds(getShape(), axis);
+        validateSameDimensionsExcept("indices", getShape(), indices.getShape(), axis);
+
+        JavaArray src = normalOrderedCopy();
+        Shape shape = src.getShape();
+
+        int safeAxis = shape.wrapNegIndex(axis);
+
+        Shape outShape = indices.getShape();
+        double[] data = new double[toIntExact(outShape.getSize())];
+
+        if (outShape.getDimCount() > 0) {
+            fillValueAtIndicesOnAxis(indices, src, shape.newIndexArray(), safeAxis,
+                    data, outShape, outShape.newIndexArray(), 0);
+        } else {
+            data[0] = src.dataAt((Integer) indices.toInts());
+        }
+
+        return new JavaArray(data, (JavaShape) outShape);
+    }
+
+    private static void fillValueAtIndicesOnAxis(NDIntArray valueIndices, JavaArray src, int[] srcIndices, int axis,
+                                                 double[] tgt, Shape tgtShape, int[] tgtIndices, int tgtDim) {
+        int len = tgtShape.at(tgtDim);
+        for (int i = 0; i < len; i++) {
+            tgtIndices[tgtDim] = i;
+            srcIndices[tgtDim + (axis <= tgtDim ? 1 : 0)] = i;
+
+            if (tgtDim == tgtIndices.length - 1) {
+                srcIndices[axis] = valueIndices.dataAt(tgtIndices);
+
+                int offset = tgtShape.calcDataIndex(tgtIndices);
+                tgt[offset] = src.dataAt(srcIndices);
+            } else {
+                fillValueAtIndicesOnAxis(valueIndices, src, srcIndices, axis, tgt, tgtShape, tgtIndices, tgtDim + 1);
+            }
+        }
+    }
+    @Override
+    public NDArray withUpdateAtIndicesOnAxis(NDIntArray indices, int axis, NDArray change) {
+        JavaArray src = this.normalOrderedCopy();
+        JavaShape shape = src.getShape();
+
+        validateAxisWithinBounds(shape, axis);
+        validateSameDimensionsExcept("indices", shape, indices.getShape(), axis);
+        validateSameDimensionsExcept("change", shape, change.getShape(), axis);
+
+
+        int safeAxis = shape.wrapNegIndex(axis);
+        int axisLen = shape.at(axis);
+
+        double[] data = Arrays.copyOf(src.data, src.data.length);
+
+        if (shape.getDimCount() == 1) {
+            data[((JavaIntArray) indices).data[0]] = ((JavaArray)change).data[0];
+        } else {
+            fillValuesIndicesOnAxis(indices, data, shape, shape.newIndexArray(), safeAxis, axisLen,
+                    change, change.getShape(), change.getShape().newIndexArray(), 0);
+        }
+
+        return new JavaArray(data, shape);
+    }
+
+    private static void fillValuesIndicesOnAxis(NDIntArray valueIndices, double[] tgt, Shape tgtShape, int[] tgtIndices,
+                                                int axis, int axisLen,
+                                                NDArray src, Shape srcShape, int[] srcIndices, int srcDim) {
+        int len = srcShape.at(srcDim);
+        for (int i = 0; i < len; i++) {
+            srcIndices[srcDim] = i;
+            tgtIndices[srcDim + (axis <= srcDim ? 1 : 0)] = i;
+
+            if (srcDim == srcIndices.length - 1) {
+                int axisIndex = valueIndices.dataAt(srcIndices);
+                if (axisIndex >= 0 && axisIndex < axisLen) {
+                    tgtIndices[axis] = axisIndex;
+                    int offset = tgtShape.calcDataIndex(tgtIndices);
+                    tgt[offset] = src.dataAt(srcIndices);
+                } else {
+                    throw new IndexOutOfBoundsException("Indices for axis " + axis + " must be in range [0," +
+                            axisLen + "]: actual.indices" + Arrays.toString(tgtIndices) + "]=" + axisIndex);
+                }
+            } else {
+                fillValuesIndicesOnAxis(valueIndices, tgt, tgtShape, tgtIndices, axis,  axisLen, src, srcShape, srcIndices, srcDim + 1);
+            }
+        }
+    }
+
     private static void fillSoftMax(JavaArray src, TMutableArray tgt, int[] indices, int dim) {
         int len = tgt.shape.at(dim);
         if (indices.length - dim == 1) {
@@ -331,7 +475,7 @@ public class JavaArray implements NDArray {
                 //shifted = logits - _mx
                 double shifted = src.dataAt(indices) - max;
                 //l_exp = np.exp(shifted)
-                double exped = Math.exp(shifted);
+                double exped = exp(shifted);
                 tgt.setAt(indices, exped);
                 //l_exp_sum = np.sum(l_exp)
                 expSum += exped;
@@ -851,7 +995,7 @@ public class JavaArray implements NDArray {
         Shape physicalShape = toPhysicalShape(shape, dimsToCollapse);
         int[] dimMapping = createSrcToTargetMapping(dimsToCollapse);
 
-        double[] target = new double[Math.toIntExact(physicalShape.getSize())];
+        double[] target = new double[toIntExact(physicalShape.getSize())];
         sum(data, shape, shape.newIndexArray(), 0,
                 target, physicalShape, physicalShape.newIndexArray(), dimMapping);
 

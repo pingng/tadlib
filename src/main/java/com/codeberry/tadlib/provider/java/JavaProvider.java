@@ -32,9 +32,28 @@ public class JavaProvider implements Provider {
 
     @Override
     public NDArray createArray(Object multiDimArray) {
-        MultiDimArrayFlattener preparedData = MultiDimArrayFlattener.prepareFlatData(multiDimArray);
+        MultiDimArrayFlattener<double[]> preparedData = MultiDimArrayFlattener.prepareFlatData(multiDimArray, double[]::new);
 
         return new JavaArray(preparedData.data, new JavaShape(preparedData.dimensions));
+    }
+
+    @Override
+    public NDIntArray createIntArray(Object multiDimArray) {
+        MultiDimArrayFlattener<int[]> preparedData = MultiDimArrayFlattener.prepareFlatData(multiDimArray, int[]::new);
+
+        return new JavaIntArray(preparedData.data, new JavaShape(preparedData.dimensions));
+    }
+
+    @Override
+    public NDIntArray createIntArrayWithValue(Shape shape, int v) {
+        int[] data = new int[Math.toIntExact(shape.getSize())];
+        Arrays.fill(data, v);
+        return new JavaIntArray(data, shape);
+    }
+
+    @Override
+    public NDIntArray createIntArray(int v) {
+        return new JavaIntArray(v);
     }
 
     @Override

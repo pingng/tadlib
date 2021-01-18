@@ -12,7 +12,8 @@ import com.codeberry.tadlib.provider.opencl.queue.CommandQueue;
 import java.util.List;
 
 import static com.codeberry.tadlib.array.util.DimensionUtils.calcBlockSizes;
-import static com.codeberry.tadlib.provider.opencl.OclArray.InProgressResources;
+
+import com.codeberry.tadlib.provider.opencl.InProgressResources;
 import static com.codeberry.tadlib.provider.opencl.OclArray.createNDArray;
 import static com.codeberry.tadlib.provider.opencl.OclBuffer.ByteSize.sizeOf;
 import static com.codeberry.tadlib.provider.opencl.OclBuffer.createBuffer;

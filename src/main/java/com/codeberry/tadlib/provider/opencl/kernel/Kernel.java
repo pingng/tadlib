@@ -73,7 +73,7 @@ public class Kernel extends Pointer {
         );
     }
 
-    public ArgSetter createArgSetter(OclArray.InProgressResources resources) {
+    public ArgSetter createArgSetter(InProgressResources resources) {
         return new ArgSetter(this, resources);
     }
 
@@ -81,12 +81,17 @@ public class Kernel extends Pointer {
         return getInfo(queue.getDevice()).preferredWorkGroupSizeMultiple;
     }
 
+    public int alignWithPreferredWorkGroupSizeMultiple(CommandQueue queue, int value) {
+        long multiple = getPreferredWorkGroupSizeMultiple(queue);
+        return (int) ((value + multiple - 1) / multiple * multiple);
+    }
+
     public static class ArgSetter {
         private final Kernel owner;
-        private final OclArray.InProgressResources resources;
+        private final InProgressResources resources;
         private int paramIndex;
 
-        public ArgSetter(Kernel owner, OclArray.InProgressResources resources) {
+        public ArgSetter(Kernel owner, InProgressResources resources) {
             this.owner = owner;
             this.resources = resources;
         }
@@ -94,6 +99,11 @@ public class Kernel extends Pointer {
         public ArgSetter nextArg(OclArray oclArray) {
             resources.registerDependency(oclArray);
             return nextArg(oclArray.getArgPointer());
+        }
+
+        public ArgSetter nextArg(OclIntArray oclIntArray) {
+            resources.registerDependency(oclIntArray);
+            return nextArg(oclIntArray.getArgPointer());
         }
 
         public ArgSetter nextArgDisposable(OclBuffer buffer) {

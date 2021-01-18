@@ -19,9 +19,16 @@ public abstract class TArrayFactory {
     public static NDArray zerosShaped(int... dims) {
         return zeros(shape(dims));
     }
-
     public static NDArray zeros(Shape shape) {
         return arrayFillWith(shape.normalOrderedCopy(), 0.0);
+    }
+
+    public static NDIntArray intZerosShaped(int... dims) {
+        return intZeros(shape(dims));
+    }
+
+    public static NDIntArray intZeros(Shape shape) {
+        return intArrayFillWith(shape, 0);
     }
 
     public static NDArray randomInt(Random rand, int from, int to, int size) {
@@ -63,8 +70,20 @@ public abstract class TArrayFactory {
         return array(rangeDoubles(count));
     }
 
+    public static NDIntArray intRange(int count) {
+        return array(rangeInt(count));
+    }
+
     public static double[] rangeDoubles(int count) {
         double[] data = new double[count];
+        for (int i = 0; i < count; i++) {
+            data[i] = i;
+        }
+        return data;
+    }
+
+    public static int[] rangeInt(int count) {
+        int[] data = new int[count];
         for (int i = 0; i < count; i++) {
             data[i] = i;
         }

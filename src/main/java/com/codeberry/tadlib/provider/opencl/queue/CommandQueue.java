@@ -2,7 +2,7 @@ package com.codeberry.tadlib.provider.opencl.queue;
 
 import com.codeberry.tadlib.memorymanagement.AbstractDisposer;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
-import com.codeberry.tadlib.provider.opencl.OclArray;
+import com.codeberry.tadlib.provider.opencl.InProgressResources;
 import com.codeberry.tadlib.provider.opencl.OpenCL;
 import com.codeberry.tadlib.provider.opencl.device.Device;
 import com.codeberry.tadlib.provider.opencl.kernel.Kernel;
@@ -50,7 +50,7 @@ public class CommandQueue extends Pointer {
 
     public void enqueueKernel(Kernel kernel, long actualGlobalItems,
                               WorkItemMode workItemMode,
-                              OclArray.InProgressResources resources) {
+                              InProgressResources resources) {
         OpenCL.PointerArray events = resources.getDependencyEvents();
         long multiple = kernel.getInfo(getDevice()).preferredWorkGroupSizeMultiple;
 
@@ -73,7 +73,7 @@ public class CommandQueue extends Pointer {
     public void enqueueKernel(Kernel kernel,
                               long[] actualGlobalItems,
                               long[] localItems,
-                              OclArray.InProgressResources resources) {
+                              InProgressResources resources) {
         OpenCL.PointerArray events = resources.getDependencyEvents();
 
         throwOnError(() -> OpenCL.INSTANCE.wrappedEnqueueNDRangeKernel(this, kernel, actualGlobalItems.length, null,

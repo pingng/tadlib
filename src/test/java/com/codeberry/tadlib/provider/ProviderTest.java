@@ -1,5 +1,6 @@
 package com.codeberry.tadlib.provider;
 
+import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.provider.java.JavaShape;
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.provider.java.JavaArray;
@@ -16,7 +17,7 @@ public class ProviderTest {
     public void javaProvider() {
         ProviderStore.setProvider(new JavaProvider());
 
-        NDArray a = ProviderStore.array(0);
+        NDArray a = ProviderStore.array(0.);
 
         assertEquals(JavaArray.class, a.getClass());
     }
@@ -25,7 +26,7 @@ public class ProviderTest {
     public void OpenCLProvider() {
         ProviderStore.setProvider(new OpenCLProvider());
 
-        NDArray a = ProviderStore.array(0);
+        NDArray a = ProviderStore.array(0.);
 
         assertEquals(OclArray.class, a.getClass());
     }
@@ -44,6 +45,21 @@ public class ProviderTest {
             }
 
             @Override
+            public NDIntArray createIntArray(Object multiDimArray) {
+                return null;
+            }
+
+            @Override
+            public NDIntArray createIntArray(int v) {
+                return null;
+            }
+
+            @Override
+            public NDIntArray createIntArrayWithValue(Shape shape, int v) {
+                return null;
+            }
+
+            @Override
             public NDArray createArray(double[] data, Shape shape) {
                 return new DummyArray();
             }
@@ -59,7 +75,7 @@ public class ProviderTest {
             }
         });
 
-        NDArray a = ProviderStore.array(0);
+        NDArray a = ProviderStore.array(0.);
 
         assertEquals(DummyArray.class, a.getClass());
     }

@@ -40,8 +40,8 @@ class TArrayMatMul {
 
     @Test
     public void matmulLarge() {
-        NDArray a = ProviderStore.arrayFillWith(ProviderStore.shape(40000, 784), 0).mul(1);
-        NDArray b = ProviderStore.arrayFillWith(ProviderStore.shape(784, 32), 1).mul(1);
+        NDArray a = ProviderStore.arrayFillWith(ProviderStore.shape(40000, 784), 0.0).mul(1);
+        NDArray b = ProviderStore.arrayFillWith(ProviderStore.shape(784, 32), 1.0).mul(1);
 
         NDArray c = a.matmul(b);
 

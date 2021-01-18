@@ -3,6 +3,7 @@ package com.codeberry.tadlib.provider.opencl.ops;
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.opencl.InProgressResources;
 import com.codeberry.tadlib.provider.opencl.OclArray;
 import com.codeberry.tadlib.provider.opencl.OclBuffer;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
@@ -56,7 +57,7 @@ public class Sum implements OclKernelSource {
         int aggregateValsPerWorker = (int) ((sumShape.getSize() + neededWorkers - 1) / neededWorkers);
 
         OclBuffer buf = createBuffer(context, sizeOf(cl_double, outShape.getSize()), BufferMemFlags.CL_MEM_READ_WRITE);
-        OclArray.InProgressResources resources = new OclArray.InProgressResources(context);
+        InProgressResources resources = new InProgressResources(context);
 
         kernel.createArgSetter(resources)
                 .nextArg(dimCount)

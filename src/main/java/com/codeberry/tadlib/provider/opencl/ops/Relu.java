@@ -3,6 +3,7 @@ package com.codeberry.tadlib.provider.opencl.ops;
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
+import com.codeberry.tadlib.provider.opencl.InProgressResources;
 import com.codeberry.tadlib.provider.opencl.OclArray;
 import com.codeberry.tadlib.provider.opencl.OclBuffer;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
@@ -37,7 +38,7 @@ public class Relu implements OclKernelSource {
     public static NDArray.ReluResult relu(Context context, OclArray src, double leakyScale) {
         Shape shape = src.getShape();
 
-        OclArray.InProgressResources resources = new OclArray.InProgressResources(context);
+        InProgressResources resources = new InProgressResources(context);
         OclBuffer buf = createBuffer(context, sizeOf(cl_double, shape.getSize()), BufferMemFlags.CL_MEM_READ_WRITE);
         OclBuffer bufMask = createBuffer(context, sizeOf(cl_double, shape.getSize()), BufferMemFlags.CL_MEM_READ_WRITE);
 

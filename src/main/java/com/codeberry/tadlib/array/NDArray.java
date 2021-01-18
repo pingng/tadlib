@@ -142,6 +142,19 @@ public interface NDArray extends Disposable, DisposableContainer<NDArray> {
 
     NDArray log();
 
+    NDIntArray argmax(int axis) throws AxisOutOfBounds;
+
+    /**
+     * @param indices broadcast not supported
+     */
+    NDArray getAtIndicesOnAxis(NDIntArray indices, int axis);
+
+    /**
+     * @param indices broadcast not supported
+     * @param change broadcast not supported
+     */
+    NDArray withUpdateAtIndicesOnAxis(NDIntArray indices, int axis, NDArray change); // TODO: validate shapes & axis
+
     enum DimKeepRemove {
         REMOVE_DIM {
             @Override
@@ -178,7 +191,11 @@ public interface NDArray extends Disposable, DisposableContainer<NDArray> {
         public abstract Shape toActualOutShape(Shape inShape, Shape outShapeWithSingleDimensions, Boolean[] dimsToSum);
     }
 
-    interface InternalReader {
+    interface InternalIntReader {
+        int readValue(long index);
+    }
+
+    interface InternalDoubleReader {
         double readValue(long index);
     }
 

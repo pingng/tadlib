@@ -59,8 +59,8 @@ public interface Shape {
         return new int[getDimCount()];
     }
 
-    default Object newValueArray() {
-        return Array.newInstance(double.class, toDimArray());
+    default Object newValueArray(Class<?> componentType) {
+        return Array.newInstance(componentType, toDimArray());
     }
 
     default Boolean[] newCollapseArray() {
@@ -184,5 +184,24 @@ public interface Shape {
                 return false;
         }
         return true;
+    }
+
+    default Shape removeDimAt(int axis) {
+        int dimCount = getDimCount();
+        int[] result = new int[dimCount - 1];
+
+        int _axis = (axis >= 0 ? axis : dimCount + axis);
+        int index = 0;
+        for (int i = 0; i < dimCount; i++) {
+            if (_axis != i) {
+                result[index++] = at(i);
+            }
+        }
+
+        return ProviderStore.shape(result);
+    }
+
+    default int wrapNegIndex(int dimIndex) {
+        return (dimIndex >= 0 ? dimIndex : getDimCount() + dimIndex);
     }
 }

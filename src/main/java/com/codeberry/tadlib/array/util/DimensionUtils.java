@@ -177,6 +177,14 @@ public abstract class DimensionUtils {
         }
     }
 
+    public static int calcOffset(int[] indices, int[] broadcastBlockSizes) {
+        int offset = 0;
+        for (int i = 0; i < indices.length; i++) {
+            offset += indices[i] * broadcastBlockSizes[i];
+        }
+        return offset;
+    }
+
     public enum ShapeEndType {
         END_WITH__HEIGHT_WIDTH_CHANNEL(3),
         END_WITH__HEIGHT_WIDTH(2);

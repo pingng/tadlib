@@ -1,5 +1,6 @@
 package com.codeberry.tadlib.provider;
 
+import com.codeberry.tadlib.array.Comparison;
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.provider.java.JavaShape;
@@ -186,5 +187,15 @@ class DummyArray implements NDArray {
     @Override
     public double dataAt(int... indices) {
         return 0;
+    }
+
+    @Override
+    public NDArray compare(NDIntArray other, Comparison comparison, double trueValue, double falseValue) {
+        return null;
+    }
+
+    @Override
+    public NDArray compare(NDArray other, Comparison comparison, double trueValue, double falseValue) {
+        return null;
     }
 }

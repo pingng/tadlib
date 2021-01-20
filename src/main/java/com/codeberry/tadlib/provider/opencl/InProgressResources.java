@@ -148,7 +148,7 @@ public class InProgressResources {
     }
 
     public Pointer registerReadOnlyArg(int[] v) {
-        if (v != null) {
+        if (v != null && v.length > 0) {
             Memory memory = createMemory(v);
             OclBuffer buf = createBuffer(context, sizeOf(cl_int, v.length), BufferMemFlags.CL_MEM_READ_ONLY);
             OclEventByReference bufferWriteEvt = new OclEventByReference();

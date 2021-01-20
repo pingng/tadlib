@@ -1,5 +1,6 @@
 package com.codeberry.tadlib.provider.opencl;
 
+import com.codeberry.tadlib.array.Comparison;
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.array.Shape;
@@ -362,6 +363,16 @@ public class OclArray implements NDArray {
     @Override
     public NDArray transpose(int... axes) {
         return Transpose.transpose(buffer.context, this, axes);
+    }
+
+    @Override
+    public NDArray compare(NDIntArray other, Comparison comparison, double trueValue, double falseValue) {
+        return Compare.compare(buffer.context, this, (OclIntArray) other, comparison, trueValue, falseValue);
+    }
+
+    @Override
+    public NDArray compare(NDArray other, Comparison comparison, double trueValue, double falseValue) {
+        return Compare.compare(buffer.context, this, (OclArray) other, comparison, trueValue, falseValue);
     }
 
     @Override

@@ -38,6 +38,10 @@ public interface NDArray extends Disposable, DisposableContainer<NDArray> {
 
     double dataAt(int... indices);
 
+    NDArray compare(NDIntArray other, Comparison comparison, double trueValue, double falseValue);
+
+    NDArray compare(NDArray other, Comparison comparison, double trueValue, double falseValue);
+
     default NDArray sub(NDArray m) {
         return add(m.negate());
     }

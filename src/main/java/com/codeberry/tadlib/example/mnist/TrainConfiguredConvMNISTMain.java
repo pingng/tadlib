@@ -5,6 +5,7 @@ import com.codeberry.tadlib.nn.model.optimizer.SGD;
 import com.codeberry.tadlib.nn.model.SequentialModel;
 import com.codeberry.tadlib.nn.model.layer.DenseLayer;
 import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.java.JavaProvider;
 import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.LoadParams.params;

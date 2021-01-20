@@ -34,4 +34,8 @@ public interface NDIntArray extends DisposalRegister.Disposable, DisposalRegiste
     int dataAt(int... indices);
 
     NDIntArray reshape(int... dims);
+
+    NDArray compare(NDArray other, Comparison comparison, double trueValue, double falseValue);
+
+    NDIntArray compare(NDIntArray other, Comparison comparison, int trueValue, int falseValue);
 }

@@ -1,5 +1,6 @@
 package com.codeberry.tadlib.provider.java;
 
+import com.codeberry.tadlib.array.Comparison;
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.array.Shape;
@@ -13,6 +14,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.function.IntFunction;
+import java.util.function.IntToDoubleFunction;
 
 import static com.codeberry.tadlib.array.NDArray.DimKeepRemove.REMOVE_DIM;
 import static com.codeberry.tadlib.array.util.DimensionUtils.*;
@@ -688,6 +691,28 @@ public class JavaArray implements NDArray {
         return 0;
     }
 
+    @Override
+    public NDArray compare(NDIntArray other, Comparison comparison, double trueValue, double falseValue) {
+        Shape leftShape = this.shape;
+        Shape rightShape = other.getShape();
+        IntFunction<Double> left = offset -> this.data[offset];
+        IntFunction<Double> right = offset -> (double) ((JavaIntArray) other).data[offset];
+
+        return CompareHelper.compare(comparison::doubleIsTrue, trueValue, falseValue,
+                leftShape, rightShape, left, right, new DoubleNDArrayWriter());
+    }
+
+    @Override
+    public NDArray compare(NDArray other, Comparison comparison, double trueValue, double falseValue) {
+        Shape leftShape = this.shape;
+        Shape rightShape = other.getShape();
+        IntFunction<Double> left = offset -> this.data[offset];
+        IntFunction<Double> right = offset -> ((JavaArray) other).data[offset];
+
+        return CompareHelper.compare(comparison::doubleIsTrue, trueValue, falseValue,
+                leftShape, rightShape, left, right, new DoubleNDArrayWriter());
+    }
+
     private static JavaShape evalConv2DShape(JavaShape input, JavaShape filter) {
         int[] dims = input.normalOrderedCopy().dims;
         dims[dims.length - 1] = filter.at(-1);
@@ -828,7 +853,7 @@ public class JavaArray implements NDArray {
         return data[offset];
     }
 
-    private static JavaShape evalBroadcastOutputShape(JavaShape a, JavaShape b) {
+    static JavaShape evalBroadcastOutputShape(Shape a, Shape b) {
         return new JavaShape(createBroadcastResultDims(a, b));
     }
 
@@ -1347,6 +1372,30 @@ public class JavaArray implements NDArray {
         @Override
         public NDArray createMask() {
             return new JavaArray(gradMaskData, JavaShape.of(dims));
+        }
+    }
+
+    private static class DoubleNDArrayWriter implements CompareHelper.CompareWriter<Double, JavaArray> {
+        private double[] data;
+
+        @Override
+        public JavaArray scalar(Double value) {
+            return new JavaArray(value);
+        }
+
+        @Override
+        public JavaArray toArray(JavaShape shape) {
+            return new JavaArray(data, shape);
+        }
+
+        @Override
+        public void prepareDate(int size) {
+            data = new double[size];
+        }
+
+        @Override
+        public void write(int offset, Double outVal) {
+            data[offset] = outVal;
         }
     }
 }

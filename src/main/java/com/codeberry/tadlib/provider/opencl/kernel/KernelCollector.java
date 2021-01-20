@@ -8,6 +8,7 @@ import java.util.List;
 public class KernelCollector {
     public static List<ProgramSource> collectAllKernelSources() {
         Class<? extends OclKernelSource>[] sourceClasses = new Class[] {
+                Compare.class,
                 Conv.class,
                 Add.class,
                 Mul.class,

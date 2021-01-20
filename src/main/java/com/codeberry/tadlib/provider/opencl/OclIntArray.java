@@ -1,5 +1,6 @@
 package com.codeberry.tadlib.provider.opencl;
 
+import com.codeberry.tadlib.array.Comparison;
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.array.Shape;
@@ -7,6 +8,7 @@ import com.codeberry.tadlib.array.util.FlatToMultiDimArrayConverter;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
 import com.codeberry.tadlib.provider.opencl.context.Context;
+import com.codeberry.tadlib.provider.opencl.ops.Compare;
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 
@@ -134,5 +136,15 @@ public class OclIntArray implements NDIntArray {
     @Override
     public NDIntArray reshape(int... dims) {
         return createNDArray(this.shape.reshape(dims), buffer, resources);
+    }
+
+    @Override
+    public NDArray compare(NDArray other, Comparison comparison, double trueValue, double falseValue) {
+        return Compare.compare(buffer.context, this, (OclArray) other, comparison, trueValue, falseValue);
+    }
+
+    @Override
+    public NDIntArray compare(NDIntArray other, Comparison comparison, int trueValue, int falseValue) {
+        return Compare.compare(buffer.context, this, (OclIntArray) other, comparison, trueValue, falseValue);
     }
 }

@@ -1,13 +1,9 @@
 package com.codeberry.tadlib.provider.opencl;
 
-import com.sun.jna.Function;
-import com.sun.jna.Function.PostCallRead;
-import com.sun.jna.Native;
+import com.codeberry.tadlib.provider.opencl.jna.TADPointerByReference;
 import com.sun.jna.Pointer;
-import com.sun.jna.ptr.ByReference;
-import com.sun.jna.ptr.PointerByReference;
 
-public class OclEventByReference extends PointerByReference {
+public class OclEventByReference extends TADPointerByReference {
     private OclEvent oclEvent;
 
     public OclEventByReference() {
@@ -32,11 +28,23 @@ public class OclEventByReference extends PointerByReference {
         }
     }
 
-    public void oclRelease() {
+    @Override
+    public void dispose() {
         OclEvent ev = getValue();
         if (ev != null) {
             ev.oclRelease();
             setValue(null);
         }
+        super.dispose();
+    }
+
+    @Override
+    protected Class<?> getDataType() {
+        return OclEvent.class;
+    }
+
+    @Override
+    protected String getStrValue() {
+        return String.valueOf(getValue());
     }
 }

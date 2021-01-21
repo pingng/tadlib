@@ -6,6 +6,8 @@ import com.sun.jna.Pointer;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class Device extends Pointer {
     private final int index;
@@ -28,8 +30,12 @@ public class Device extends Pointer {
         return new Device(index, info, parent);
     }
 
-    public static OpenCL.PointerArray toPointerArray(List<Device> devices) {
-        return new OpenCL.PointerArray(devices.toArray(Pointer[]::new));
+    public static <R> R mapDevicePointers(Function<OpenCL.PointerArray, R> mapper, List<Device> devices) {
+        return OpenCL.PointerArray.mapPointerArray(mapper, devices.toArray(Pointer[]::new));
+    }
+
+    public static void useDevicePointers(Consumer<OpenCL.PointerArray> mapper, List<Device> devices) {
+        OpenCL.PointerArray.usePointerArray(mapper, devices.toArray(Pointer[]::new));
     }
 
     @Override

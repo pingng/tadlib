@@ -4,6 +4,7 @@ import com.codeberry.tadlib.memorymanagement.AbstractDisposer;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.provider.opencl.InProgressResources;
 import com.codeberry.tadlib.provider.opencl.OpenCL;
+import com.codeberry.tadlib.provider.opencl.SizeTArrayByReference;
 import com.codeberry.tadlib.provider.opencl.device.Device;
 import com.codeberry.tadlib.provider.opencl.kernel.Kernel;
 import com.sun.jna.Pointer;
@@ -51,19 +52,21 @@ public class CommandQueue extends Pointer {
     public void enqueueKernel(Kernel kernel, long actualGlobalItems,
                               WorkItemMode workItemMode,
                               InProgressResources resources) {
-        OpenCL.PointerArray events = resources.getDependencyEvents();
         long multiple = kernel.getInfo(getDevice()).preferredWorkGroupSizeMultiple;
 
-        throwOnError(() -> {
+        resources.useDependencyEvents(events -> throwOnError(() -> {
             long global = workItemMode.calcGlobalItems(actualGlobalItems, multiple);
             long local = multiple;
 
+            SizeTArrayByReference global_work_size = resources.registerDisposableByRef(toSizeTArray(global));
+            SizeTArrayByReference local_work_size = resources.registerDisposableByRef(toSizeTArray(local));
+
             return OpenCL.INSTANCE.wrappedEnqueueNDRangeKernel(this, kernel, 1, null,
-                    toSizeTArray(global),
-                    toSizeTArray(local),
+                    global_work_size,
+                    local_work_size,
                     events,
                     resources.opEvent);
-        });
+        }));
 
         if (FINISHED_AFTER_EACH_ENQUEUE) {
             waitForFinish();
@@ -74,13 +77,16 @@ public class CommandQueue extends Pointer {
                               long[] actualGlobalItems,
                               long[] localItems,
                               InProgressResources resources) {
-        OpenCL.PointerArray events = resources.getDependencyEvents();
+        SizeTArrayByReference global_work_size = resources.registerDisposableByRef(toSizeTArray(actualGlobalItems));
+        SizeTArrayByReference local_work_size = resources.registerDisposableByRef(toSizeTArray(localItems));
 
-        throwOnError(() -> OpenCL.INSTANCE.wrappedEnqueueNDRangeKernel(this, kernel, actualGlobalItems.length, null,
-                toSizeTArray(actualGlobalItems),
-                toSizeTArray(localItems),
-                events,
-                resources.opEvent));
+        resources.useDependencyEvents(events -> {
+            throwOnError(() -> OpenCL.INSTANCE.wrappedEnqueueNDRangeKernel(this, kernel, actualGlobalItems.length, null,
+                    global_work_size,
+                    local_work_size,
+                    events,
+                    resources.opEvent));
+        });
 
         if (FINISHED_AFTER_EACH_ENQUEUE) {
             waitForFinish();

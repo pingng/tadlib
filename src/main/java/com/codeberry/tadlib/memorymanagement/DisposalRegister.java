@@ -51,7 +51,9 @@ public class DisposalRegister {
     }
 
     public static void registerDisposer(Object object, AbstractDisposer disposer) {
-        cleaner.register(object, disposer::releaseByGc);
+        Cleaner.Cleanable cleanable = cleaner.register(object, disposer::releaseByGcOrCleaner);
+
+        disposer.setCleanable(cleanable);
     }
 
     public interface Disposable {

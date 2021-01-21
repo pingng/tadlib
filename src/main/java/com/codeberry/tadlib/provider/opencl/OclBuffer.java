@@ -1,5 +1,9 @@
 package com.codeberry.tadlib.provider.opencl;
 
+import com.codeberry.tadlib.provider.opencl.jna.TADByReference;
+import com.codeberry.tadlib.provider.opencl.jna.TADDoubleByReference;
+import com.codeberry.tadlib.provider.opencl.jna.TADIntByReference;
+import com.codeberry.tadlib.provider.opencl.jna.TADMemory;
 import com.codeberry.tadlib.memorymanagement.AbstractDisposer;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
@@ -9,9 +13,6 @@ import com.codeberry.tadlib.provider.opencl.queue.CommandQueue;
 import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
-import com.sun.jna.ptr.ByReference;
-import com.sun.jna.ptr.DoubleByReference;
-import com.sun.jna.ptr.IntByReference;
 
 import static com.codeberry.tadlib.provider.opencl.OclDataType.cl_double;
 import static com.codeberry.tadlib.provider.opencl.OclDataType.cl_int;
@@ -22,7 +23,7 @@ import static java.lang.Math.min;
 public class OclBuffer extends Pointer implements DisposalRegister.Disposable {
 
     final Context context;
-    public final Pointer argPointer;
+    public final TADMemory argPointer;
     private final long byteCount;
     private boolean locked;
 
@@ -107,7 +108,7 @@ public class OclBuffer extends Pointer implements DisposalRegister.Disposable {
     public synchronized void dispose() {
         disposer.release();
         Pointer.nativeValue(this, 0);
-        argPointer.setPointer(0, null);
+        argPointer.dispose();
     }
 
     private synchronized void enableLock() {
@@ -128,8 +129,8 @@ public class OclBuffer extends Pointer implements DisposalRegister.Disposable {
         return disposer.runBlockingConcurrentRelease(() -> OclBuffer.createBuffer(this));
     }
 
-    private static Memory createMemoryPointerTo(Pointer pointer) {
-        Memory mem = new Memory(Native.POINTER_SIZE);
+    private static TADMemory createMemoryPointerTo(Pointer pointer) {
+        TADMemory mem = new TADMemory(Native.POINTER_SIZE);
         mem.setPointer(0, pointer);
         return mem;
     }
@@ -155,74 +156,64 @@ public class OclBuffer extends Pointer implements DisposalRegister.Disposable {
     }
 
     public void oclFill(CommandQueue queue, InProgressResources resources, double value) {
-        fill(queue, resources, new DoubleByReference(value), cl_double);
-
-//        OpenCL.PointerArray events = resources.getDependencyEvents();
-//        OclEventByReference event = new OclEventByReference();
-//
-//        DoubleByReference valueRef = new DoubleByReference(value);
-//        throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueFillBuffer(queue,
-//                this,
-//                valueRef.getPointer(),
-//                new SizeT(OclDataType.cl_double.byteSize),
-//                new SizeT(0),
-//                new SizeT(this.byteCount),
-//                events,
-//                event));
-//
-//        resources.registerDependencyEvent(event);
+        fill(queue, resources, new TADDoubleByReference(value), cl_double);
     }
 
     public void oclFill(CommandQueue queue, InProgressResources resources, int value) {
-        fill(queue, resources, new IntByReference(value), cl_int);
+        fill(queue, resources, new TADIntByReference(value), cl_int);
     }
 
-    private void fill(CommandQueue queue, InProgressResources resources, ByReference valueRef, OclDataType dataType) {
-        OpenCL.PointerArray events = resources.getDependencyEvents();
-        OclEventByReference event = new OclEventByReference();
+    private void fill(CommandQueue queue, InProgressResources resources, TADByReference valueRef, OclDataType dataType) {
+        resources.useDependencyEvents(events -> {
+            OclEventByReference event = new OclEventByReference();
 
-        throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueFillBuffer(queue,
-                this,
-                valueRef.getPointer(),
-                new SizeT(dataType.byteSize),
-                new SizeT(0),
-                new SizeT(this.byteCount),
-                events,
-                event));
+            throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueFillBuffer(queue,
+                    this,
+                    valueRef.getPointer(),
+                    new SizeT(dataType.byteSize),
+                    new SizeT(0),
+                    new SizeT(this.byteCount),
+                    events,
+                    event));
 
-        resources.registerDependencyEvent(event);
+            resources.registerDisposableByRef(valueRef);
+            resources.registerDisposableByRef(event);
+        });
     }
 
     public void oclCopy(CommandQueue queue, InProgressResources resources, OclBuffer src, long srcOffset) {
-        OpenCL.PointerArray events = resources.getDependencyEvents();
-        OclEventByReference event = new OclEventByReference();
+        resources.useDependencyEvents(events -> {
+            OclEventByReference event = new OclEventByReference();
 
-        long minSize = min(this.byteCount, src.byteCount);
+            long minSize = min(this.byteCount, src.byteCount - srcOffset);
 
-        throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueCopyBuffer(queue,
-                src,
-                this,
-                new SizeT(srcOffset),
-                new SizeT(0),
-                new SizeT(minSize),
-                events,
-                event));
+            throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueCopyBuffer(queue,
+                    src,
+                    this,
+                    new SizeT(srcOffset),
+                    new SizeT(0),
+                    new SizeT(minSize),
+                    events,
+                    event));
 
-        resources.registerDependencyEvent(event);
+            resources.registerDisposableByRef(event);
+        });
     }
 
     public double oclReadDouble(InProgressResources resources, int index) {
-        Memory nativeBuf = new Memory(cl_double.sizeOfElements(1));
+        TADMemory nativeBuf = new TADMemory(cl_double.sizeOfElements(1));
 
-        OpenCL.PointerArray events = resources.getDependencyEvents();
+        resources.useDependencyEvents(events ->
+                throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueReadBuffer(context.getQueue(),
+                        this, true,
+                        new SizeT(cl_double.sizeOfElements(index)),
+                        new SizeT(nativeBuf.size()), nativeBuf, events,
+                        null)));
 
-        throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueReadBuffer(context.getQueue(),
-                this, true,
-                new SizeT(cl_double.sizeOfElements(index)),
-                new SizeT(nativeBuf.size()), nativeBuf, events,
-                null));
+        double value = nativeBuf.getDouble(0);
+        nativeBuf.dispose();
 
-        return nativeBuf.getDouble(0);
+        return value;
     }
 
     public OclBuffer oclDoubleSubBuffer(InProgressResources res, int fromOffset, int toOffset) {

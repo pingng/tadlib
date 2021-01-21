@@ -1,18 +1,15 @@
 package com.codeberry.tadlib.provider.opencl;
 
+import com.codeberry.tadlib.provider.opencl.jna.*;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
 import com.codeberry.tadlib.provider.opencl.context.Context;
-import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
-import com.sun.jna.ptr.ByReference;
-import com.sun.jna.ptr.DoubleByReference;
-import com.sun.jna.ptr.IntByReference;
-import com.sun.jna.ptr.LongByReference;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -20,6 +17,7 @@ import java.util.stream.Stream;
 import static com.codeberry.tadlib.provider.opencl.OclBuffer.ByteSize.sizeOf;
 import static com.codeberry.tadlib.provider.opencl.OclBuffer.createBuffer;
 import static com.codeberry.tadlib.provider.opencl.OclDataType.*;
+import static com.codeberry.tadlib.provider.opencl.OpenCL.PointerArray.mapPointerArray;
 import static com.codeberry.tadlib.provider.opencl.consts.ErrorCode.throwOnError;
 import static java.lang.Math.toIntExact;
 import static java.util.stream.Collectors.toList;
@@ -33,9 +31,8 @@ public class InProgressResources {
     private final Context context;
 
     public volatile OclEventByReference opEvent;
-    private List<Memory> memoryPointers = new ArrayList<>();
-    private List<ByReference> references = new ArrayList<>();
-    private List<OclEventByReference> events = new ArrayList<>();
+    private List<TADMemory> disposableMemory = new ArrayList<>();
+    private List<TADByReference> disposableByRefs = new ArrayList<>();
     private List<OclBuffer> disposableBuffers = new ArrayList<>();
     private List<OclBuffer> strongReferredBuffers = new ArrayList<>();
     private List<OclArray> strongReferredNDArrays = new ArrayList<>();
@@ -45,7 +42,7 @@ public class InProgressResources {
         this.context = context;
 
         opEvent = new OclEventByReference();
-        events.add(opEvent);
+        disposableByRefs.add(opEvent);
     }
 
     public void registerDependency(OclArray dependantArray) {
@@ -66,14 +63,12 @@ public class InProgressResources {
         this.strongReferredBuffers.add(keepRefToBuffer);
     }
 
-    public OpenCL.PointerArray getDependencyEvents() {
+    public void useDependencyEvents(Consumer<OpenCL.PointerArray> consumer) {
         Pointer[] events = toEventPointers(() -> Stream.concat(
                 strongReferredNDArrays.stream().map(a -> a.resources),
                 strongReferredNDIntArrays.stream().map(a -> a.resources)));
-        if (events != null) {
-            return OpenCL.PointerArray.pointers(events);
-        }
-        return null;
+
+        OpenCL.PointerArray.usePointerArray(consumer, events);
     }
 
     private static Pointer[] toEventPointers(Supplier<Stream<InProgressResources>> resourcesSupplier) {
@@ -92,29 +87,29 @@ public class InProgressResources {
     }
 
     public Pointer argLong(long v) {
-        LongByReference ref = new LongByReference(v);
-        references.add(ref);
+        TADLongByReference ref = new TADLongByReference(v);
+        disposableByRefs.add(ref);
 
         return ref.getPointer();
     }
 
     public Pointer argInt(int v) {
-        IntByReference ref = new IntByReference(v);
-        references.add(ref);
+        TADIntByReference ref = new TADIntByReference(v);
+        disposableByRefs.add(ref);
 
         return ref.getPointer();
     }
 
     public Pointer argDouble(double v) {
-        DoubleByReference ref = new DoubleByReference(v);
-        references.add(ref);
+        TADDoubleByReference ref = new TADDoubleByReference(v);
+        disposableByRefs.add(ref);
 
         return ref.getPointer();
     }
 
     public Pointer argBoolean(boolean v) {
-        IntByReference ref = new IntByReference(v ? 1 : 0);
-        references.add(ref);
+        TADIntByReference ref = new TADIntByReference(v ? 1 : 0);
+        disposableByRefs.add(ref);
 
         return ref.getPointer();
     }
@@ -130,38 +125,45 @@ public class InProgressResources {
         for (OclIntArray ndArr : strongReferredNDIntArrays) {
             ndArr.resources.disposeDeep();
         }
-        for (OclEventByReference event : events) {
-            event.oclRelease();
+        for (TADByReference event : disposableByRefs) {
+            event.dispose();
         }
         for (OclBuffer buf : disposableBuffers) {
             buf.dispose();
+        }
+        for (TADMemory mp : disposableMemory) {
+            mp.dispose();
         }
 
         strongReferredNDArrays.clear();
         strongReferredNDIntArrays.clear();
         strongReferredBuffers.clear();
         disposableBuffers.clear();
-        memoryPointers.clear();
-        references.clear();
-        events.clear();
-        opEvent = null;
+        disposableByRefs.clear();
+        disposableMemory.clear();
+
+        OclEventByReference ev = this.opEvent;
+        if (ev != null) {
+            ev.dispose();
+            this.opEvent = null;
+        }
     }
 
     public Pointer registerReadOnlyArg(int[] v) {
         if (v != null && v.length > 0) {
-            Memory memory = createMemory(v);
+            TADMemory memory = createMemory(v);
             OclBuffer buf = createBuffer(context, sizeOf(cl_int, v.length), BufferMemFlags.CL_MEM_READ_ONLY);
             OclEventByReference bufferWriteEvt = new OclEventByReference();
             throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueWriteBuffer(
                     context.getQueue(), buf, false, new SizeT(0), new SizeT(memory.size()),
                     memory, null, bufferWriteEvt));
 
-            Memory pointerToPointer = new Memory(Native.POINTER_SIZE);
+            TADMemory pointerToPointer = new TADMemory(Native.POINTER_SIZE);
             pointerToPointer.setPointer(0, buf);
 
-            memoryPointers.add(memory);
-            memoryPointers.add(pointerToPointer);
-            events.add(bufferWriteEvt);
+            disposableMemory.add(memory);
+            disposableMemory.add(pointerToPointer);
+            disposableByRefs.add(bufferWriteEvt);
 
             registerDisposableBuffer(buf);
 
@@ -172,19 +174,19 @@ public class InProgressResources {
 
     public Pointer registerReadOnlyArg(long[] v) {
         if (v != null) {
-            Memory memory = createMemory(v);
+            TADMemory memory = createMemory(v);
             OclBuffer buf = createBuffer(context, sizeOf(cl_long, v.length), BufferMemFlags.CL_MEM_READ_ONLY);
             OclEventByReference bufferWriteEvt = new OclEventByReference();
             throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueWriteBuffer(
                     context.getQueue(), buf, false, new SizeT(0), new SizeT(memory.size()),
                     memory, null, bufferWriteEvt));
 
-            Memory pointerToPointer = new Memory(Native.POINTER_SIZE);
+            TADMemory pointerToPointer = new TADMemory(Native.POINTER_SIZE);
             pointerToPointer.setPointer(0, buf);
 
-            memoryPointers.add(memory);
-            memoryPointers.add(pointerToPointer);
-            events.add(bufferWriteEvt);
+            disposableMemory.add(memory);
+            disposableMemory.add(pointerToPointer);
+            disposableByRefs.add(bufferWriteEvt);
 
             registerDisposableBuffer(buf);
 
@@ -195,19 +197,19 @@ public class InProgressResources {
 
     public Pointer registerReadOnlyArg(double[] v) {
         if (v != null) {
-            Memory memory = createMemory(v);
+            TADMemory memory = createMemory(v);
             OclBuffer buf = createBuffer(context, sizeOf(cl_double, v.length), BufferMemFlags.CL_MEM_READ_ONLY);
             OclEventByReference bufferWriteEvt = new OclEventByReference();
             throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueWriteBuffer(
                     context.getQueue(), buf, false, new SizeT(0), new SizeT(memory.size()),
                     memory, null, bufferWriteEvt));
 
-            Memory pointerToPointer = new Memory(Native.POINTER_SIZE);
+            TADMemory pointerToPointer = new TADMemory(Native.POINTER_SIZE);
             pointerToPointer.setPointer(0, buf);
 
-            memoryPointers.add(memory);
-            memoryPointers.add(pointerToPointer);
-            events.add(bufferWriteEvt);
+            disposableMemory.add(memory);
+            disposableMemory.add(pointerToPointer);
+            disposableByRefs.add(bufferWriteEvt);
 
             registerDisposableBuffer(buf);
 
@@ -216,28 +218,36 @@ public class InProgressResources {
         return Pointer.NULL;
     }
 
-    private static Memory createMemory(int[] intArr) {
-        Memory dimBlockSizesLeftPointer = new Memory(cl_int.sizeOfElements(intArr.length));
+    private static TADMemory createMemory(int[] intArr) {
+        TADMemory dimBlockSizesLeftPointer = new TADMemory(cl_int.sizeOfElements(intArr.length));
         dimBlockSizesLeftPointer.write(0, intArr, 0, intArr.length);
         return dimBlockSizesLeftPointer;
     }
 
-    private static Memory createMemory(long[] longArr) {
-        Memory dimBlockSizesLeftPointer = new Memory(cl_long.sizeOfElements(longArr.length));
+    private static TADMemory createMemory(long[] longArr) {
+        TADMemory dimBlockSizesLeftPointer = new TADMemory(cl_long.sizeOfElements(longArr.length));
         dimBlockSizesLeftPointer.write(0, longArr, 0, longArr.length);
         return dimBlockSizesLeftPointer;
     }
 
-    private static Memory createMemory(double[] doubleArr) {
-        Memory dimBlockSizesLeftPointer = new Memory(cl_double.sizeOfElements(doubleArr.length));
+    private static TADMemory createMemory(double[] doubleArr) {
+        TADMemory dimBlockSizesLeftPointer = new TADMemory(cl_double.sizeOfElements(doubleArr.length));
         dimBlockSizesLeftPointer.write(0, doubleArr, 0, doubleArr.length);
         return dimBlockSizesLeftPointer;
     }
 
-    public void registerDependencyEvent(OclEventByReference event) {
-        Objects.requireNonNull(event, "Cannot add NULL dependency event");
+    public <R extends TADByReference> R registerDisposableByRef(R ref) {
+        Objects.requireNonNull(ref, "Cannot add NULL dependency ref");
 
-        events.add(event);
+        disposableByRefs.add(ref);
+
+        return ref;
+    }
+
+    public TADMemory createDisposableMemory(long sizeOfElements) {
+        TADMemory r = new TADMemory(sizeOfElements);
+        disposableMemory.add(r);
+        return r;
     }
 
     String getContentStatus() {
@@ -246,31 +256,39 @@ public class InProgressResources {
         tryReadBuffers("DisposableRefBuf", sb, disposableBuffers);
         tryReadBuffers("NDArray.buffer", sb, extractBuffers(strongReferredNDArrays, arr -> arr.buffer));
         tryReadBuffers("NDIntArray.buffer", sb, extractBuffers(strongReferredNDIntArrays, arr -> arr.buffer));
-        for (int i = 0; i < memoryPointers.size(); i++) {
-            Memory m = memoryPointers.get(i);
-            sb.append("Memory[").append(i).append("/").append(memoryPointers.size()).append("]:").append(m.size()).append(":readOk=");
+        for (int i = 0; i < disposableMemory.size(); i++) {
+            TADMemory m = disposableMemory.get(i);
+            sb.append("Memory[").append(i).append("/").append(disposableMemory.size()).append("]:").append(m.size()).append(":readOk=");
             try {
-                byte[] tmp = new byte[toIntExact(m.size())];
-                m.read(0, tmp, 0, tmp.length);
-                sb.append("true");
+                synchronized (m) {
+                    if (m.isDisposed()) {
+                        sb.append("(disposed)");
+                    } else {
+                        byte[] tmp = new byte[toIntExact(m.size())];
+                        m.read(0, tmp, 0, tmp.length);
+                        sb.append("true");
+                    }
+                }
             } catch (Exception e) {
                 sb.append("false").append(e.toString());
             }
             sb.append("\n");
         }
-        for (int i = 0; i < references.size(); i++) {
-            ByReference ref = references.get(i);
-            sb.append("Reference[").append(i).append("/").append(references.size()).append("]:").append(ref).append("\n");
+        for (int i = 0; i < disposableByRefs.size(); i++) {
+            TADByReference ref = disposableByRefs.get(i);
+            sb.append("Reference[").append(i).append("/").append(disposableByRefs.size()).append("]:").append(ref).append("\n");
         }
 
-        OpenCL.PointerArray events = getDependencyEvents();
-        if (events != null) {
-            for (int i = 0; i < events.length(); i++) {
-                sb.append("Event[").append(i).append("/").append(events.length()).append("]:waitRet=")
-                        .append(OpenCL.INSTANCE.clWaitForEvents(1, OpenCL.PointerArray.pointers(events.getPointer((long) i * Native.POINTER_SIZE))))
-                        .append("\n");
+        useDependencyEvents(events -> {
+            if (events != null) {
+                for (int i = 0; i < events.length(); i++) {
+                    sb.append("Event[").append(i).append("/").append(events.length()).append("]:waitRet=")
+                            .append((int) mapPointerArray(pArr -> OpenCL.INSTANCE.clWaitForEvents(1, pArr),
+                                            events.getPointer((long) i * Native.POINTER_SIZE)))
+                            .append("\n");
+                }
             }
-        }
+        });
 
         return sb.toString();
     }

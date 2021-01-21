@@ -16,7 +16,6 @@ import com.sun.jna.StringArray;
 import java.util.List;
 
 import static com.codeberry.tadlib.provider.opencl.consts.ErrorCode.throwOnError;
-import static com.codeberry.tadlib.provider.opencl.device.Device.toPointerArray;
 
 public class Program extends Pointer {
     /* cl_program_build_info */
@@ -42,9 +41,10 @@ public class Program extends Pointer {
             OpenCL inst = OpenCL.INSTANCE;
             Pointer program = throwOnError(errCode -> inst.clCreateProgramWithSource(context, 1,
                     new StringArray(new String[]{programSource.source}), null, errCode));
-            throwOnError(() -> inst.clBuildProgram(program,
-                    devices.size(), toPointerArray(devices), null, null, null),
-                    () -> getErrorMessage(program, devices));
+            Device.useDevicePointers(devicePointers ->
+                    throwOnError(() -> inst.clBuildProgram(program,
+                            devices.size(), devicePointers, null, null, null),
+                            () -> getErrorMessage(program, devices)), devices);
 
             Program ret = new Program(programSource.programClass, programSource.kernels, program);
 

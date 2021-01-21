@@ -2,6 +2,7 @@ package com.codeberry.tadlib.memorymanagement;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.ref.Cleaner;
 import java.util.concurrent.Callable;
 
 import static java.lang.Long.toHexString;
@@ -12,6 +13,8 @@ public abstract class AbstractDisposer {
     // The same lock object is used by all views
     protected final Object memObjLock;
     protected boolean released;
+    protected Cleaner.Cleanable cleanable;
+    protected boolean releasedManually;
 
     private final String initStackTrace;
     private volatile Runnable callback;
@@ -41,26 +44,33 @@ public abstract class AbstractDisposer {
         this.memObjLock = parent.memObjLock;
     }
 
-    void releaseByGc() {
-        release(false);
-    }
-
     public void release() {
-        release(true);
+        synchronized (memObjLock) {
+            if (cleanable != null) {
+                releasedManually = true;
+                cleanable.clean();
+            }
+        }
     }
 
-    private void release(boolean manualCall) {
+    void setCleanable(Cleaner.Cleanable cleanable) {
+        synchronized (memObjLock) {
+            this.cleanable = cleanable;
+        }
+    }
+
+    void releaseByGcOrCleaner() {
         synchronized (memObjLock) {
             if (!released) {
-                Runnable cb = this.callback;
-                if (cb != null) {
-                    cb.run();
+                if (this.callback != null) {
+                    this.callback.run();
                 }
                 releaseResource();
+                cleanable = null;
                 released = true;
-                if (TRACK_GC_RELEASE && !manualCall) {
+                if (TRACK_GC_RELEASE && !releasedManually) {
                     System.err.println("---\n" +
-                            "Released buffer from:\n" +
+                            "Disposed object with instantiation stacktrace:\n" +
                             initStackTrace + "Called from:\n" +
                             toString(new Exception()));
                 }
@@ -87,6 +97,14 @@ public abstract class AbstractDisposer {
     }
 
     public void setCallback(Runnable callback) {
-        this.callback = callback;
+        synchronized (memObjLock) {
+            this.callback = callback;
+        }
+    }
+
+    public boolean isReleased() {
+        synchronized (memObjLock) {
+            return released;
+        }
     }
 }

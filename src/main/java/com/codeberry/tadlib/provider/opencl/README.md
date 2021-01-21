@@ -55,3 +55,4 @@ Leak Detection
 TO BE WRITTEN...
 
 com.codeberry.tadlib.memorymanagement.LeakDetector.printOldObjectsAndIncreaseObjectAge
+com.codeberry.tadlib.memorymanagement.AbstractDisposer.TRACK_GC_RELEASE

@@ -5,6 +5,7 @@ import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.util.FlatToMultiDimArrayConverter;
+import com.codeberry.tadlib.provider.opencl.jna.TADMemory;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
 import com.codeberry.tadlib.provider.opencl.context.Context;
@@ -12,11 +13,13 @@ import com.codeberry.tadlib.provider.opencl.ops.Compare;
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 
+import java.util.function.Function;
+
 import static com.codeberry.tadlib.memorymanagement.DisposalRegister.registerForDisposal;
 import static com.codeberry.tadlib.provider.opencl.OclBuffer.ByteSize.sizeOf;
 import static com.codeberry.tadlib.provider.opencl.OclBuffer.createBuffer;
-import static com.codeberry.tadlib.provider.opencl.OclDataType.cl_double;
 import static com.codeberry.tadlib.provider.opencl.OclDataType.cl_int;
+import static com.codeberry.tadlib.provider.opencl.OpenCL.PointerArray.usePointerArray;
 import static com.codeberry.tadlib.provider.opencl.consts.ErrorCode.throwOnError;
 
 public class OclIntArray implements NDIntArray {
@@ -35,7 +38,7 @@ public class OclIntArray implements NDIntArray {
     private OclIntArray(Context context, int v) {
         this(ProviderStore.shape(), createBuffer(context, sizeOf(cl_int, 1), BufferMemFlags.CL_MEM_READ_ONLY), new InProgressResources(context));
 
-        Memory nativeBuf = new Memory(cl_int.sizeOfElements(shape.getSize()));
+        TADMemory nativeBuf = resources.createDisposableMemory(cl_int.sizeOfElements(shape.getSize()));
         nativeBuf.setInt(0, v);
         throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueWriteBuffer(
                 context.getQueue(), this.buffer, false, new SizeT(0), new SizeT(nativeBuf.size()),
@@ -45,7 +48,7 @@ public class OclIntArray implements NDIntArray {
     public OclIntArray(Context context, Shape shape, int[] v) {
         this(shape, createBuffer(context, sizeOf(cl_int, shape.getSize()), BufferMemFlags.CL_MEM_READ_ONLY), new InProgressResources(context));
 
-        Memory nativeBuf = new Memory(cl_int.sizeOfElements(shape.getSize()));
+        TADMemory nativeBuf = resources.createDisposableMemory(cl_int.sizeOfElements(shape.getSize()));
         nativeBuf.write(0, v, 0, v.length);
         throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueWriteBuffer(
                 context.getQueue(), this.buffer, false, new SizeT(0), new SizeT(nativeBuf.size()),
@@ -82,8 +85,9 @@ public class OclIntArray implements NDIntArray {
             if (resources.isDisposed()) {
                 throw new RuntimeException("Should not be disposed");
             }
-            throwOnError(() -> OpenCL.INSTANCE.clWaitForEvents(1, OpenCL.PointerArray.pointers(ev)),
-                    resources::getContentStatus);
+            usePointerArray(pointers ->
+                    throwOnError(() -> OpenCL.INSTANCE.clWaitForEvents(1, pointers),
+                            resources::getContentStatus), ev);
         }
         resources.disposeDeep();
     }
@@ -97,30 +101,31 @@ public class OclIntArray implements NDIntArray {
         this.resources.disposeDeep();
     }
 
-    private Memory readToNative() {
-        Memory nativeBuf = new Memory(cl_int.sizeOfElements(shape.getSize()));
+    private <E> E readToNative(Function<TADMemory, E> mapper) {
+        TADMemory nativeBuf = new TADMemory(cl_int.sizeOfElements(shape.getSize()));
 
         Pointer kernelEvent = resources.getKernelEvent();
 
-        OpenCL.PointerArray events = (kernelEvent != null ? OpenCL.PointerArray.pointers(kernelEvent) : null);
-
-        throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueReadBuffer(buffer.context.getQueue(),
-                buffer, true,
-                new SizeT(0),
-                new SizeT(nativeBuf.size()), nativeBuf, events,
-                null));
+        usePointerArray(events ->
+                throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueReadBuffer(buffer.context.getQueue(),
+                        buffer, true,
+                        new SizeT(0),
+                        new SizeT(nativeBuf.size()), nativeBuf, events,
+                        null)), kernelEvent);
 
         resources.disposeDeep();
 
-        return nativeBuf;
+        try {
+            return mapper.apply(nativeBuf);
+        } finally {
+            nativeBuf.dispose();
+        }
     }
 
     @Override
     public Object toInts() {
-        Memory nativeBuf = readToNative();
-
-        return FlatToMultiDimArrayConverter.toInts(this.shape,
-                i -> nativeBuf.getInt(i * cl_int.byteSize));
+        return readToNative(nativeBuf -> FlatToMultiDimArrayConverter.toInts(this.shape,
+                i -> nativeBuf.getInt(i * cl_int.byteSize)));
     }
 
     @Override

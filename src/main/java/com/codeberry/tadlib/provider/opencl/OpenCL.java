@@ -1,5 +1,7 @@
 package com.codeberry.tadlib.provider.opencl;
 
+import com.codeberry.tadlib.provider.opencl.jna.TADMemory;
+import com.codeberry.tadlib.provider.opencl.jna.TADPointerByReference;
 import com.codeberry.tadlib.memorymanagement.LeakDetector;
 import com.codeberry.tadlib.provider.opencl.device.Device;
 import com.codeberry.tadlib.provider.opencl.device.DevicesPointer;
@@ -8,7 +10,6 @@ import com.codeberry.tadlib.provider.opencl.platform.Platform;
 import com.codeberry.tadlib.provider.opencl.platform.PlatformsPointer;
 import com.sun.jna.*;
 import com.sun.jna.ptr.IntByReference;
-import com.sun.jna.ptr.PointerByReference;
 
 public class OpenCL {
 
@@ -72,7 +73,7 @@ public class OpenCL {
      * @deprecated use the wrapper
      */
     public native int clEnqueueWriteBuffer(Pointer command_queue, Pointer oclPointer, boolean blocking_write, SizeT offset, SizeT size, Pointer ptr, int num_events_in_wait_list,
-                                           PointerArray event_wait_list, PointerByReference event);
+                                           PointerArray event_wait_list, TADPointerByReference event);
 
     public int wrapperEnqueueWriteBuffer(Pointer command_queue, Pointer oclPointer, boolean blocking_write,
                                          SizeT offset, SizeT size, Pointer ptr,
@@ -91,7 +92,7 @@ public class OpenCL {
      * @deprecated use wrapper
      */
     public native int clEnqueueReadBuffer(Pointer command_queue, Pointer oclPointer, boolean blocking_read, SizeT offset, SizeT size, Pointer ptr, int num_events_in_wait_list,
-                                          PointerArray event_wait_list, PointerByReference event);
+                                          PointerArray event_wait_list, TADPointerByReference event);
 
     public int wrapperEnqueueReadBuffer(Pointer command_queue, Pointer oclPointer,
                                         boolean blocking_read,
@@ -138,7 +139,7 @@ public class OpenCL {
                                              SizeTArrayByReference local_work_size,
                                              int num_events_in_wait_list,
                                              PointerArray event_wait_list,
-                                             PointerByReference event);
+                                             TADPointerByReference event);
 
     public int wrappedEnqueueNDRangeKernel(Pointer command_queue, Pointer kernel,
                                            int work_dim,
@@ -204,7 +205,7 @@ public class OpenCL {
                                           SizeT size,
                                           int num_events_in_wait_list,
                                           PointerArray event_wait_list,
-                                          PointerByReference event);
+                                          TADPointerByReference event);
 
     public int wrapperEnqueueCopyBuffer(Pointer command_queue,
                                         Pointer src_buffer,
@@ -227,10 +228,10 @@ public class OpenCL {
     public native int clFinish(Pointer command_queue);
 
     // FROM: com.sun.jna.Function
-    public static class PointerArray extends Memory {
+    public static class PointerArray extends TADMemory {
         private final int length;
 
-        public PointerArray(Pointer[] arg) {
+        private PointerArray(Pointer[] arg) {
             super((long) Native.POINTER_SIZE * (arg.length + 1));
             this.length = arg.length;
             for (int i = 0; i < arg.length; i++) {
@@ -239,8 +240,51 @@ public class OpenCL {
             setPointer((long) Native.POINTER_SIZE * arg.length, null);
         }
 
-        public static PointerArray pointers(Pointer... pointers) {
-            return new PointerArray(pointers);
+        public static <R> R mapPointerArray(java.util.function.Function<PointerArray, R> mapper, Pointer... pointers) {
+            PointerArray pa = new PointerArray(pointers);
+            try {
+                return mapper.apply(pa);
+            } finally {
+                pa.dispose();
+            }
+        }
+
+        public static void usePointerArray(java.util.function.Consumer<PointerArray> consumer, Pointer... pointers) {
+            Pointer[] actual = extractNonNulls(pointers);
+            PointerArray pa = (actual != null ? new PointerArray(actual) : null);
+            try {
+                consumer.accept(pa);
+            } finally {
+                if (pa != null) {
+                    pa.dispose();
+                }
+            }
+        }
+
+        private static Pointer[] extractNonNulls(Pointer[] pointers) {
+            if (pointers == null) {
+                return null;
+            }
+            int nonNulls = 0;
+            for (Pointer p : pointers) {
+                if (p != null) {
+                    nonNulls++;
+                }
+            }
+            if (nonNulls == 0) {
+                return null;
+            } else if (nonNulls == pointers.length) {
+                return pointers;
+            }
+
+            Pointer[] filtered = new Pointer[nonNulls];
+            for (int i = 0, f = 0; i < pointers.length; i++) {
+                Pointer p = pointers[i];
+                if (p != null) {
+                    filtered[f++] = p;
+                }
+            }
+            return filtered;
         }
 
         public int length() {

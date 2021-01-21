@@ -15,7 +15,8 @@ import com.sun.jna.Pointer;
 import java.util.*;
 
 import static com.codeberry.tadlib.provider.opencl.consts.ErrorCode.throwOnError;
-import static com.codeberry.tadlib.provider.opencl.device.Device.toPointerArray;
+import static com.codeberry.tadlib.provider.opencl.device.Device.mapDevicePointers;
+import static com.codeberry.tadlib.provider.opencl.device.Device.useDevicePointers;
 import static com.codeberry.tadlib.util.ClockTimer.timer;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.stream.Collectors.toList;
@@ -106,9 +107,10 @@ public class Context extends Pointer {
     }
 
     private static Pointer createContext(List<Device> devices) {
-        return throwOnError(errRef -> OpenCL.INSTANCE.clCreateContext(null,
-                devices.size(), toPointerArray(devices),
-                null, null, errRef));
+        return mapDevicePointers(pointerArray ->
+                throwOnError(errRef -> OpenCL.INSTANCE.clCreateContext(null,
+                        devices.size(), pointerArray,
+                        null, null, errRef)), devices);
     }
 
     @Override

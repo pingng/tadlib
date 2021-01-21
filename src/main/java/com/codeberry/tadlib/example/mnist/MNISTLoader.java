@@ -188,7 +188,7 @@ public class MNISTLoader {
         int images = min(in.readInt(), maxExamples);
         int rows = in.readInt();
         int cols = in.readInt();
-        System.out.println("Load MNIST Input: Magic=" + magic + " ImagesCountInFile=" + images + " Rows=" + rows + "Cols=" + cols);
+        System.out.println("Load MNIST Input: Magic=" + magic + " ImagesCountInFile=" + images + " Rows=" + rows + " Cols=" + cols);
         byte[] pixels = new byte[images * rows * cols];
         in.readFully(pixels);
         double[] data = new double[pixels.length];

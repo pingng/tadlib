@@ -127,8 +127,11 @@ public enum ErrorCode {
         }
     }
 
+    private static final ThreadLocal<IntByReference> THREAD_LOCAL_ERR_CODE_REF = ThreadLocal.withInitial(IntByReference::new);
+
     public static <R> R throwOnError(Function<IntByReference, R> clCallWithReturnAsRef) {
-        IntByReference errCodeRef = new IntByReference();
+        IntByReference errCodeRef = THREAD_LOCAL_ERR_CODE_REF.get();
+
         R result = clCallWithReturnAsRef.apply(errCodeRef);
         ErrorCode code = errorOf(errCodeRef.getValue());
         if (code != CL_SUCCESS) {

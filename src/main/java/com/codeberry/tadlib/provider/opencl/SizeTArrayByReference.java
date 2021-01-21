@@ -1,16 +1,16 @@
 package com.codeberry.tadlib.provider.opencl;
 
-import com.sun.jna.Native;
+import com.codeberry.tadlib.provider.opencl.jna.TADByReference;
 import com.sun.jna.Pointer;
-import com.sun.jna.ptr.ByReference;
 
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.IntStream;
 
 import static com.sun.jna.Native.SIZE_T_SIZE;
 import static java.util.stream.Collectors.*;
 
-public class SizeTArrayByReference extends ByReference {
+public class SizeTArrayByReference extends TADByReference {
     private final int length;
 
     /** Default constructor meant for JNA */
@@ -24,6 +24,20 @@ public class SizeTArrayByReference extends ByReference {
         for (int i = 0; i < length; i++) {
             setValue(i, 0);
         }
+    }
+
+    @Override
+    protected Class<?> getDataType() {
+        return SizeT[].class;
+    }
+
+    @Override
+    protected String getStrValue() {
+        List<Long> vals = new ArrayList<>();
+        for (int i = 0; i < length; i++) {
+            vals.add(getValue(i));
+        }
+        return vals.toString();
     }
 
     public static SizeTArrayByReference toSizeTArray(long... values) {
@@ -44,14 +58,5 @@ public class SizeTArrayByReference extends ByReference {
 
     public long getValue(int index) {
         return getPointer().getLong((long) SIZE_T_SIZE * index);
-    }
-
-    @Override
-    public String toString() {
-        String vals = IntStream.range(0, length)
-                .mapToLong(this::getValue)
-                .mapToObj(Long::toString)
-                .collect(joining(", "));
-        return String.format("size_t@0x%1$x=[%2$s]", Pointer.nativeValue(getPointer()), vals);
     }
 }

@@ -77,7 +77,6 @@ public class MatMul implements OclKernelSource {
         long workSquareWidth = (outShape.at(-1) + workGroupRect.width - 1) / workGroupRect.width;
         long workSquareHeight = (outShape.at(-2) + workGroupRect.height - 1) / workGroupRect.height;
 
-        queue.waitForFinish();
         queue.enqueueKernel(kernel,
                 new long[]{workSquareHeight * workGroupRect.height, workSquareWidth * workGroupRect.width, totalExampleCount},
                 new long[]{workGroupRect.height, workGroupRect.width, 1},

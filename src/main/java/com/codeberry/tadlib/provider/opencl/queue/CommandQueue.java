@@ -41,7 +41,7 @@ public class CommandQueue extends Pointer {
 
         CommandQueue r = new CommandQueue(queue, device);
 
-        // Simple test that it works
+        // Simple test that the queue works
         r.waitForFinish();
 
         DisposalRegister.registerDisposer(r, r.disposer);

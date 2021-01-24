@@ -159,6 +159,23 @@ public interface NDArray extends Disposable, DisposableContainer<NDArray> {
      */
     NDArray withUpdateAtIndicesOnAxis(NDIntArray indices, int axis, NDArray change); // TODO: validate shapes & axis
 
+    NDArray diag();
+
+    default NDArray transposeLast2D() {
+        int dimCount = getShape().getDimCount();
+        if (dimCount <= 1) {
+            throw new DimensionMissing("Expected 2+ dimensions: actualDim=" + dimCount);
+        }
+        int[] axes = new int[dimCount];
+        for (int i = 0; i < axes.length; i++) {
+            axes[i] = i;
+        }
+        axes[dimCount - 2] = dimCount - 1;
+        axes[dimCount - 1] = dimCount - 2;
+
+        return transpose(axes);
+    }
+
     enum DimKeepRemove {
         REMOVE_DIM {
             @Override

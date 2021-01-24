@@ -17,6 +17,7 @@ import static com.codeberry.tadlib.provider.opencl.OclBuffer.ByteSize.sizeOf;
 import static com.codeberry.tadlib.provider.opencl.OclBuffer.createBuffer;
 import static com.codeberry.tadlib.provider.opencl.OclDataType.cl_double;
 import static com.codeberry.tadlib.util.ClassResourceUtils.readString;
+import static java.lang.Long.max;
 import static java.lang.Math.min;
 import static java.lang.Math.toIntExact;
 import static java.util.Collections.singletonList;
@@ -54,7 +55,7 @@ public class Softmax implements OclKernelSource {
         long workGroupSizeMultiple = kernel.getPreferredWorkGroupSizeMultiple(queue);
         int neededWorkers = toMultiplesOf(valuesPerExample, maxWorkers, workGroupSizeMultiple);
 
-        long exampleCount = shape.mulDims(0, -1);
+        long exampleCount = max(shape.mulDims(0, -1), 1);
         kernel.createArgSetter(resources)
                 .nextArg(src)
                 .nextArg(valuesPerExample)

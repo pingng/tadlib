@@ -201,6 +201,13 @@ public interface Shape {
         return ProviderStore.shape(result);
     }
 
+    default Shape appendDim(int lastDimLength) {
+        int dimCount = getDimCount();
+        int[] result = Arrays.copyOf(toDimArray(), dimCount + 1);
+        result[dimCount] = lastDimLength;
+        return ProviderStore.shape(result);
+    }
+
     default int wrapNegIndex(int dimIndex) {
         return (dimIndex >= 0 ? dimIndex : getDimCount() + dimIndex);
     }

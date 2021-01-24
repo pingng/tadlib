@@ -122,8 +122,9 @@ Other refs:
   ("Neural Networks Demystified \[Part 5: Numerical Gradient Checking]")
 - https://towardsdatascience.com/understanding-the-scaling-of-l%C2%B2-regularization-in-the-context-of-neural-networks-e3d25f8b50db
 - https://medium.com/@2017csm1006/forward-and-backpropagation-in-convolutional-neural-network-4dfa96d7b37e
+- https://aerinykim.medium.com/how-to-implement-the-softmax-derivative-independently-from-any-loss-function-ae6d44363a9d
 
 License
 ---
-Copyright © 2020, [Ping Ng](https://github.com/pingng)
+Copyright © 2021, [Ping Ng](https://github.com/pingng)
 Released under the [MIT License](LICENSE.txt).

@@ -8,8 +8,7 @@ import com.codeberry.tadlib.memorymanagement.DisposalRegister.Disposable;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister.DisposableContainer;
 import com.codeberry.tadlib.provider.ProviderStore;
 
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.function.BiFunction;
 
 import static com.codeberry.tadlib.tensor.Tensor.GradientMode.*;
@@ -111,6 +110,11 @@ public class Tensor implements DisposableContainer<Disposable> {
     }
 
     public void backward(NDArray gradient) {
+//        backwardDepthFirst(gradient);
+        backwardBreadthFirst(gradient);
+    }
+
+    private void backwardDepthFirst(NDArray gradient) {
         if (gradientMode == CALCULATE_GRAD) {
             if (!gradient.getShape().correspondsTo(this.vals.getShape())) {
                 throw new IllegalArgumentException("Wrong shape: param:" + this.vals.getShape() + " vs grad:" + gradient.getShape());
@@ -127,6 +131,80 @@ public class Tensor implements DisposableContainer<Disposable> {
 
                     link.parent.backward(linkGrad);
                 }
+            }
+        }
+    }
+
+    private void backwardBreadthFirst(NDArray gradient) {
+        if (gradientMode == CALCULATE_GRAD) {
+            IdentityHashMap<Tensor, NDArray> gradientsToAdd = new IdentityHashMap<>();
+            gradientsToAdd.put(this, gradient);
+
+            _backprop(gradientsToAdd);
+        }
+    }
+
+    private static void _backprop(IdentityHashMap<Tensor, NDArray> gradientsToAdd) {
+        while (!gradientsToAdd.isEmpty()) {
+
+            for (Map.Entry<Tensor, NDArray> e : gradientsToAdd.entrySet()) {
+                Tensor t = e.getKey();
+                NDArray gradient = e.getValue();
+                if (!gradient.getShape().correspondsTo(t.vals.getShape())) {
+                    throw new IllegalArgumentException("Wrong shape: param:" + t.vals.getShape() + " vs grad:" + gradient.getShape());
+                }
+                t.gradient = t.gradient == null ?
+                        gradient :
+                        t.gradient.add(gradient);
+            }
+
+            IdentityHashMap<Tensor, NDArray> nextGradientsToAdd = new IdentityHashMap<>();
+            for (Map.Entry<Tensor, NDArray> e : gradientsToAdd.entrySet()) {
+                Tensor t = e.getKey();
+                NDArray gradient = e.getValue();
+
+                for (ParentLink link : t.links) {
+                    if (link.parent.gradientMode == CALCULATE_GRAD) {
+                        NDArray linkGrad = link.gradFunc.calcGradient(gradient);
+
+                        nextGradientsToAdd.compute(link.parent, (parent, pGradient) -> (pGradient == null ? linkGrad : pGradient.add(linkGrad)));
+                    }
+                }
+
+                gradientsToAdd = nextGradientsToAdd;
+            }
+        }
+    }
+
+    private void backwardBreadthFirstOLD(NDArray gradient) {
+        if (gradientMode == CALCULATE_GRAD) {
+            if (!gradient.getShape().correspondsTo(this.vals.getShape())) {
+                throw new IllegalArgumentException("Wrong shape: param:" + this.vals.getShape() + " vs grad:" + gradient.getShape());
+            }
+
+            this.gradient = this.gradient == null ?
+                    gradient :
+                    this.gradient.add(gradient);
+//            System.out.println("Assigned gradient: "+getShape()+", "+gradient);
+
+            IdentityHashMap<Tensor, NDArray> parentGradients = new IdentityHashMap<>();
+            for (ParentLink link : links) {
+                if (link.parent.gradientMode == CALCULATE_GRAD) {
+                    NDArray linkGrad = link.gradFunc.calcGradient(gradient);
+
+                    if (!linkGrad.getShape().correspondsTo(link.parent.getShape())) {
+                        throw new IllegalArgumentException("Cannot accumulate gradient. Wrong shape: param:" +
+                                link.parent.getShape() + " vs grad:" + linkGrad.getShape());
+                    }
+
+                    parentGradients.compute(link.parent, (parent, pGradient) -> (pGradient == null ? linkGrad : pGradient.add(linkGrad)));
+                }
+            }
+
+            for (Map.Entry<Tensor, NDArray> e : parentGradients.entrySet()) {
+                Tensor parent = e.getKey();
+                NDArray pGradient = e.getValue();
+                parent.backwardBreadthFirst(pGradient);
             }
         }
     }

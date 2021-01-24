@@ -498,6 +498,35 @@ public class JavaArray implements NDArray {
         }
     }
 
+    @Override
+    public NDArray diag() {
+        Shape outShape = shape.appendDim(shape.at(-1));
+
+        double[] data = new double[toIntExact(outShape.getSize())];
+        fillDiagonal(this, shape.newIndexArray(), data, outShape, outShape.newIndexArray(), 0);
+
+        return new JavaArray(data, (JavaShape) outShape);
+    }
+
+    private static void fillDiagonal(JavaArray src, int[] srcIndices, double[] out, Shape outShape, int[] outIndices, int srcDim) {
+        int len = src.shape.at(srcDim);
+
+        for (int i = 0; i < len; i++) {
+            srcIndices[srcDim] = i;
+            outIndices[srcDim] = i;
+
+            if (srcDim == srcIndices.length - 1) {
+                //... then is the last dimension
+                // set last dim to same index, it's the diagonal
+                outIndices[srcDim + 1] = i;
+                int outOffset = outShape.calcDataIndex(outIndices);
+                out[outOffset] = src.dataAt(srcIndices);
+            } else {
+                fillDiagonal(src, srcIndices, out, outShape, outIndices, srcDim + 1);
+            }
+        }
+    }
+
     public NDArray subArray(int fromBatchIndex, int fromOffset, int endBatchIndex, int toOffset) {
         JavaArray src = (shape.getClass() == JavaShape.class ? this : this.normalOrderedCopy());
 

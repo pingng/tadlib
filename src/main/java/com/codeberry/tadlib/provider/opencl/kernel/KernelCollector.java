@@ -9,6 +9,7 @@ public class KernelCollector {
     public static List<ProgramSource> collectAllKernelSources() {
         Class<? extends OclKernelSource>[] sourceClasses = new Class[] {
                 Compare.class,
+                Diagonal.class,
                 Conv.class,
                 Add.class,
                 Mul.class,

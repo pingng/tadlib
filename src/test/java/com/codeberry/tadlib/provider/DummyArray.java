@@ -155,6 +155,11 @@ class DummyArray implements NDArray {
     }
 
     @Override
+    public NDArray diag() {
+        return null;
+    }
+
+    @Override
     public JavaShape getShape() {
         return null;
     }

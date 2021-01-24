@@ -98,6 +98,30 @@ public abstract class Ops {
         return new Tensor(y, singletonList(parentLink(a, gF)));
     }
 
+    public static Tensor softmax(Tensor input) {
+        NDArray softmax = input.getVals().softmax();
+
+        // Main source: https://aerinykim.medium.com/how-to-implement-the-softmax-derivative-independently-from-any-loss-function-ae6d44363a9d
+        GradFunc gF = grad -> {
+            Shape backGradShape = grad.getShape();
+
+            NDArray smDiagonal = softmax.diag();
+
+            NDArray smByColumn = softmax.reshape(softmax.getShape().appendDim(1));
+            NDArray smByRow = smByColumn.transposeLast2D();
+            NDArray selfMatMuled = smByColumn.matmul(smByRow);
+
+            NDArray separatedGrad = smDiagonal.sub(selfMatMuled);
+
+            NDArray gradByColumn = grad.reshape(backGradShape.appendDim(1));
+            NDArray gradWithExtraDim = separatedGrad.matmul(gradByColumn);
+
+            return gradWithExtraDim.reshape(backGradShape);
+        };
+
+        return new Tensor(softmax, singletonList(parentLink(input, gF)));
+    }
+
     public static Tensor div(Tensor a, Tensor b) {
         NDArray y = a.getVals().div(b.getVals());
 

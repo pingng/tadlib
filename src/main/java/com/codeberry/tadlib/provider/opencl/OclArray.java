@@ -361,6 +361,11 @@ public class OclArray implements NDArray {
     }
 
     @Override
+    public NDArray diag() {
+        return Diagonal.diag(buffer.context, this);
+    }
+
+    @Override
     public NDArray matmul(NDArray b) {
         return MatMul.matmul(buffer.context, this, (OclArray) b);
     }

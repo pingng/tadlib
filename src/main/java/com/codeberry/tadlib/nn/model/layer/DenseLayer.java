@@ -2,9 +2,9 @@ package com.codeberry.tadlib.nn.model.layer;
 
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.nn.loss.L2Loss;
-import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.nn.model.Model.IterationInfo;
 import com.codeberry.tadlib.tensor.Tensor;
-import com.codeberry.tadlib.util.StringUtils;
 
 import java.util.Random;
 
@@ -30,7 +30,7 @@ public class DenseLayer implements Layer {
     }
 
     @Override
-    public ForwardResult forward(Random rnd, Tensor inputs, RunMode runMode) {
+    public ForwardResult forward(Random rnd, Tensor inputs, RunMode runMode, IterationInfo iterationInfo) {
         Tensor hW = matmul(inputs, w);
         if (b != null) {
             return result(add(hW, b));

@@ -10,7 +10,6 @@ import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.opencl.buffer.BufferMemFlags;
 import com.codeberry.tadlib.provider.opencl.context.Context;
 import com.codeberry.tadlib.provider.opencl.ops.Compare;
-import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 
 import java.util.function.Function;
@@ -89,7 +88,7 @@ public class OclIntArray implements NDIntArray {
                     throwOnError(() -> OpenCL.INSTANCE.clWaitForEvents(1, pointers),
                             resources::getContentStatus), ev);
         }
-        resources.disposeDeep();
+        resources.disposeDependencies();
     }
 
     public Pointer getArgPointer() {
@@ -98,27 +97,24 @@ public class OclIntArray implements NDIntArray {
 
     public void dispose() {
         this.buffer.dispose();
-        this.resources.disposeDeep();
+        this.resources.disposeDependencies();
     }
 
     private <E> E readToNative(Function<TADMemory, E> mapper) {
-        TADMemory nativeBuf = new TADMemory(cl_int.sizeOfElements(shape.getSize()));
+        try (TADMemory nativeBuf = new TADMemory(cl_int.sizeOfElements(shape.getSize()))) {
 
-        Pointer kernelEvent = resources.getKernelEvent();
+            Pointer kernelEvent = resources.getKernelEvent();
 
-        usePointerArray(events ->
-                throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueReadBuffer(buffer.context.getQueue(),
-                        buffer, true,
-                        new SizeT(0),
-                        new SizeT(nativeBuf.size()), nativeBuf, events,
-                        null)), kernelEvent);
+            usePointerArray(events ->
+                    throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueReadBuffer(buffer.context.getQueue(),
+                            buffer, true,
+                            new SizeT(0),
+                            new SizeT(nativeBuf.size()), nativeBuf, events,
+                            null)), kernelEvent);
 
-        resources.disposeDeep();
+            resources.disposeDependencies();
 
-        try {
             return mapper.apply(nativeBuf);
-        } finally {
-            nativeBuf.dispose();
         }
     }
 

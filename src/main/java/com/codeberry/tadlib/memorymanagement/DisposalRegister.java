@@ -1,12 +1,13 @@
 package com.codeberry.tadlib.memorymanagement;
 
 import java.lang.ref.Cleaner;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.Callable;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static java.util.Objects.*;
+import static java.util.stream.Collectors.toList;
 
 public class DisposalRegister {
     private static final Cleaner cleaner = Cleaner.create();
@@ -28,20 +29,20 @@ public class DisposalRegister {
      *
      * Resources returned by the callable is left untouched.
      */
-    public static <T extends DisposableContainer<? extends Disposable>> void modelIteration(Callable<List<T>> callable) {
+    public static void modelIteration(Callable<List<Disposable>> callable) {
         synchronized (TRAINING_ITERATION_DISPOSABLE) {
             if (TRAINING_ITERATION_DISPOSABLE.get() != null) {
                 throw new IllegalStateException("Cannot be called recursively");
             }
 
-            List<Disposable> disposables = new ArrayList<>();
-            List<Disposable> keeps = new ArrayList<>();
+            List<Disposable> toBeDisposed = new ArrayList<>();
+            List<Disposable> mustKeepAfterReturn = emptyList();
             try {
-                TRAINING_ITERATION_DISPOSABLE.set(disposables);
-                keeps.addAll(disposeAllExceptContainedReturnValues(callable));
+                TRAINING_ITERATION_DISPOSABLE.set(toBeDisposed);
+                mustKeepAfterReturn = disposeAllExceptReturnedValues(callable);
             } finally {
-                for (Disposable d : disposables) {
-                    if (!keeps.contains(d)) {
+                for (Disposable d : toBeDisposed) {
+                    if (!mustKeepAfterReturn.contains(d)) {
                         d.dispose();
                     }
                 }
@@ -60,10 +61,6 @@ public class DisposalRegister {
         void prepareDependenciesForDisposal();
 
         void dispose();
-    }
-
-    public interface DisposableContainer<R extends Disposable> {
-        List<R> getDisposables();
     }
 
     public static <A extends Disposable> void registerForDisposal(A d0, A d1) {
@@ -86,41 +83,24 @@ public class DisposalRegister {
         return arr;
     }
 
-    /**
-     *
-     */
     @SuppressWarnings("unchecked")
-    public static <T extends DisposableContainer<R>, R extends Disposable> R disposeAllExceptReturnedValues(Callable<T> callable) {
-        List<Disposable> returnArrays = disposeAllExceptContainedReturnValues(() -> singletonList(callable.call()));
+    public static <R extends Disposable> R disposeAllExceptReturnedValue(Callable<R> callable) {
+        List<Disposable> returnArrays = disposeAllExceptReturnedValues(() -> singletonList(callable.call()));
 
         return (R) returnArrays.get(0);
     }
 
-    public static <T extends DisposableContainer<? extends Disposable>> List<Disposable> disposeAllExceptContainedReturnValues(Callable<List<T>> callable) {
+    private static List<Disposable> disposeAllExceptReturnedValues(Callable<List<Disposable>> callable) {
         Stack<List<Disposable>> stack = CREATED_ARRAYS.get();
 
         List<Disposable> instantiatedDisposablesToKeep = new ArrayList<>();
 
         try {
-            stack.push(new ArrayList<>());
+            stack.push(new ArrayList<>(2048));
 
-            List<Disposable> keepsFromCall = new ArrayList<>();
-            List<T> returnedContainer = callable.call();
-            for (T c : returnedContainer) {
-                if (c instanceof Disposable) {
-                    Disposable nda = (Disposable) c;
-
-                    nda.prepareDependenciesForDisposal();
-                    keepsFromCall.add(nda);
-                } else if (c != null) {
-                    List<? extends Disposable> disposables = c.getDisposables();
-                    for (Disposable d : disposables) {
-                        if (d != null) {
-                            d.prepareDependenciesForDisposal();
-                            keepsFromCall.add(d);
-                        }
-                    }
-                }
+            List<Disposable> keepsFromCall = invokeAndEnsureNonNullElements(callable);
+            for (Disposable d : keepsFromCall) {
+                d.prepareDependenciesForDisposal();
             }
 
             List<Disposable> instantiatedDisposables = stack.peek();
@@ -145,5 +125,13 @@ public class DisposalRegister {
                 disposablesFromPrevStackCall.addAll(instantiatedDisposablesToKeep);
             }
         }
+    }
+
+    private static List<Disposable> invokeAndEnsureNonNullElements(Callable<List<Disposable>> callable) throws Exception {
+        List<Disposable> fromCall = requireNonNullElseGet(callable.call(), Collections::emptyList);
+
+        return fromCall.stream()
+                .filter(Objects::nonNull)
+                .collect(toList());
     }
 }

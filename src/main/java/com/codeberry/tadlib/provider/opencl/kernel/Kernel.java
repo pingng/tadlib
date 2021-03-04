@@ -98,12 +98,14 @@ public class Kernel extends Pointer {
 
         public ArgSetter nextArg(OclArray oclArray) {
             resources.registerDependency(oclArray);
-            return nextArg(oclArray.getArgPointer());
+            Pointer pointer = (oclArray != null ? oclArray.getArgPointer() : null);
+            return nextArg(pointer);
         }
 
         public ArgSetter nextArg(OclIntArray oclIntArray) {
             resources.registerDependency(oclIntArray);
-            return nextArg(oclIntArray.getArgPointer());
+            Pointer pointer = (oclIntArray != null ? oclIntArray.getArgPointer() : null);
+            return nextArg(pointer);
         }
 
         public ArgSetter nextArgDisposable(OclBuffer buffer) {
@@ -113,7 +115,7 @@ public class Kernel extends Pointer {
 
         public ArgSetter nextArgKeepRef(OclBuffer buffer) {
             resources.registerReferredBuffer(buffer);
-            return nextArg(buffer.argPointer);
+            return nextArg((buffer != null ? buffer.argPointer : null));
         }
 
         private ArgSetter nextArg(Pointer arg) {

@@ -240,24 +240,20 @@ public class OpenCL {
             setPointer((long) Native.POINTER_SIZE * arg.length, null);
         }
 
+        public static PointerArray pointerArray(Pointer[] pointers) {
+            return new PointerArray(pointers);
+        }
+
         public static <R> R mapPointerArray(java.util.function.Function<PointerArray, R> mapper, Pointer... pointers) {
-            PointerArray pa = new PointerArray(pointers);
-            try {
+            try(PointerArray pa = new PointerArray(pointers)) {
                 return mapper.apply(pa);
-            } finally {
-                pa.dispose();
             }
         }
 
         public static void usePointerArray(java.util.function.Consumer<PointerArray> consumer, Pointer... pointers) {
             Pointer[] actual = extractNonNulls(pointers);
-            PointerArray pa = (actual != null ? new PointerArray(actual) : null);
-            try {
+            try(PointerArray pa = (actual != null ? new PointerArray(actual) : null)) {
                 consumer.accept(pa);
-            } finally {
-                if (pa != null) {
-                    pa.dispose();
-                }
             }
         }
 

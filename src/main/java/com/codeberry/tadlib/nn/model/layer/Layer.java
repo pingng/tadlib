@@ -2,9 +2,11 @@ package com.codeberry.tadlib.nn.model.layer;
 
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
+import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.tensor.Ops;
 import com.codeberry.tadlib.tensor.Tensor;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
@@ -51,7 +53,7 @@ public interface Layer {
         return "";
     }
 
-    ForwardResult forward(Random rnd, Tensor inputs, Ops.RunMode runMode);
+    ForwardResult forward(Random rnd, Tensor inputs, Ops.RunMode runMode, Model.IterationInfo iterationInfo);
 
     default Tensor getAdditionalCost() {
         return null;
@@ -60,19 +62,19 @@ public interface Layer {
     /**
      * @return Objects that are needed for the model to work and thus must not be disposed
      */
-    default List<? extends DisposalRegister.Disposable> getNonDisposedObjects() {
+    default List<? extends DisposalRegister.Disposable> getKeepInMemoryDisposables() {
         return emptyList();
     }
 
-    class ForwardResult implements DisposalRegister.DisposableContainer {
+    class ForwardResult {
         public final Tensor output;
         public final Runnable[] trainingTasks;
 
-        public ForwardResult(Tensor output) {
+        private ForwardResult(Tensor output) {
             this(output, null);
         }
 
-        public ForwardResult(Tensor output, Runnable[] trainingTasks) {
+        private ForwardResult(Tensor output, Runnable[] trainingTasks) {
             this.output = output;
             this.trainingTasks = trainingTasks;
         }
@@ -87,15 +89,8 @@ public interface Layer {
 
         public void putTasksInto(List<Runnable> target) {
             if (trainingTasks != null) {
-                for (Runnable tt : trainingTasks) {
-                    target.add(tt);
-                }
+                Collections.addAll(target, trainingTasks);
             }
-        }
-
-        @Override
-        public List<DisposalRegister.Disposable> getDisposables() {
-            return output.getDisposables();
         }
     }
 }

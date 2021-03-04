@@ -14,10 +14,12 @@ import com.codeberry.tadlib.provider.opencl.platform.Platform;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.codeberry.tadlib.provider.opencl.OclArray.createNDArray;
 import static com.codeberry.tadlib.provider.opencl.OpenCLHelper.getDevices;
 import static com.codeberry.tadlib.provider.opencl.OpenCLHelper.getPlatforms;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 public class OpenCLProvider implements Provider {
@@ -137,6 +139,14 @@ public class OpenCLProvider implements Provider {
     @Override
     public NDArray createArrayWithValue(Shape shape, double v) {
         return createNDArray(context, shape, v);
+    }
+
+    @Override
+    public String getShortDescription() {
+        List<Device> devices = context.getDevices();
+        return devices.stream()
+                .map(dev -> dev.info.name)
+                .collect(joining(", "));
     }
 
 }

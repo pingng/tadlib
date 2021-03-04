@@ -20,12 +20,37 @@ public class TrainingData {
         return (exCount + batchSize - 1) / batchSize;
     }
 
-    public TrainingData getTrainingBatch(int batchIndex, int size) {
-        return new TrainingData(xTrain.subBatch(batchIndex, size),
-                yTrain.subBatch(batchIndex, size), xTest, yTest);
+    public int calcTestBatchCountOfSize(int batchSize) {
+        int exCount = xTest.getShape().at(0);
+        return (exCount + batchSize - 1) / batchSize;
     }
 
-    public int getTrainingBatchSize() {
-        return xTrain.getShape().at(0);
+    public Batch getTrainingBatch(int batchIndex, int size) {
+        return new Batch(xTrain.subBatch(batchIndex, size),
+                yTrain.subBatch(batchIndex, size));
+    }
+
+    public Batch getTrainingBatchAll() {
+        int examples = xTrain.getShape().at(0);
+        return getTrainingBatch(0, examples);
+    }
+
+    public Batch getTestBatch(int batchIndex, int size) {
+        return new Batch(xTest.subBatch(batchIndex, size),
+                yTest.subBatch(batchIndex, size));
+    }
+
+    public static class Batch {
+        public final Tensor input;
+        public final Tensor output;
+
+        public Batch(Tensor input, Tensor output) {
+            this.input = input;
+            this.output = output;
+        }
+
+        public int getBatchSize() {
+            return input.getShape().at(0);
+        }
     }
 }

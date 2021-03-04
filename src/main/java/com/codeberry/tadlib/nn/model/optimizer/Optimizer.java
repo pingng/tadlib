@@ -10,9 +10,15 @@ import java.util.List;
 import static java.util.Collections.emptyList;
 
 public interface Optimizer {
+
+    LearningRateSchedule getLearningRateSchedule();
+
     void optimize(List<Tensor> params);
 
-    default Collection<DisposalRegister.DisposableContainer<NDArray>> getNonDisposedContainers() {
+    /**
+     * @return disables that should NOT be released/freed automatically
+     */
+    default Collection<DisposalRegister.Disposable> getKeepInMemoryDisposables() {
         return emptyList();
     }
 

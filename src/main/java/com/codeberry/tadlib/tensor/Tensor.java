@@ -5,19 +5,20 @@ import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.TArrayFactory;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister.Disposable;
-import com.codeberry.tadlib.memorymanagement.DisposalRegister.DisposableContainer;
 import com.codeberry.tadlib.provider.ProviderStore;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
 import static com.codeberry.tadlib.tensor.Tensor.GradientMode.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
-public class Tensor implements DisposableContainer<Disposable> {
+public class Tensor {
     public static final Tensor ZERO = new Tensor(ProviderStore.array(0.), NONE);
 
+    private final long id;
     private final List<ParentLink> links;
     private final GradientMode gradientMode;
 
@@ -60,6 +61,7 @@ public class Tensor implements DisposableContainer<Disposable> {
         this.vals = vals;
         this.links = links;
         this.gradientMode = gradientMode;
+        this.id = IdGenerator.nextId();
     }
 
     public static Tensor tensor(double[] vals) {
@@ -82,13 +84,26 @@ public class Tensor implements DisposableContainer<Disposable> {
         return new Tensor(val, NONE);
     }
 
-    @Override
+    public static Tensor constant(NDArray val) {
+        return new Tensor(val, NONE);
+    }
+
     public List<Disposable> getDisposables() {
         return asList(vals, gradient);
     }
 
     public NDArray getVals() {
         return vals;
+    }
+
+    private void addGradient(NDArray gradient) {
+        if (!gradient.getShape().correspondsTo(this.vals.getShape())) {
+            throw new IllegalArgumentException("Wrong shape: param:" + this.vals.getShape() + " vs grad:" + gradient.getShape());
+        }
+
+        this.gradient = this.gradient == null ?
+                gradient :
+                this.gradient.add(gradient);
     }
 
     public static abstract class TensorFactories {
@@ -116,20 +131,14 @@ public class Tensor implements DisposableContainer<Disposable> {
 
     private void backwardDepthFirst(NDArray gradient) {
         if (gradientMode == CALCULATE_GRAD) {
-            if (!gradient.getShape().correspondsTo(this.vals.getShape())) {
-                throw new IllegalArgumentException("Wrong shape: param:" + this.vals.getShape() + " vs grad:" + gradient.getShape());
-            }
-
-            this.gradient = this.gradient == null ?
-                    gradient :
-                    this.gradient.add(gradient);
+            addGradient(gradient);
 //            System.out.println("Assigned gradient: "+getShape()+", "+gradient);
 
             for (ParentLink link : links) {
                 if (link.parent.gradientMode == CALCULATE_GRAD) {
                     NDArray linkGrad = link.gradFunc.calcGradient(gradient);
 
-                    link.parent.backward(linkGrad);
+                    link.parent.backwardDepthFirst(linkGrad);
                 }
             }
         }
@@ -137,74 +146,31 @@ public class Tensor implements DisposableContainer<Disposable> {
 
     private void backwardBreadthFirst(NDArray gradient) {
         if (gradientMode == CALCULATE_GRAD) {
-            IdentityHashMap<Tensor, NDArray> gradientsToAdd = new IdentityHashMap<>();
-            gradientsToAdd.put(this, gradient);
+            PriorityQueue<Tensor> gradientsToAdd = new PriorityQueue<>(IdGenerator::compareId);
+            this.addGradient(gradient);
+            gradientsToAdd.add(this);
 
-            _backprop(gradientsToAdd);
+            backwardBreadthFirst(gradientsToAdd);
         }
     }
 
-    private static void _backprop(IdentityHashMap<Tensor, NDArray> gradientsToAdd) {
-        while (!gradientsToAdd.isEmpty()) {
+    private void backwardBreadthFirst(PriorityQueue<Tensor> tensorsById) {
+        while (!tensorsById.isEmpty()) {
+            Tensor tensor = tensorsById.poll();
+            NDArray gradient = tensor.gradient;
 
-            for (Map.Entry<Tensor, NDArray> e : gradientsToAdd.entrySet()) {
-                Tensor t = e.getKey();
-                NDArray gradient = e.getValue();
-                if (!gradient.getShape().correspondsTo(t.vals.getShape())) {
-                    throw new IllegalArgumentException("Wrong shape: param:" + t.vals.getShape() + " vs grad:" + gradient.getShape());
-                }
-                t.gradient = t.gradient == null ?
-                        gradient :
-                        t.gradient.add(gradient);
-            }
+            for (ParentLink link : tensor.links) {
+                Tensor parent = link.parent;
 
-            IdentityHashMap<Tensor, NDArray> nextGradientsToAdd = new IdentityHashMap<>();
-            for (Map.Entry<Tensor, NDArray> e : gradientsToAdd.entrySet()) {
-                Tensor t = e.getKey();
-                NDArray gradient = e.getValue();
+                if (parent.gradientMode == CALCULATE_GRAD) {
+                    NDArray parentGrad = link.gradFunc.calcGradient(gradient);
 
-                for (ParentLink link : t.links) {
-                    if (link.parent.gradientMode == CALCULATE_GRAD) {
-                        NDArray linkGrad = link.gradFunc.calcGradient(gradient);
+                    parent.addGradient(parentGrad);
 
-                        nextGradientsToAdd.compute(link.parent, (parent, pGradient) -> (pGradient == null ? linkGrad : pGradient.add(linkGrad)));
+                    if (!tensorsById.contains(parent)) {
+                        tensorsById.add(parent);
                     }
                 }
-
-                gradientsToAdd = nextGradientsToAdd;
-            }
-        }
-    }
-
-    private void backwardBreadthFirstOLD(NDArray gradient) {
-        if (gradientMode == CALCULATE_GRAD) {
-            if (!gradient.getShape().correspondsTo(this.vals.getShape())) {
-                throw new IllegalArgumentException("Wrong shape: param:" + this.vals.getShape() + " vs grad:" + gradient.getShape());
-            }
-
-            this.gradient = this.gradient == null ?
-                    gradient :
-                    this.gradient.add(gradient);
-//            System.out.println("Assigned gradient: "+getShape()+", "+gradient);
-
-            IdentityHashMap<Tensor, NDArray> parentGradients = new IdentityHashMap<>();
-            for (ParentLink link : links) {
-                if (link.parent.gradientMode == CALCULATE_GRAD) {
-                    NDArray linkGrad = link.gradFunc.calcGradient(gradient);
-
-                    if (!linkGrad.getShape().correspondsTo(link.parent.getShape())) {
-                        throw new IllegalArgumentException("Cannot accumulate gradient. Wrong shape: param:" +
-                                link.parent.getShape() + " vs grad:" + linkGrad.getShape());
-                    }
-
-                    parentGradients.compute(link.parent, (parent, pGradient) -> (pGradient == null ? linkGrad : pGradient.add(linkGrad)));
-                }
-            }
-
-            for (Map.Entry<Tensor, NDArray> e : parentGradients.entrySet()) {
-                Tensor parent = e.getKey();
-                NDArray pGradient = e.getValue();
-                parent.backwardBreadthFirst(pGradient);
             }
         }
     }
@@ -276,5 +242,48 @@ public class Tensor implements DisposableContainer<Disposable> {
 
     public enum GradientMode {
         NONE, CALCULATE_GRAD
+    }
+
+    static class IdGenerator {
+        static final AtomicLong NEXT_ID = new AtomicLong();
+        static long nextId() {
+            return NEXT_ID.getAndUpdate(current -> {
+                if (current == Long.MAX_VALUE) {
+                    return 0;
+                }
+                return current + 1L;
+            });
+        }
+
+        static int compareId(Tensor left, Tensor right) {
+            // reverse left/right since we want higher ids to be processed first
+            return compareIdNaturalOrder(right.id, left.id);
+        }
+
+        static int compareIdNaturalOrder(long l, long r) {
+            long diff = diff(l, r);
+
+            if (diff > Integer.MAX_VALUE) {
+                //... interpret as wrapped, then swap values
+                long tmp = l;
+                l = r;
+                r = tmp;
+            }
+
+            if (l < r) {
+                return -1;
+            }
+            if (l > r) {
+                return 1;
+            }
+            return 0;
+        }
+
+        private static long diff(long l, long r) {
+            if (l < r) {
+                return r - l;
+            }
+            return l - r;
+        }
     }
 }

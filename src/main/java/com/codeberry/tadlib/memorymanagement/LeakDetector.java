@@ -19,6 +19,8 @@ import static java.lang.Integer.toHexString;
  * 'object year' and print old ids that has not been fully released.
  */
 public class LeakDetector {
+    private static final double LOG_OBJECT_RATE = 0.01;
+
     private static int maxAge = 3;
     private static int maxEntries = 256;
     private static final ConcurrentMap<Long, AllocationInfo> infoPerObjectId = new ConcurrentHashMap<>();
@@ -32,7 +34,7 @@ public class LeakDetector {
                     info.addAllocation(new StackTraceInfo(new Exception()));
                     return info;
                 } else {
-                    if (Math.random() < 0.01) {
+                    if (Math.random() < LOG_OBJECT_RATE) {
                         StackTraceInfo traceInfo = new StackTraceInfo(new Exception());
                         if (ignoreKeys.containsKey(traceInfo.key)) {
                             AllocationInfo _info = new AllocationInfo(id, objectYear);

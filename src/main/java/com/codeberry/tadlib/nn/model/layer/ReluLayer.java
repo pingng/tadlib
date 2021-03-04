@@ -1,6 +1,8 @@
 package com.codeberry.tadlib.nn.model.layer;
 
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.nn.model.Model.IterationInfo;
 import com.codeberry.tadlib.tensor.Tensor;
 
 import java.util.Random;
@@ -19,7 +21,7 @@ public class ReluLayer implements Layer {
     }
 
     @Override
-    public ForwardResult forward(Random rnd, Tensor inputs, RunMode runMode) {
+    public ForwardResult forward(Random rnd, Tensor inputs, RunMode runMode, IterationInfo iterationInfo) {
         return result(leakyRelu(inputs, leakyScale));
     }
 

@@ -3,13 +3,16 @@ TADLib - Tiny Automatic Differentiation Library
 
 What is TADLib?
 ---
-TADLib was created for **understanding how 'autograd' and basic neural networks are implemented**. It provides 
-Automatic Differentiation (AD) like Tensorflow and PyTorch, but is implemented in pure Java. It also supports 
-hardware acceleration with [OpenCL](https://www.khronos.org/opencl/).
+TADLib was created for **understanding how ['autograd'](https://en.wikipedia.org/wiki/Automatic_differentiation) and basic neural networks can be implemented**. It provides 
+Automatic Differentiation (AD) like Tensorflow and PyTorch, but is implemented in pure Java. Hardware acceleration 
+is supported using [OpenCL](https://www.khronos.org/opencl/).
+
+The main code uses tensors/multi dim arrays. A separate auto grad implementation using only scalar values can
+also be found. It should be even easier to understand the concept of auto grad from this package.
 
 Examples
 ---
-### A fully connected NN for MNIST
+### A fully connected Neural Network for the MNIST dataset
 First we need some weights:
 ```java
 hiddenW = tensor(randWeight(weightRnd, shape(28 * 28, 32)));
@@ -25,7 +28,7 @@ Tensor firstLayer = relu(add(
         matmul(xTrain, hiddenW),
         hiddenB));
 // (firstLayer @ outW + outB)
-Tensor outLayer = add(
+Tensor prediction = add(
         matmul(firstLayer, outW),
         outB);
 ```
@@ -34,8 +37,8 @@ for each output classes.
 
 We must then calculate the loss (scaled by the number of examples in the batch):
 ```java
-Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(batchData.yTrain), outLayer);
-Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(actualBatchSize));
+Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(trainingData.output, 10), prediction);
+Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(trainingData.getBatchSize()));
 ```
 
 Then we trigger backpropagation of the gradients:
@@ -51,15 +54,15 @@ outW.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
 outB.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
 ```
 
-See [the source](src/main/java/com/codeberry/tadlib/example/mnist/TrainFullyConnectedMNISTMain.java) and
-the [model](src/main/java/com/codeberry/tadlib/example/mnist/MNISTFullyConnectedModel.java) for this example.
-
-There is also [another example](src/main/java/com/codeberry/tadlib/example/mnist/TrainFixedConvMNISTMain.java) that uses
-[convolutions with batch normalization](src/main/java/com/codeberry/tadlib/example/mnist/FixedMNISTConvModel.java).
-This is a hardcoded model.
-
-[TrainConfiguredConvMNISTMain](src/main/java/com/codeberry/tadlib/example/mnist/TrainConfiguredConvMNISTMain.java)
-is an example of a conv model built/configured in runtime using layers.
+#### Examples
+- [TrainHardCodedFullyConnectedMNISTModel](src/main/java/com/codeberry/tadlib/example/mnist/TrainHardCodedFullyConnectedMNISTModel.java) \
+  A simple & hard coded neural network, implemented in a single class.
+- [TrainFixedConvMNISTMain](src/main/java/com/codeberry/tadlib/example/mnist/TrainFixedConvMNISTMain.java) \
+  A neural network with convolution operations.
+- [TrainConfiguredConvMNISTMain](src/main/java/com/codeberry/tadlib/example/mnist/TrainConfiguredConvMNISTMain.java) \
+  Another convolutional neural network. It is built using layers.
+- [TrainFixedMNISTConvAttentionMain](src/main/java/com/codeberry/tadlib/example/mnist/TrainFixedMNISTConvAttentionMain.java) \
+  Trains an experimental with self attention.
 
 OpenCL support
 ===
@@ -69,8 +72,8 @@ ProviserStore.setProvider(new OpenCLProvider());
 ```
 Operations will run **a lot** faster using OpenCL.
 
-The OpenCL integration, as with the java code, is kept minimal to allow for (hopefully)
-more readable code. The performance will certainly not reach the level of Tensorflow nor PyTorch,
+The OpenCL integration, as the java code, is naive & minimal to allow for (hopefully) better readability.
+The performance will certainly not reach the level of Tensorflow nor PyTorch,
 but it will be fast enough for more experimentation and less time waiting.
 
 See the [opencl package](src/main/java/com/codeberry/tadlib/provider/opencl/README.md) for more details.
@@ -123,7 +126,11 @@ Other refs:
 - https://towardsdatascience.com/understanding-the-scaling-of-l%C2%B2-regularization-in-the-context-of-neural-networks-e3d25f8b50db
 - https://medium.com/@2017csm1006/forward-and-backpropagation-in-convolutional-neural-network-4dfa96d7b37e
 - https://aerinykim.medium.com/how-to-implement-the-softmax-derivative-independently-from-any-loss-function-ae6d44363a9d
-
+- https://youtube.com/playlist?list=PLIXJ-Sacf8u60G1TwcznBmK6rEL3gmZmV
+  (self attention)
+- https://papers.nips.cc/paper/2018/file/7edcfb2d8f6a659ef4cd1e6c9b6d7079-Paper.pdf
+  (block drop)
+  
 License
 ---
 Copyright © 2021, [Ping Ng](https://github.com/pingng)

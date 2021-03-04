@@ -26,30 +26,30 @@ public class TensorBatchNormTest {
         OpsExtended.BatchNormResult result = new OpsExtended.BatchNormResult(null,
                 ProviderStore.array(new double[]{1, 2}),
                 ProviderStore.array(new double[]{3, 4}));
-        OpsExtended.BatchNormRunningAverages initialEmpty = new OpsExtended.BatchNormRunningAverages();
+        OpsExtended.BatchNormRunningAverages averages = new OpsExtended.BatchNormRunningAverages();
 
-        assertNull(initialEmpty.runningMean);
-        assertNull(initialEmpty.runningVariance);
+        assertNull(averages.running.mean);
+        assertNull(averages.running.variance);
 
-        OpsExtended.BatchNormRunningAverages firstTimeAssignedAverages = initialEmpty.updateWith(result, 0.9);
+        averages.updateWith(result, 0.9);
 
         assertEqualsMatrix(ProviderStore.array(new double[]{1, 2}).toDoubles(),
-                firstTimeAssignedAverages.runningMean.toDoubles());
+                averages.running.mean.toDoubles());
         assertEqualsMatrix(ProviderStore.array(new double[]{3, 4}).toDoubles(),
-                firstTimeAssignedAverages.runningVariance.toDoubles());
+                averages.running.variance.toDoubles());
 
         OpsExtended.BatchNormResult nextResult = new OpsExtended.BatchNormResult(null,
                 ProviderStore.array(new double[]{50, 60}),
                 ProviderStore.array(new double[]{70, 80}));
-        OpsExtended.BatchNormRunningAverages updatedAverages = firstTimeAssignedAverages.updateWith(nextResult, 0.9);
+        averages.updateWith(nextResult, 0.9);
         assertEqualsMatrix(ProviderStore.array(new double[]{
                         1 * 0.9 + 50 * 0.1,
                         2 * 0.9 + 60 * 0.1}).toDoubles(),
-                updatedAverages.runningMean.toDoubles());
+                averages.running.mean.toDoubles());
         assertEqualsMatrix(ProviderStore.array(new double[]{
                         3 * 0.9 + 70 * 0.1,
                         4 * 0.9 + 80 * 0.1}).toDoubles(),
-                updatedAverages.runningVariance.toDoubles());
+                averages.running.variance.toDoubles());
 
     }
 

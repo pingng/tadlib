@@ -19,6 +19,7 @@ public abstract class TArrayFactory {
     public static NDArray zerosShaped(int... dims) {
         return zeros(shape(dims));
     }
+
     public static NDArray zeros(Shape shape) {
         return arrayFillWith(shape.normalOrderedCopy(), 0.0);
     }
@@ -51,7 +52,7 @@ public abstract class TArrayFactory {
     public static NDArray randomWeight(Random rand, Shape shape) {
         int size = Math.toIntExact(shape.getSize());
 
-        return DisposalRegister.disposeAllExceptReturnedValues(() -> randomWeight(rand, size).reshape(shape));
+        return DisposalRegister.disposeAllExceptReturnedValue(() -> randomWeight(rand, size).reshape(shape));
     }
 
     public static NDArray randomWeight(Random rand, int size) {

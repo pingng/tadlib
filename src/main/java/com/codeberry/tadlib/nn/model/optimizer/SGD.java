@@ -5,16 +5,21 @@ import com.codeberry.tadlib.tensor.Tensor;
 import java.util.List;
 
 public class SGD implements Optimizer {
-    private final double learningRate;
+    private final LearningRateSchedule learningRateSchedule;
 
-    public SGD(double learningRate) {
-        this.learningRate = learningRate;
+    public SGD(LearningRateSchedule learningRateSchedule) {
+        this.learningRateSchedule = learningRateSchedule;
+    }
+
+    @Override
+    public LearningRateSchedule getLearningRateSchedule() {
+        return learningRateSchedule;
     }
 
     @Override
     public void optimize(List<Tensor> params) {
         for (Tensor p : params) {
-            p.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
+            p.update((values, gradient) -> values.sub(gradient.mul(learningRateSchedule.getLearningRate())));
         }
     }
 }

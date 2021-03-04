@@ -14,8 +14,8 @@ import static com.codeberry.tadlib.provider.ProviderStore.array;
 import static java.util.Collections.emptyList;
 
 public interface Model {
-    default PredictionAndLosses trainSingleIteration(Random rnd, TrainingData batchData, Optimizer optimizer) {
-        PredictionAndLosses l = calcGradient(rnd, batchData);
+    default PredictionAndLosses trainSingleIteration(Random rnd, TrainingData.Batch batchData, Optimizer optimizer, IterationInfo iterationInfo) {
+        PredictionAndLosses l = calcGradient(rnd, batchData, iterationInfo);
 
         List<Tensor> params = getParams();
 
@@ -30,20 +30,20 @@ public interface Model {
         return "";
     }
 
-    Tensor predict(Tensor input);
+    Tensor predict(Tensor input, IterationInfo iterationInfo);
 
-    PredictionAndLosses calcCost(Random rnd, TrainingData trainingData);
+    PredictionAndLosses calcCost(Random rnd, TrainingData.Batch trainingData, IterationInfo iterationInfo);
 
-    default PredictionAndLosses calcGradient(Random rnd, TrainingData trainingData) {
+    default PredictionAndLosses calcGradient(Random rnd, TrainingData.Batch trainingData, IterationInfo iterationInfo) {
         resetGradients();
 
-        PredictionAndLosses l = calcCost(rnd, trainingData);
+        PredictionAndLosses l = calcCost(rnd, trainingData, iterationInfo);
         l.totalLoss.backward(array(1.0));
 
         return l;
     }
 
-    private void resetGradients() {
+    default void resetGradients() {
         List<Tensor> params = getParams();
         for (Tensor p : params) {
             p.resetGradient();
@@ -65,7 +65,7 @@ public interface Model {
     /**
      * @return Objects that are needed for the model to work and thus must not be disposed
      */
-    default List<DisposalRegister.Disposable> getNonDisposedObjects() {
+    default List<DisposalRegister.Disposable> getKeepInMemoryDisposables() {
         return emptyList();
     }
 
@@ -93,4 +93,53 @@ public interface Model {
         }
     }
 
+    class IterationInfo {
+        public final int epoch;
+        public final int batchIndex;
+        public final int batchCount;
+        public final TrainInfo prevEpochTrainInfo;
+
+        public IterationInfo(int epoch, int batchIndex, int batchCount) {
+            this(epoch, batchIndex, batchCount, null);
+        }
+
+        public IterationInfo(int epoch, int batchIndex, int batchCount, TrainInfo prevEpochTrainInfo) {
+            this.epoch = epoch;
+            this.batchIndex = batchIndex;
+            this.batchCount = batchCount;
+            this.prevEpochTrainInfo = prevEpochTrainInfo;
+        }
+
+        public boolean hasPrevEpochTrainInfo() {
+            return prevEpochTrainInfo != null && prevEpochTrainInfo.training != null;
+        }
+    }
+
+    class TrainInfo {
+        public final OutputStats training;
+        public final OutputStats test;
+
+        public TrainInfo(OutputStats training, OutputStats test) {
+            this.training = training;
+            this.test = test;
+        }
+
+        public boolean isValid() {
+            return training != null && test != null;
+        }
+
+        public boolean trainingIsMoreAccurateThanTesting() {
+            return training.accuracy >= test.accuracy;
+        }
+    }
+
+    class OutputStats {
+        public final double cost;
+        public final double accuracy;
+
+        public OutputStats(double cost, double accuracy) {
+            this.cost = cost;
+            this.accuracy = accuracy;
+        }
+    }
 }

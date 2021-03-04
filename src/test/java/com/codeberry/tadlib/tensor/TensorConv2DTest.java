@@ -26,6 +26,8 @@ public class TensorConv2DTest {
         ProviderStore.setProvider(new OpenCLProvider());
     }
 
+    // TODO: test in/out channels
+
     @Test
     public void testFromFile() {
         Gson gson = new Gson();

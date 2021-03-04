@@ -6,7 +6,7 @@ import java.util.List;
 
 import static java.util.Collections.singletonList;
 
-public interface NDIntArray extends DisposalRegister.Disposable, DisposalRegister.DisposableContainer<NDIntArray> {
+public interface NDIntArray extends DisposalRegister.Disposable {
 
     @Override
     default void prepareDependenciesForDisposal() {
@@ -15,11 +15,6 @@ public interface NDIntArray extends DisposalRegister.Disposable, DisposalRegiste
 
     default void waitForValueReady() {
         // do nothing
-    }
-
-    @Override
-    default List<NDIntArray> getDisposables() {
-        return singletonList(this);
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.nn.model;
 
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.example.TrainingData.Batch;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.layer.Layer;
@@ -44,19 +45,6 @@ public class SequentialModel implements Model {
         System.out.println("Total params(doubles): " + totalParams);
     }
 
-
-//    private SequentialModel(SequentialModel src) {
-//        // init with dummy tensors for weights
-//        this(src.cfg);
-//
-//        for (int i = 0; i < src.layers.size(); i++) {
-//            // overwrite weights using reflection
-//            ReflectionUtils.copyFieldOfClass(Tensor.class,
-//                    src.layers.get(i), layers.get(i),
-//                    Tensor::copy);
-//        }
-//    }
-
     @Override
     public String getTrainingLogText() {
         StringBuilder buf = new StringBuilder();
@@ -69,21 +57,12 @@ public class SequentialModel implements Model {
         return buf.toString();
     }
 
-//    public PredictionAndLosses calcGradient(Random rnd, TrainingData trainingData) {
-//        resetGradients();
-//
-//        PredictionAndLosses l = calcCost(rnd, trainingData);
-//        l.totalLoss.backward(value(1.0));
-//
-//        return l;
-//    }
+    public PredictionAndLosses calcCost(Random rnd, Batch trainingData, IterationInfo iterationInfo) {
+        int actualBatchSize = trainingData.getBatchSize();
 
-    public PredictionAndLosses calcCost(Random rnd, TrainingData trainingData) {
-        int actualBatchSize = trainingData.xTrain.getShape().at(0);
+        OutputWithTasks outputWithTasks = forward(rnd, trainingData.input, RunMode.TRAINING, iterationInfo);
 
-        OutputWithTasks outputWithTasks = forward(rnd, trainingData.xTrain, RunMode.TRAINING);
-
-        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(TrainingDataUtils.toOneHot(trainingData.yTrain, 10), outputWithTasks.output);
+        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(TrainingDataUtils.toOneHot(trainingData.output, 10), outputWithTasks.output);
         Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(actualBatchSize));
 
         List<Tensor> otherCosts = layers.stream()
@@ -91,7 +70,7 @@ public class SequentialModel implements Model {
                 .filter(Objects::nonNull)
                 .collect(toList());
 
-        Tensor scaledAdditionalCosts = scaleByBatch(trainingData.xTrain.getShape(), otherCosts);
+        Tensor scaledAdditionalCosts = scaleByBatch(trainingData.input.getShape(), otherCosts);
 
         Tensor totalLoss = add(avgSoftmaxCost, scaledAdditionalCosts);
 
@@ -118,19 +97,19 @@ public class SequentialModel implements Model {
                 .collect(toList());
     }
 
-    public List<DisposalRegister.Disposable> getNonDisposedObjects() {
+    public List<DisposalRegister.Disposable> getKeepInMemoryDisposables() {
         return layers.stream()
-                .map(Layer::getNonDisposedObjects)
+                .map(Layer::getKeepInMemoryDisposables)
                 .flatMap(List::stream)
                 .filter(Objects::nonNull)
                 .collect(toList());
     }
 
-    public Tensor predict(Tensor x_train) {
-        return forward(null, x_train, RunMode.INFERENCE).output;
+    public Tensor predict(Tensor x_train, IterationInfo iterationInfo) {
+        return forward(null, x_train, RunMode.INFERENCE, iterationInfo).output;
     }
 
-    private OutputWithTasks forward(Random rnd, Tensor inputs, RunMode runMode) {
+    private OutputWithTasks forward(Random rnd, Tensor inputs, RunMode runMode, IterationInfo iterationInfo) {
         List<Runnable> tasks = new ArrayList<>();
 
         Tensor output = inputs;
@@ -143,7 +122,7 @@ public class SequentialModel implements Model {
 //            }
 
             Layer l = layers.get(i);
-            Layer.ForwardResult result = l.forward(rnd, output, runMode);
+            Layer.ForwardResult result = l.forward(rnd, output, runMode, iterationInfo);
             result.putTasksInto(tasks);
 
             output = result.output;
@@ -167,10 +146,6 @@ public class SequentialModel implements Model {
             this.trainingTasks = trainingTasks;
         }
     }
-
-//    public Model copy() {
-//        return new SequentialModel(this);
-//    }
 
     public static class Factory implements ModelFactory {
         private final Shape inputShape;

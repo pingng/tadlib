@@ -115,7 +115,7 @@ class DummyArray implements NDArray {
     }
 
     @Override
-    public NDArray softMaxGrad(NDArray softmax, NDArray oneHotArray) {
+    public NDArray softMaxCrossEntropyGrad(NDArray softmax, NDArray oneHotArray) {
         return null;
     }
 
@@ -156,6 +156,16 @@ class DummyArray implements NDArray {
 
     @Override
     public NDArray diag() {
+        return null;
+    }
+
+    @Override
+    public NDArray concat(NDArray[] appendees, int axis) {
+        return null;
+    }
+
+    @Override
+    public List<NDArray> split(int axis, int[] axisLens) {
         return null;
     }
 

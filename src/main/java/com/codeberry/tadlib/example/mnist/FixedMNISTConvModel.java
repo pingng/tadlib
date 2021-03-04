@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import static com.codeberry.tadlib.example.TrainingData.*;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.*;
 import static com.codeberry.tadlib.nn.loss.L2Loss.l2LossOf;
 import static com.codeberry.tadlib.provider.ProviderStore.shape;
@@ -39,8 +40,8 @@ public class FixedMNISTConvModel implements Model {
     private final Tensor full_bn_beta;
     private final Tensor full_bn_gamma;
 
-    public BatchNormRunningAverages secondConvBnAverages = new BatchNormRunningAverages();
-    public BatchNormRunningAverages fullyConBnAverages = new BatchNormRunningAverages();
+    public final BatchNormRunningAverages secondConvBnAverages = new BatchNormRunningAverages();
+    public final BatchNormRunningAverages fullyConBnAverages = new BatchNormRunningAverages();
 
     public FixedMNISTConvModel(Factory cfg) {
         this.cfg = cfg;
@@ -84,14 +85,13 @@ public class FixedMNISTConvModel implements Model {
                 "fullyConBnAverages:\n" + fullyConBnAverages;
     }
 
-    public PredictionAndLosses calcCost(Random rnd,
-                                        TrainingData trainingData) {
-        int actualBatchSize = trainingData.xTrain.getShape().at(0);
+    public PredictionAndLosses calcCost(Random rnd, Batch trainingData, IterationInfo iterationInfo) {
+        int actualBatchSize = trainingData.getBatchSize();
 
         List<Runnable> trainingTasks = new ArrayList<>();
-        Tensor y = forward(rnd, trainingData.xTrain, trainingTasks, RunMode.TRAINING);
+        Tensor y = forward(rnd, trainingData.input, trainingTasks, RunMode.TRAINING);
 
-        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(TrainingDataUtils.toOneHot(trainingData.yTrain, 10), y);
+        Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(TrainingDataUtils.toOneHot(trainingData.output, 10), y);
         Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(actualBatchSize));
 
         Tensor l2Loss = cfg.l2Lambda <= 0 ? Tensor.ZERO :
@@ -104,10 +104,10 @@ public class FixedMNISTConvModel implements Model {
     }
 
     @Override
-    public List<DisposalRegister.Disposable> getNonDisposedObjects() {
+    public List<DisposalRegister.Disposable> getKeepInMemoryDisposables() {
         List<DisposalRegister.Disposable> r = new ArrayList<>();
-        r.addAll(secondConvBnAverages.getDisposables());
-        r.addAll(this.fullyConBnAverages.getDisposables());
+        r.addAll(secondConvBnAverages.getKeepInMemoryDisposables());
+        r.addAll(fullyConBnAverages.getKeepInMemoryDisposables());
         return r;
     }
 
@@ -115,7 +115,7 @@ public class FixedMNISTConvModel implements Model {
         return ReflectionUtils.getFieldValues(Tensor.class, this);
     }
 
-    public Tensor predict(Tensor x_train) {
+    public Tensor predict(Tensor x_train, IterationInfo iterationInfo) {
         return forward(null, x_train, new ArrayList<>(), RunMode.INFERENCE);
     }
 
@@ -143,8 +143,7 @@ public class FixedMNISTConvModel implements Model {
 
         if (cfg.useBatchNormalization) {
             BatchNormResult secBnResult = batchNorm(secRelu, sec_bn_beta, sec_bn_gamma, secondConvBnAverages, runMode);
-            trainingTasks.add(() ->
-                    this.secondConvBnAverages = this.secondConvBnAverages.updateWith(secBnResult, 0.99));
+            trainingTasks.add(() -> this.secondConvBnAverages.updateWith(secBnResult, 0.99));
             return secBnResult.output;
         } else {
             return secRelu;
@@ -162,9 +161,7 @@ public class FixedMNISTConvModel implements Model {
         Tensor hiddenFinal;
         if (cfg.useBatchNormalization) {
             BatchNormResult fullBnResult = batchNorm(hiddenRelu, full_bn_beta, full_bn_gamma, fullyConBnAverages, runMode);
-            trainingTasks.add(() -> {
-                this.fullyConBnAverages = this.fullyConBnAverages.updateWith(fullBnResult, 0.99);
-            });
+            trainingTasks.add(() -> this.fullyConBnAverages.updateWith(fullBnResult, 0.99));
             hiddenFinal = fullBnResult.output;
         } else {
             hiddenFinal = hiddenRelu;

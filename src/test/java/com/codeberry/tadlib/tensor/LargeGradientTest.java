@@ -2,8 +2,10 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.example.TrainingData;
-import com.codeberry.tadlib.example.mnist.MNISTFullyConnectedModel;
-import com.codeberry.tadlib.nn.model.*;
+import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.nn.model.ModelFactory;
+import com.codeberry.tadlib.nn.model.SequentialModel;
+import com.codeberry.tadlib.nn.model.TrainStats;
 import com.codeberry.tadlib.nn.model.optimizer.SGD;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.JavaProvider;
@@ -16,9 +18,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-import static com.codeberry.tadlib.example.mnist.MNISTFullyConnectedModel.Factory.Builder.factoryBuilder;
-import static com.codeberry.tadlib.example.mnist.MNISTLoader.*;
-import static com.codeberry.tadlib.example.mnist.TrainConfiguredConvMNISTMain.*;
+import static com.codeberry.tadlib.example.mnist.MNISTLoader.generate;
+import static com.codeberry.tadlib.example.mnist.TrainConfiguredConvMNISTMain.ModelSize;
+import static com.codeberry.tadlib.example.mnist.TrainConfiguredConvMNISTMain.createModelFactory;
+import static com.codeberry.tadlib.nn.model.optimizer.FixedLearningRate.fixedLearningRate;
 import static com.codeberry.tadlib.provider.java.JavaProvider.ThreadMode.MULTI_THREADED;
 import static com.codeberry.tadlib.provider.java.JavaProvider.ThreadMode.SINGLE_THREADED;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -73,19 +76,12 @@ public class LargeGradientTest {
         }
     }
 
-    private static MNISTFullyConnectedModel.Factory createFullyConnectedModelFactory() {
-        return factoryBuilder()
-                .hiddenNeurons(16)
-                .weightInitRandomSeed(4)
-                .build();
-    }
-
     private static SequentialModel.Factory createConvolutionModelFactory() {
         return createModelFactory(ModelSize.TINY);
     }
 
     private double testGradients(TrainingData trainingData, Model model, int epoch) {
-        model.calcGradient(new Random(epoch), trainingData);
+        model.calcGradient(new Random(epoch), trainingData.getTrainingBatchAll(), new Model.IterationInfo(0, 0, 1));
         List<NDArray> gradients = model.getGradients();
         List<Object> gradientDoubles = gradients.stream()
                 .map(NDArray::toDoubles)
@@ -159,7 +155,7 @@ public class LargeGradientTest {
         Random dropRnd = new Random(epoch);
         TrainStats stats = new TrainStats();
 
-        Model.PredictionAndLosses pl = model.trainSingleIteration(dropRnd, trainingData, new SGD(0.1));
+        Model.PredictionAndLosses pl = model.trainSingleIteration(dropRnd, trainingData.getTrainingBatchAll(), new SGD(fixedLearningRate(0.1)), new Model.IterationInfo(epoch, 0, 1));
 
         stats.accumulate(pl, trainingData.yTrain);
         System.out.println("Trained: " + stats);

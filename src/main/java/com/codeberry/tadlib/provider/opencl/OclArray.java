@@ -17,7 +17,7 @@ import com.sun.jna.Pointer;
 import java.util.*;
 import java.util.function.Function;
 
-import static com.codeberry.tadlib.memorymanagement.DisposalRegister.disposeAllExceptReturnedValues;
+import static com.codeberry.tadlib.memorymanagement.DisposalRegister.disposeAllExceptReturnedValue;
 import static com.codeberry.tadlib.memorymanagement.DisposalRegister.registerForDisposal;
 import static com.codeberry.tadlib.provider.opencl.OclBuffer.*;
 import static com.codeberry.tadlib.provider.opencl.OclDataType.*;
@@ -98,7 +98,7 @@ public class OclArray implements NDArray {
                     throwOnError(() -> OpenCL.INSTANCE.clWaitForEvents(1, pointers),
                             resources::getContentStatus), ev);
         }
-        resources.disposeDeep();
+        resources.disposeDependencies();
     }
 
     @Override
@@ -182,12 +182,8 @@ public class OclArray implements NDArray {
     }
 
     @Override
-    public NDArray softMaxGrad(NDArray softmax, NDArray oneHotArray) {
-//        List<ValueUpdate> updates = getSoftmaxGradientUpdates(softmax, softmax.getShape().newIndexArray(),
-//                oneHotArray, 0);
-//
-//        return softmax.withUpdates(updates).mul(this);
-        return SoftmaxUtils.getSoftmaxGradientUpdatesNEW(softmax, oneHotArray).mul(this);
+    public NDArray softMaxCrossEntropyGrad(NDArray softmax, NDArray oneHotArray) {
+        return SoftmaxUtils.calcSoftmaxCrossEntropyGradient(softmax, oneHotArray).mul(this);
     }
 
     /**
@@ -315,7 +311,7 @@ public class OclArray implements NDArray {
 
     @Override
     public NDArray calcConv2dFilterGradient(NDArray input, NDArray filter) {
-        return disposeAllExceptReturnedValues(() -> {
+        return disposeAllExceptReturnedValue(() -> {
             Shape filterShape = filter.getShape();
             NDArray gradTransposed = this.transpose(1, 2, 0, 3);
             NDArray inputTransposed = input.transpose(3, 1, 2, 0);
@@ -332,7 +328,7 @@ public class OclArray implements NDArray {
 
     public void dispose() {
         this.buffer.dispose();
-        this.resources.disposeDeep();
+        this.resources.disposeDependencies();
     }
 
     @Override
@@ -363,6 +359,19 @@ public class OclArray implements NDArray {
     @Override
     public NDArray diag() {
         return Diagonal.diag(buffer.context, this);
+    }
+
+    @Override
+    public NDArray concat(NDArray[] appendees, int axis) {
+        OclArray[] copy = new OclArray[appendees.length + 1];
+        System.arraycopy(appendees, 0, copy, 1, appendees.length);
+        copy[0] = this;
+        return Concat.concat(buffer.context, copy, getShape().wrapNegIndex(axis));
+    }
+
+    @Override
+    public List<NDArray> split(int axis, int[] axisLens) {
+        return Split.split(buffer.context, this, getShape().wrapNegIndex(axis), axisLens);
     }
 
     @Override
@@ -403,23 +412,19 @@ public class OclArray implements NDArray {
     }
 
     private <E> E readToNative(Function<TADMemory, E> mapper) {
-        TADMemory nativeBuf = new TADMemory(cl_double.sizeOfElements(shape.getSize()));
+        try(TADMemory nativeBuf = new TADMemory(cl_double.sizeOfElements(shape.getSize()))) {
+            Pointer kernelEvent = resources.getKernelEvent();
 
-        Pointer kernelEvent = resources.getKernelEvent();
+            usePointerArray(events ->
+                    throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueReadBuffer(buffer.context.getQueue(),
+                            buffer, true,
+                            new SizeT(0),
+                            new SizeT(nativeBuf.size()), nativeBuf, events,
+                            null)), kernelEvent);
 
-        usePointerArray(events ->
-                throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueReadBuffer(buffer.context.getQueue(),
-                        buffer, true,
-                        new SizeT(0),
-                        new SizeT(nativeBuf.size()), nativeBuf, events,
-                        null)), kernelEvent);
+            resources.disposeDependencies();
 
-        resources.disposeDeep();
-
-        try {
             return mapper.apply(nativeBuf);
-        } finally {
-            nativeBuf.dispose();
         }
     }
 

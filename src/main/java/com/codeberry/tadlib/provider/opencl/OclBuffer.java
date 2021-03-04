@@ -201,19 +201,17 @@ public class OclBuffer extends Pointer implements DisposalRegister.Disposable {
     }
 
     public double oclReadDouble(InProgressResources resources, int index) {
-        TADMemory nativeBuf = new TADMemory(cl_double.sizeOfElements(1));
+        try(TADMemory nativeBuf = new TADMemory(cl_double.sizeOfElements(1))) {
 
-        resources.useDependencyEvents(events ->
-                throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueReadBuffer(context.getQueue(),
-                        this, true,
-                        new SizeT(cl_double.sizeOfElements(index)),
-                        new SizeT(nativeBuf.size()), nativeBuf, events,
-                        null)));
+            resources.useDependencyEvents(events ->
+                    throwOnError(() -> OpenCL.INSTANCE.wrapperEnqueueReadBuffer(context.getQueue(),
+                            this, true,
+                            new SizeT(cl_double.sizeOfElements(index)),
+                            new SizeT(nativeBuf.size()), nativeBuf, events,
+                            null)));
 
-        double value = nativeBuf.getDouble(0);
-        nativeBuf.dispose();
-
-        return value;
+            return nativeBuf.getDouble(0);
+        }
     }
 
     public OclBuffer oclDoubleSubBuffer(InProgressResources res, int fromOffset, int toOffset) {

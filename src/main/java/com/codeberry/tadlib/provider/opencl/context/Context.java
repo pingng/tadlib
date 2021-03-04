@@ -122,6 +122,10 @@ public class Context extends Pointer {
                 '}';
     }
 
+    public List<Device> getDevices() {
+        return devices;
+    }
+
     private static class Disposer extends AbstractDisposer {
         private final long nativeValue;
 

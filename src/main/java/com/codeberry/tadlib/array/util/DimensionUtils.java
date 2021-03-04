@@ -185,6 +185,71 @@ public abstract class DimensionUtils {
         return offset;
     }
 
+    public static Shape evalConcatShape(Shape[] shapes, int axis) {
+        int[] dims = shapes[0].toDimArray();
+
+        for (int i = 1; i < shapes.length; i++) {
+            dims[axis] += shapes[i].at(axis);
+        }
+
+        return ProviderStore.shape(dims);
+    }
+
+    public static void validateConcatShapes(Shape[] shapes, int axis) {
+        Shape first = shapes[0];
+
+        int dimCount = first.getDimCount();
+        for (int sI = 1; sI < shapes.length; sI++) {
+            Shape s = shapes[sI];
+            if (dimCount != s.getDimCount()) {
+                throw new DimensionMismatch(dimCount + " != " + s.getDimCount());
+            }
+
+            for (int i = 0; i < dimCount; i++) {
+                if (i != axis) {
+                    if (first.at(i) != s.at(i)) {
+                        throw new DimensionMismatch("InputIndex: " + sI + " Dim: " + i + ", " + first.at(i) + " != " + s.at(i));
+                    }
+                }
+            }
+        }
+    }
+
+    public static Shape evalSplitShape(Shape shape, int axis, int axisLen) {
+        int[] dims = shape.toDimArray();
+        dims[axis] = axisLen;
+
+        return ProviderStore.shape(dims);
+    }
+
+    public static void validateSplitLens(Shape org, int axis, int[] axisLens) {
+        int availableLen = org.at(axis);
+        int sumSplitLen = 0;
+        for (int axisLen : axisLens) {
+            sumSplitLen += axisLen;
+        }
+
+        if (availableLen != sumSplitLen) {
+            throw new DimensionMismatch("Total split axis lengths mismatch: availableLen=" + availableLen + " sumSplitLen=" + sumSplitLen);
+        }
+    }
+
+    public static Shape[] extractShapes(NDArray[] arrays) {
+        Shape[] r = new Shape[arrays.length];
+        for (int i = 0; i < arrays.length; i++) {
+            r[i] = arrays[i].getShape();
+        }
+        return r;
+    }
+
+    public static int[] extractAxisLen(Shape[] shapes, int axis) {
+        int[] lens = new int[shapes.length];
+        for (int i = 0; i < shapes.length; i++) {
+            lens[i] = shapes[i].at(axis);
+        }
+        return lens;
+    }
+
     public enum ShapeEndType {
         END_WITH__HEIGHT_WIDTH_CHANNEL(3),
         END_WITH__HEIGHT_WIDTH(2);

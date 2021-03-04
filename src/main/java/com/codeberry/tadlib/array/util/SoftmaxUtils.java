@@ -9,8 +9,7 @@ import java.util.List;
 import static com.codeberry.tadlib.array.NDArray.ValueUpdate.fromIndices;
 
 public abstract class SoftmaxUtils {
-    public static NDArray getSoftmaxGradientUpdatesNEW(NDArray predicted, NDArray labelsOneHot) {
-        // ms.shape = [examples]
+    public static NDArray calcSoftmaxCrossEntropyGradient(NDArray predicted, NDArray labelsOneHot) {
         NDIntArray indices = labelsOneHot.argmax(-1);
         NDArray predAtTargetIndices = predicted.getAtIndicesOnAxis(indices, -1);
         NDArray change = predAtTargetIndices.add(-1);

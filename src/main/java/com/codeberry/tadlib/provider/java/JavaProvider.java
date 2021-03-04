@@ -72,4 +72,9 @@ public class JavaProvider implements Provider {
         Arrays.fill(data, v);
         return new JavaArray(data, (JavaShape) shape);
     }
+
+    @Override
+    public String getShortDescription() {
+        return "Java";
+    }
 }

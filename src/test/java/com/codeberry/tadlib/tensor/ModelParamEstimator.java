@@ -11,7 +11,7 @@ import java.util.Random;
 import static java.util.Collections.*;
 
 class ModelParamEstimator {
-    private static final double DELTA = 0.000005;
+    private static final double DELTA = 0.000008;
 
     private final int rndSeed;
     private final Model model;
@@ -62,7 +62,7 @@ class ModelParamEstimator {
     }
 
     private double calcCost() {
-        Model.PredictionAndLosses predictionAndLosses = model.calcCost(new Random(rndSeed), trainingData);
+        Model.PredictionAndLosses predictionAndLosses = model.calcCost(new Random(rndSeed), trainingData.getTrainingBatchAll(), new Model.IterationInfo(0, 0, 1));
         return (double) predictionAndLosses.totalLoss.toDoubles();
     }
 }

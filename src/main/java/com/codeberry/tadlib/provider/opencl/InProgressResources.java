@@ -46,21 +46,27 @@ public class InProgressResources {
     }
 
     public void registerDependency(OclArray dependantArray) {
-        this.strongReferredNDArrays.add(dependantArray);
+        if (dependantArray != null) {
+            this.strongReferredNDArrays.add(dependantArray);
+        }
     }
 
     public void registerDependency(OclIntArray dependantArray) {
-        this.strongReferredNDIntArrays.add(dependantArray);
+        if (dependantArray != null) {
+            this.strongReferredNDIntArrays.add(dependantArray);
+        }
     }
 
     public void registerDisposableBuffer(OclBuffer dependantArray) {
-//            (new Exception("Registered mem: " + Pointer.nativeValue(dependantArray))).printStackTrace();
-        this.disposableBuffers.add(dependantArray);
+        if (dependantArray != null) {
+            this.disposableBuffers.add(dependantArray);
+        }
     }
 
     public void registerReferredBuffer(OclBuffer keepRefToBuffer) {
-//            (new Exception("Keep mem: " + Pointer.nativeValue(keepRefToBuffer))).printStackTrace();
-        this.strongReferredBuffers.add(keepRefToBuffer);
+        if (keepRefToBuffer != null) {
+            this.strongReferredBuffers.add(keepRefToBuffer);
+        }
     }
 
     public void useDependencyEvents(Consumer<OpenCL.PointerArray> consumer) {
@@ -118,12 +124,12 @@ public class InProgressResources {
         return opEvent == null;
     }
 
-    public synchronized void disposeDeep() {
+    public synchronized void disposeDependencies() {
         for (OclArray ndArr : strongReferredNDArrays) {
-            ndArr.resources.disposeDeep();
+            ndArr.resources.disposeDependencies();
         }
         for (OclIntArray ndArr : strongReferredNDIntArrays) {
-            ndArr.resources.disposeDeep();
+            ndArr.resources.disposeDependencies();
         }
         for (TADByReference event : disposableByRefs) {
             event.dispose();

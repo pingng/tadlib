@@ -7,6 +7,7 @@ import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import java.util.List;
 
 import static com.codeberry.tadlib.memorymanagement.DisposalRegister.*;
+import static com.codeberry.tadlib.tensor.Tensor.constant;
 import static java.util.Arrays.asList;
 
 public abstract class OpsExtended {
@@ -39,8 +40,9 @@ public abstract class OpsExtended {
                 Tensor _sqrDiff = Ops.sqr(_diff);
                 variance = Ops.mean(_sqrDiff, 0, 1, 2);
             } else {
-                mean = new Tensor(averages.runningMean, Tensor.GradientMode.NONE);
-                variance = new Tensor(averages.runningVariance, Tensor.GradientMode.NONE);
+                BatchNormRunningAverages.Data r = averages.running;
+                mean = constant(r.mean);
+                variance = constant(r.variance);
                 _diff = Ops.sub(input, Ops.reshape(mean, 1, 1, 1, channels));
             }
             // X_hat = (X - mean.reshape((1, C, 1, 1))) * 1.0 / nd.sqrt(variance.reshape((1, C, 1, 1)) + eps)
@@ -63,8 +65,9 @@ public abstract class OpsExtended {
                 Tensor _sqrDiff = Ops.sqr(_diff);
                 variance = Ops.mean(_sqrDiff, 0);
             } else {
-                mean = new Tensor(averages.runningMean, Tensor.GradientMode.NONE);
-                variance = new Tensor(averages.runningVariance, Tensor.GradientMode.NONE);
+                BatchNormRunningAverages.Data r = averages.running;
+                mean = constant(r.mean);
+                variance = constant(r.variance);
                 _diff = Ops.sub(input, mean);
             }
             Tensor _sqrVarianceWithEpsilon = Ops.add(variance, Ops.EPSILON);
@@ -77,24 +80,26 @@ public abstract class OpsExtended {
         }
     }
 
-    public static class BatchNormRunningAverages implements DisposableContainer {
-        public final NDArray runningMean;
-        public final NDArray runningVariance;
+    public static class BatchNormRunningAverages {
+        volatile Data running;
 
         public BatchNormRunningAverages() {
             this(null, null);
         }
 
         public BatchNormRunningAverages(NDArray runningMean, NDArray runningVariance) {
-            this.runningMean = runningMean;
-            this.runningVariance = runningVariance;
+            this.running = new Data(runningMean, runningVariance);
         }
 
-        public BatchNormRunningAverages updateWith(BatchNormResult result, double momentum) {
-            NDArray newVariance = update(this.runningVariance, result.variance, momentum);
-            NDArray newMean = update(this.runningMean, result.mean, momentum);
+        public void updateWith(BatchNormResult result, double momentum) {
+            Data old = this.running;
 
-            return new BatchNormRunningAverages(newMean, newVariance);
+            NDArray newVariance = update(old.variance, result.variance, momentum);
+            NDArray newMean = update(old.mean, result.mean, momentum);
+
+            this.running = new Data(newMean, newVariance);
+
+            old.registerForDisposal();
         }
 
         private static NDArray update(NDArray old, NDArray current, double momentum) {
@@ -109,21 +114,32 @@ public abstract class OpsExtended {
 
         @Override
         public String toString() {
-            return "Mean: " + runningMean + "\n" +
-                    "Variance: " + runningVariance;
+            Data r = this.running;
+            return "Mean: " + r.mean + "\n" +
+                    "Variance: " + r.variance;
         }
 
-        @Override
-        public List<NDArray> getDisposables() {
-            return asList(runningMean, runningVariance);
+        public List<NDArray> getKeepInMemoryDisposables() {
+            Data r = this.running;
+            return asList(r.mean, r.variance);
         }
 
-        public void registerForDisposal() {
-            DisposalRegister.registerForDisposal(this.runningMean, this.runningVariance);
+        public static class Data {
+            public final NDArray mean;
+            public final NDArray variance;
+
+            Data(NDArray mean, NDArray variance) {
+                this.mean = mean;
+                this.variance = variance;
+            }
+
+            void registerForDisposal() {
+                DisposalRegister.registerForDisposal(this.mean, this.variance);
+            }
         }
     }
 
-    public static class BatchNormResult implements DisposableContainer<NDArray> {
+    public static class BatchNormResult {
         public final Tensor output;
         public final NDArray mean;
         public final NDArray variance;
@@ -132,11 +148,6 @@ public abstract class OpsExtended {
             this.output = output;
             this.mean = mean;
             this.variance = variance;
-        }
-
-        @Override
-        public List<NDArray> getDisposables() {
-            return asList(output.getVals(), output.getGradient(), mean, variance);
         }
     }
 }

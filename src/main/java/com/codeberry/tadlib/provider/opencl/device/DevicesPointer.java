@@ -37,6 +37,7 @@ public class DevicesPointer extends Memory {
                 OpenCLHelper.getDeviceInfoInt(device, DeviceInfoCode.CL_DEVICE_MAX_COMPUTE_UNITS),
                 OpenCLHelper.getDeviceInfoLong(device, DeviceInfoCode.CL_DEVICE_DOUBLE_FP_CONFIG),
                 OpenCLHelper.getDeviceInfoLong(device, DeviceInfoCode.CL_DEVICE_GLOBAL_MEM_SIZE),
+                OpenCLHelper.getDeviceInfoLong(device, DeviceInfoCode.CL_DEVICE_LOCAL_MEM_SIZE),
                 OpenCLHelper.getDeviceInfoSizeT(device, DeviceInfoCode.CL_DEVICE_MAX_WORK_GROUP_SIZE),
                 workItemSizes,
                 OpenCLHelper.getDeviceInfoType(device, DeviceInfoCode.CL_DEVICE_TYPE));

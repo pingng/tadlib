@@ -3,9 +3,11 @@ package com.codeberry.tadlib.example.mnist;
 import com.codeberry.tadlib.memorymanagement.LeakDetector;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.nn.model.Model.IterationInfo;
 import com.codeberry.tadlib.nn.model.ModelFactory;
 import com.codeberry.tadlib.nn.model.optimizer.Optimizer;
 import com.codeberry.tadlib.nn.model.TrainStats;
+import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.StringUtils;
 
@@ -27,7 +29,7 @@ public class SimpleTrainer {
     private final TrainingData trainingData;
     private final Model model;
     private final Optimizer optimizer;
-    private volatile boolean paused;
+    private volatile RunPerformance performance = RunPerformance.FULL_SPEED;
 
     public SimpleTrainer(TrainParams params) {
         this.params = params;
@@ -43,60 +45,99 @@ public class SimpleTrainer {
 
     public void trainEpochs(int epochs) {
         int numberOfBatches = trainingData.calcTrainingBatchCountOfSize(params.batchSize);
-        System.out.println("numberOfBatches = " + numberOfBatches);
+        int numberOfTestBatches = trainingData.calcTestBatchCountOfSize(params.batchSize);
+        System.out.println("trainBatches=" + numberOfBatches + " testBatches=" + numberOfTestBatches);
+        printParamCount();
 
         LeakDetector.reset();
 
+        Model.TrainInfo trainInfo = null;
         Random rnd = new Random(4);
         for (int epoch = 0; epoch <= epochs; epoch++) {
-            System.out.println("=== Epoch " + epoch);
+            System.out.println("=== Epoch " + epoch + ", " + LocalDateTime.now());
             TrainStats stats = new TrainStats();
             for (int batchId = 0; batchId < numberOfBatches; batchId++) {
                 handlePause();
 
-                int finalBatchId = batchId;
-                modelIteration(() -> trainBatch(finalBatchId, numberOfBatches, rnd, stats));
+                IterationInfo iterationInfo = new IterationInfo(epoch, batchId, numberOfBatches, trainInfo);
+                optimizer.getLearningRateSchedule().beforeBatch(iterationInfo);
+
+                modelIteration(() -> trainBatch(rnd, stats, iterationInfo));
             }
             System.out.println(stats);
 
-            modelIteration(() -> {
-                Tensor predict = model.predict(trainingData.xTest);
-                double testAccuracy = softmaxAccuracy(trainingData.yTest, predict);
-                System.out.println("* Test acc: " + testAccuracy);
+            double[] testAccuracy = new double[1];
+            for (int batchId = 0; batchId < numberOfTestBatches; batchId++) {
 
-                return emptyList();
-            });
+                IterationInfo iterationInfo = new IterationInfo(-1, batchId, numberOfTestBatches);
+                modelIteration(() -> {
+                    testAccuracy[0] += testBatch(iterationInfo);
+
+                    return emptyList();
+                });
+            }
+            double testAcc = testAccuracy[0] / numberOfTestBatches;
+            System.out.println("* Test acc: " + testAcc);
+
+            trainInfo = new Model.TrainInfo(stats.asOutputStats(), new Model.OutputStats(-1, testAcc));
             LeakDetector.printOldObjectsAndIncreaseObjectAge();
         }
     }
 
-    private List<DisposableContainer<? extends Disposable>> trainBatch(int finalBatchId, int numberOfBatches, Random rnd, TrainStats stats) {
-        TrainingData batchData = trainingData.getTrainingBatch(finalBatchId, params.batchSize);
+    private void printParamCount() {
+        long paramCount = 0;
 
-        Model.PredictionAndLosses pl = model.trainSingleIteration(rnd, batchData, optimizer);
+        List<Tensor> params = model.getParams();
+        for (Tensor param : params) {
+            paramCount += param.getShape().getSize();
+        }
 
-        stats.accumulate(pl, batchData.yTrain);
+        System.out.println("Total (main) params: " + paramCount);
+    }
 
-        logger.log(finalBatchId, numberOfBatches, model, stats);
+    private double testBatch(IterationInfo iterationInfo) {
+        TrainingData.Batch testBatch = trainingData.getTestBatch(iterationInfo.batchIndex, params.batchSize);
 
-        return getContainersOfResourcesToKeep();
+        Tensor predict = model.predict(testBatch.input, iterationInfo);
+
+        return softmaxAccuracy(testBatch.output, predict);
+    }
+
+    private List<Disposable> trainBatch(Random rnd, TrainStats stats, IterationInfo iterationInfo) {
+        TrainingData.Batch batchData = trainingData.getTrainingBatch(iterationInfo.batchIndex, params.batchSize);
+
+        Model.PredictionAndLosses pl = model.trainSingleIteration(rnd, batchData, optimizer, iterationInfo);
+
+        stats.accumulate(pl, batchData.output);
+
+        logger.log(iterationInfo.batchIndex, iterationInfo.batchCount, model, stats);
+
+        return getKeepInMemoryDisposables();
     }
 
     /**
-     * @return containers of disposable that must be kept (not disposed/released) after a training/predict iteration.
+     * @return disposables that must be kept (not disposed/released) after a training/predict iteration.
      */
-    private List<DisposableContainer<? extends Disposable>> getContainersOfResourcesToKeep() {
-        List<DisposableContainer<? extends Disposable>> objects = new ArrayList<>();
-        objects.add(model::getNonDisposedObjects);
-        objects.addAll(model.getParams());
-        objects.addAll(optimizer.getNonDisposedContainers());
+    private List<Disposable> getKeepInMemoryDisposables() {
+        List<Disposable> objects = new ArrayList<>();
+        objects.addAll(model.getKeepInMemoryDisposables());
+        for (Tensor param : model.getParams()) {
+            objects.addAll(param.getDisposables());
+        }
+        objects.addAll(optimizer.getKeepInMemoryDisposables());
         return objects;
     }
 
     private void handlePause() {
-        while (this.paused) {
+        while (performance == RunPerformance.PAUSED) {
             try {
                 Thread.sleep(1000);
+            } catch (InterruptedException ignore) {
+            }
+        }
+        if (performance == RunPerformance.SLOW) {
+            try {
+                Thread.sleep(100);
             } catch (InterruptedException ignore) {
             }
         }
@@ -125,14 +166,27 @@ public class SimpleTrainer {
             System.out.println("GC!!!");
             System.gc();
         });
-        MenuItem togglePause = new MenuItem("Pause/Unpause");
-        togglePause.addActionListener(ev -> {
-            this.paused = !this.paused;
-            System.out.println("Paused: " + this.paused + " (" +
-                    LocalDateTime.now() + ")");
+        MenuItem pause = new MenuItem("Pause");
+        pause.addActionListener(ev -> {
+            this.performance = RunPerformance.PAUSED;
+            System.out.println(this.performance + " (" + LocalDateTime.now() + ")");
+        });
+        MenuItem slow = new MenuItem("Slow");
+        slow.addActionListener(ev -> {
+            this.performance = RunPerformance.SLOW;
+            System.out.println(this.performance + " (" + LocalDateTime.now() + ")");
+        });
+        MenuItem fullSpeed = new MenuItem("Full speed");
+        fullSpeed.addActionListener(ev -> {
+            this.performance = RunPerformance.FULL_SPEED;
+            System.out.println(this.performance + " (" + LocalDateTime.now() + ")");
         });
 
-        popup.add(togglePause);
+        popup.add(params.name + ": " + ProviderStore.getProviderShortDescription());
+        popup.addSeparator();
+        popup.add(fullSpeed);
+        popup.add(slow);
+        popup.add(pause);
         popup.addSeparator();
         popup.add(gcItem);
 
@@ -146,7 +200,7 @@ public class SimpleTrainer {
     }
 
     static class TrainLogger {
-        static  final int OUTPUT_BATCHES = 200;
+        static final int OUTPUT_BATCHES = 200;
         int batchProgress = 0;
         long lastMillis;
 
@@ -174,10 +228,19 @@ public class SimpleTrainer {
     }
 
     static class TrainParams {
+        private final String name;
         MNISTLoader.LoadParams loaderParams;
         ModelFactory modelFactory;
         Optimizer optimizer;
         int batchSize;
+
+        private TrainParams(String name) {
+            this.name = name;
+        }
+
+        public static TrainParams trainParams(String name) {
+            return new TrainParams(name);
+        }
 
         TrainParams loaderParams(MNISTLoader.LoadParams loaderParams) {
             this.loaderParams = loaderParams;
@@ -198,5 +261,9 @@ public class SimpleTrainer {
             this.modelFactory = modelFactory;
             return this;
         }
+    }
+
+    private enum RunPerformance {
+        FULL_SPEED, SLOW, PAUSED
     }
 }

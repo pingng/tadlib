@@ -1,6 +1,8 @@
 package com.codeberry.tadlib.nn.model.layer;
 
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.nn.model.Model.IterationInfo;
 import com.codeberry.tadlib.tensor.Ops;
 import com.codeberry.tadlib.tensor.Tensor;
 
@@ -20,7 +22,7 @@ public class DropOutLayer implements Layer {
     }
 
     @Override
-    public ForwardResult forward(Random rnd, Tensor inputs, RunMode runMode) {
+    public ForwardResult forward(Random rnd, Tensor inputs, RunMode runMode, IterationInfo iterationInfo) {
         return result(Ops.dropout(inputs, rnd, dropoutKeep, runMode));
     }
 

@@ -13,18 +13,23 @@ import static com.codeberry.tadlib.array.TArrayFactory.*;
 
 public class RMSProp implements Optimizer {
     public static final double EPSILON = 1e-6;
-    private final double learningRate;
+    private final LearningRateSchedule learningRateSchedule;
     private final double gamma;
 
     private transient IdentityHashMap<Tensor, NDArray> sTMap = new IdentityHashMap<>();
 
-    public RMSProp(double learningRate) {
-        this(learningRate, 0.9);
+    public RMSProp(LearningRateSchedule learningRateSchedule) {
+        this(learningRateSchedule, 0.9);
     }
 
-    public RMSProp(double learningRate, double gamma) {
-        this.learningRate = learningRate;
+    public RMSProp(LearningRateSchedule learningRateSchedule, double gamma) {
+        this.learningRateSchedule = learningRateSchedule;
         this.gamma = gamma;
+    }
+
+    @Override
+    public LearningRateSchedule getLearningRateSchedule() {
+        return learningRateSchedule;
     }
 
     @Override
@@ -34,13 +39,13 @@ public class RMSProp implements Optimizer {
                 NDArray sT = updateST(p, gradient);
                 NDArray sTWithEpsilon = sT.add(EPSILON);
                 NDArray sqrt = sTWithEpsilon.sqrt();
-                return values.sub(gradient.mul(learningRate).div(sqrt));
+                return values.sub(gradient.mul(learningRateSchedule.getLearningRate()).div(sqrt));
             });
         }
     }
 
     @Override
-    public Collection<DisposalRegister.DisposableContainer<NDArray>> getNonDisposedContainers() {
+    public Collection<DisposalRegister.Disposable> getKeepInMemoryDisposables() {
         return Collections.unmodifiableCollection(sTMap.values());
     }
 

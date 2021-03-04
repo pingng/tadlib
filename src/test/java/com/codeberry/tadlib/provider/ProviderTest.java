@@ -73,6 +73,11 @@ public class ProviderTest {
             public NDArray createArrayWithValue(Shape shape, double v) {
                 return new DummyArray();
             }
+
+            @Override
+            public String getShortDescription() {
+                return "Dummy";
+            }
         });
 
         NDArray a = ProviderStore.array(0.);

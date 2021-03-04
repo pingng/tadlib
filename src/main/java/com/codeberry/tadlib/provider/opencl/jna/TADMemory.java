@@ -39,11 +39,12 @@ import static java.util.Collections.*;
  * Copy of {@link com.sun.jna.Memory} that support cleanup/free memory using {@link Cleaner}. This avoids the problem of having
  * many instances of 'java.lang.ref.Finalizer'.
  *
- * <p>It also supports manual disposal of the memory, which will help reducing the number of live objects.
+ * <p>It also supports manual disposal of the memory, which will help reducing the number of live objects, in addition to
+ * be used in try() as auto closable (i.e. auto disposal for this class).
  *
  * @see com.sun.jna.Memory Memory for original code and authors
  */
-public class TADMemory extends Pointer {
+public class TADMemory extends Pointer implements AutoCloseable {
 
     private static final Map<ByteBuffer, TADMemory> buffersWeakMap = synchronizedMap(new WeakHashMap<>());
 
@@ -179,6 +180,11 @@ public class TADMemory extends Pointer {
             }
         }
         throw new IllegalArgumentException("Byte boundary must be a power of two");
+    }
+
+    @Override
+    public void close() {
+        dispose();
     }
 
     /**

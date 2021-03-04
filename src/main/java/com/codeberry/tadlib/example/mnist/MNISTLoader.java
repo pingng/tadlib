@@ -98,16 +98,34 @@ public class MNISTLoader {
     public static class LoadParams {
         private int trainingExamples;
         private int testExamples;
-        private String fileBasePath = "./.data/mnist";
-        private String downloadBasePath = "http://yann.lecun.com/exdb/mnist";
+        private String fileBasePath;
+        private String downloadBasePath;
         private boolean downloadWhenMissing = true;
         private String trainingXFilename = "train-images-idx3-ubyte.gz";
         private String trainingYFilename = "train-labels-idx1-ubyte.gz";
         private String testXFilename = "t10k-images-idx3-ubyte.gz";
         private String testYFilename = "t10k-labels-idx1-ubyte.gz";
 
+        public LoadParams() {
+            loadRegularMNIST();
+        }
+
         public static LoadParams params() {
             return new LoadParams();
+        }
+
+        public LoadParams loadRegularMNIST() {
+            fileBasePath("./.data/mnist");
+            downloadBasePath("http://yann.lecun.com/exdb/mnist");
+
+            return this;
+        }
+
+        public LoadParams loadFashionMNIST() {
+            fileBasePath("./.data/fashion");
+            downloadBasePath("https://github.com/zalandoresearch/fashion-mnist/raw/master/data/fashion");
+
+            return this;
         }
 
         public LoadParams trainingExamples(int trainingExamples) {

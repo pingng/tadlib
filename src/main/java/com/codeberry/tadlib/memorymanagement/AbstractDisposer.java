@@ -8,6 +8,7 @@ import java.util.concurrent.Callable;
 import static java.lang.Long.toHexString;
 
 public abstract class AbstractDisposer {
+    // TODO: allow to be set at runtime
     private static final boolean TRACK_GC_RELEASE = false;
 
     // The same lock object is used by all views

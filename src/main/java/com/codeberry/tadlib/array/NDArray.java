@@ -1,6 +1,5 @@
 package com.codeberry.tadlib.array;
 
-import com.codeberry.tadlib.memorymanagement.DisposalRegister.DisposableContainer;
 import com.codeberry.tadlib.provider.ProviderStore;
 
 import java.util.Arrays;
@@ -14,7 +13,7 @@ import static java.lang.Math.min;
 import static java.util.Arrays.fill;
 import static java.util.Collections.singletonList;
 
-public interface NDArray extends Disposable, DisposableContainer<NDArray> {
+public interface NDArray extends Disposable {
 
     Shape getShape();
 
@@ -102,6 +101,16 @@ public interface NDArray extends Disposable, DisposableContainer<NDArray> {
         return sum(toCollapse, REMOVE_DIM);
     }
 
+    default NDArray sum(DimKeepRemove keepRemove, int... axes) {
+        Shape inputShape = getShape();
+        Boolean[] dimsToCollapse = inputShape.newCollapseArray();
+        for (int axis : axes) {
+            dimsToCollapse[inputShape.wrapNegIndex(axis)] = TRUE;
+        }
+
+        return sum(dimsToCollapse, keepRemove);
+    }
+
     default NDArray sumFirstDims(int firstDimsToRemove, DimKeepRemove keepRemove) {
         Boolean[] dimsToCollapse = new Boolean[getShape().getDimCount()];
         Arrays.fill(dimsToCollapse, false);
@@ -114,28 +123,17 @@ public interface NDArray extends Disposable, DisposableContainer<NDArray> {
 
     MaxPool2dResult maxPool2d(int size);
 
-    /**
-     * @deprecated Replace with more general code
-     */
     NDArray maxPool2dGrad(MaxPool2dResult result);
 
     ReluResult relu(double leakyScale);
 
     NDArray softmax();
 
-    /**
-     * @deprecated Replace with more general ops
-     */
-    NDArray softMaxGrad(NDArray softmax, NDArray oneHotArray);
+    NDArray softMaxCrossEntropyGrad(NDArray softmax, NDArray oneHotArray);
 
     DropOutResult dropOut(Random rnd, double dropoutKeep);
 
     NDArray withUpdates(List<ValueUpdate> updates);
-
-    @Override
-    default List<NDArray> getDisposables() {
-        return singletonList(this);
-    }
 
     @Override
     default void dispose() {
@@ -175,6 +173,14 @@ public interface NDArray extends Disposable, DisposableContainer<NDArray> {
 
         return transpose(axes);
     }
+
+    default NDArray concat(NDArray appendee, int axis) {
+        return concat(new NDArray[]{appendee}, axis);
+    }
+
+    NDArray concat(NDArray[] appendees, int axis);
+
+    List<NDArray> split(int axis, int[] axisLens);
 
     enum DimKeepRemove {
         REMOVE_DIM {

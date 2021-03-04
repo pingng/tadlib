@@ -5,19 +5,19 @@ import com.codeberry.tadlib.nn.loss.SoftmaxCrossEntropyLoss;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.JavaArray;
 
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import static com.codeberry.tadlib.array.NDArray.*;
 import static com.codeberry.tadlib.array.NDArray.DimKeepRemove.KEEP_DIM;
 import static com.codeberry.tadlib.array.NDArray.DimKeepRemove.REMOVE_DIM;
 import static com.codeberry.tadlib.array.TArrayFactory.*;
-import static com.codeberry.tadlib.memorymanagement.DisposalRegister.*;
+import static com.codeberry.tadlib.memorymanagement.DisposalRegister.disposeAllExceptReturnedValue;
 import static com.codeberry.tadlib.tensor.ParentLink.parentLink;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
 import static java.lang.Boolean.TRUE;
 import static java.util.Arrays.*;
 import static java.util.Collections.singletonList;
+import static java.util.Collections.synchronizedMap;
 import static java.util.stream.Collectors.toList;
 
 public abstract class Ops {
@@ -26,8 +26,14 @@ public abstract class Ops {
     public static Tensor matmul(Tensor a, Tensor b) {
         NDArray y = a.getVals().matmul(b.getVals());
 
-        GradFunc gF_a = grad -> disposeAllExceptReturnedValues(() -> grad.matmul(b.getVals().transpose()));
-        GradFunc gF_b = grad -> disposeAllExceptReturnedValues(() -> a.getVals().transpose().matmul(grad));
+        GradFunc gF_a = grad -> disposeAllExceptReturnedValue(() -> {
+            NDArray rawAGrad = grad.matmul(b.getVals().transposeLast2D());
+            return aggregateBroadcastedDims(a, rawAGrad);
+        });
+        GradFunc gF_b = grad -> disposeAllExceptReturnedValue(() -> {
+            NDArray rawBGrad = a.getVals().transposeLast2D().matmul(grad);
+            return aggregateBroadcastedDims(b, rawBGrad);
+        });
 
         return new Tensor(y,
                 asList(parentLink(a, gF_a), parentLink(b, gF_b)));
@@ -49,9 +55,9 @@ public abstract class Ops {
 
     public static Tensor add(Tensor... tensors) {
         NDArray y = stream(tensors)
-                .map(t -> t.getVals())
+                .map(Tensor::getVals)
                 .reduce(NDArray::add)
-                .orElse(JavaArray.ZERO);
+                .orElseGet(TArrayFactory::zerosShaped);
 
         List<ParentLink> parents = stream(tensors)
                 .map(t -> parentLink(t, funcGradientAdd(t)))
@@ -85,7 +91,7 @@ public abstract class Ops {
     public static Tensor sqr(Tensor a) {
         NDArray y = a.getVals().sqr();
 
-        GradFunc gF = grad -> disposeAllExceptReturnedValues(() -> grad.mul(a.getVals()).mul(2.0));
+        GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> grad.mul(a.getVals()).mul(2.0));
 
         return new Tensor(y, singletonList(parentLink(a, gF)));
     }
@@ -93,7 +99,7 @@ public abstract class Ops {
     public static Tensor sqrt(Tensor a) {
         NDArray y = a.getVals().sqrt();
 
-        GradFunc gF = grad -> disposeAllExceptReturnedValues(() -> grad.mul(a.getVals().pow(-0.5).mul(0.5)));
+        GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> grad.mul(a.getVals().pow(-0.5).mul(0.5)));
 
         return new Tensor(y, singletonList(parentLink(a, gF)));
     }
@@ -102,22 +108,34 @@ public abstract class Ops {
         NDArray softmax = input.getVals().softmax();
 
         // Main source: https://aerinykim.medium.com/how-to-implement-the-softmax-derivative-independently-from-any-loss-function-ae6d44363a9d
-        GradFunc gF = grad -> {
+        GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> {
             Shape backGradShape = grad.getShape();
 
-            NDArray smDiagonal = softmax.diag();
+            NDArray separatedGrad = disposeAllExceptReturnedValue(() -> {
+                NDArray selfMatMuled = disposeAllExceptReturnedValue(() -> {
+                    NDArray smByColumn = softmax.reshape(softmax.getShape().appendDim(1));
+                    smByColumn.waitForValueReady();
+                    NDArray smByRow = smByColumn.transposeLast2D();
+                    smByRow.waitForValueReady();
+                    return smByColumn.matmul(smByRow);
+                });
+                selfMatMuled.waitForValueReady();
 
-            NDArray smByColumn = softmax.reshape(softmax.getShape().appendDim(1));
-            NDArray smByRow = smByColumn.transposeLast2D();
-            NDArray selfMatMuled = smByColumn.matmul(smByRow);
+                NDArray smDiagonal = softmax.diag();
+                smDiagonal.waitForValueReady();
+                return smDiagonal.sub(selfMatMuled);
+            });
+            separatedGrad.waitForValueReady();
 
-            NDArray separatedGrad = smDiagonal.sub(selfMatMuled);
-
-            NDArray gradByColumn = grad.reshape(backGradShape.appendDim(1));
-            NDArray gradWithExtraDim = separatedGrad.matmul(gradByColumn);
+            NDArray gradWithExtraDim = disposeAllExceptReturnedValue(() -> {
+                NDArray gradByColumn = grad.reshape(backGradShape.appendDim(1));
+                gradByColumn.waitForValueReady();
+                return separatedGrad.matmul(gradByColumn);
+            });
+            gradWithExtraDim.waitForValueReady();
 
             return gradWithExtraDim.reshape(backGradShape);
-        };
+        });
 
         return new Tensor(softmax, singletonList(parentLink(input, gF)));
     }
@@ -125,12 +143,12 @@ public abstract class Ops {
     public static Tensor div(Tensor a, Tensor b) {
         NDArray y = a.getVals().div(b.getVals());
 
-        GradFunc gF_a = grad -> disposeAllExceptReturnedValues(()-> {
+        GradFunc gF_a = grad -> disposeAllExceptReturnedValue(() -> {
             NDArray agged = aggregateBroadcastedDims(a, grad);
             return agged.div(b.getVals());
         });
 
-        GradFunc gF_b = grad -> disposeAllExceptReturnedValues(() -> {
+        GradFunc gF_b = grad -> disposeAllExceptReturnedValue(() -> {
             //  calced_divisor_grad = tf.reduce_sum(fake_grad * (-dividend / (divisor**2)), axis=(0,1))
             NDArray negateA = a.getVals().negate();
             NDArray rawGrad = grad.mul(negateA);
@@ -155,7 +173,7 @@ public abstract class Ops {
     }
 
     private static GradFunc funcGradientMul(Tensor self, Tensor other) {
-        return grad -> disposeAllExceptReturnedValues(() -> {
+        return grad -> disposeAllExceptReturnedValue(() -> {
             NDArray gr = grad.mul(other.getVals());
 
             return aggregateBroadcastedDims(self, gr);
@@ -163,7 +181,7 @@ public abstract class Ops {
     }
 
     private static NDArray aggregateBroadcastedDims(Tensor self, NDArray grad) {
-        return disposeAllExceptReturnedValues(() -> {
+        return disposeAllExceptReturnedValue(() -> {
             NDArray gr = grad;
             int missingDims = gr.getShape().getDimCount() - self.getVals().getShape().getDimCount();
             if (missingDims >= 1) {
@@ -190,7 +208,7 @@ public abstract class Ops {
     public static Tensor conv2d(Tensor input, Tensor filter) {
         NDArray y = input.getVals().conv2d(filter.getVals());
 
-        GradFunc gF_Input = grad -> disposeAllExceptReturnedValues(() -> {
+        GradFunc gF_Input = grad -> disposeAllExceptReturnedValue(() -> {
             NDArray transposed = filter.getVals().transpose(0, 1, 3, 2);
             NDArray fT = transposed.normalOrderedCopy();
             NDArray fRotated = fT.rot180(0, 1);
@@ -265,13 +283,7 @@ public abstract class Ops {
         NDArray oneHotArray = labelsOneHot.getVals();
         NDArray cost = SoftmaxCrossEntropyLoss.sumSoftmaxCrossEntropy(softmax, oneHotArray);
 
-        GradFunc gF = grad -> {
-//            TMutableArray tgt = TMutableArray.copyOf(softmax);
-//            toSoftmaxGradient(tgt, softmax, softmax.getShape().newIndexArray(),
-//                    oneHotArray, 0);
-//            return tgt.migrateToImmutable().mul(grad);
-            return grad.softMaxGrad(softmax, oneHotArray);
-        };
+        GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> grad.softMaxCrossEntropyGrad(softmax, oneHotArray));
 
         return new Tensor(cost, singletonList(parentLink(prediction, gF)));
     }
@@ -302,7 +314,7 @@ public abstract class Ops {
         }
         int finalElementsSummed = elementsSummed;
 
-        NDArray mean = disposeAllExceptReturnedValues(() -> {
+        NDArray mean = disposeAllExceptReturnedValue(() -> {
             NDArray sum = input.getVals().sum(dimsToCollapse, REMOVE_DIM);
             return sum.div(finalElementsSummed);
         });
@@ -314,7 +326,7 @@ public abstract class Ops {
             }
         }
 
-        GradFunc gF = grad -> disposeAllExceptReturnedValues(() -> {
+        GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> {
             NDArray broadcastCompatGrad = grad.reshape(broadcastDims);
             NDArray onesInInputShape = ones(inputShape);
             NDArray gradInInputShape = onesInInputShape.mul(broadcastCompatGrad);
@@ -325,12 +337,88 @@ public abstract class Ops {
         return new Tensor(mean, singletonList(parentLink(input, gF)));
     }
 
+    public static Tensor sum(Tensor input, int... axis) {
+        Shape inputShape = input.getVals().getShape();
+        Boolean[] dimsToCollapse = inputShape.newCollapseArray();
+        for (int axi : axis) {
+            dimsToCollapse[axi] = TRUE;
+        }
+
+        NDArray sum = input.getVals().sum(dimsToCollapse, REMOVE_DIM);
+
+        int[] broadcastDims = inputShape.toDimArray();
+        for (int d = 0; d < dimsToCollapse.length; d++) {
+            if (dimsToCollapse[d]) {
+                broadcastDims[d] = 1;
+            }
+        }
+
+        GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> {
+            NDArray broadcastCompatGrad = grad.reshape(broadcastDims);
+            NDArray onesInInputShape = ones(inputShape);
+            NDArray gradInInputShape = onesInInputShape.mul(broadcastCompatGrad);
+
+            return gradInInputShape;
+        });
+
+        return new Tensor(sum, singletonList(parentLink(input, gF)));
+    }
+
     public static Tensor log(Tensor input) {
         NDArray y = input.getVals().log();
 
-        GradFunc gF = grad -> disposeAllExceptReturnedValues(() -> grad.div(input.getVals()));
+        GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> grad.div(input.getVals()));
 
         return new Tensor(y, singletonList(parentLink(input, gF)));
+    }
+
+    public static Tensor concat(int axis, Tensor... tensors) {
+        NDArray first = tensors[0].getVals();
+        NDArray[] rest = new NDArray[tensors.length - 1];
+        for (int i = 1; i < tensors.length; i++) {
+            rest[i - 1] = tensors[i].getVals();
+        }
+        NDArray concat = first.concat(rest, axis);
+
+        int[] axisLens = Arrays.stream(tensors)
+                .map(Tensor::getVals)
+                .map(NDArray::getShape)
+                .mapToInt(shape -> shape.at(axis))
+                .toArray();
+        GradSplitter gradSplitter = new GradSplitter(axis, axisLens);
+        List<ParentLink> links = new ArrayList<>();
+        for (int i = 0; i < tensors.length; i++) {
+            Tensor tensor = tensors[i];
+            links.add(parentLink(tensor, gradSplitter.getGradOfPart(i)));
+        }
+
+        return new Tensor(concat, links);
+    }
+
+    private static class GradSplitter {
+        private final int axis;
+        private final int[] axisLens;
+
+        private final Map<NDArray, List<NDArray>> splitGradientsByMainGrad = synchronizedMap(new IdentityHashMap<>());
+
+        public GradSplitter(int axis, int[] axisLens) {
+            this.axis = axis;
+            this.axisLens = axisLens;
+        }
+
+        GradFunc getGradOfPart(int partIndex) {
+            return gradient -> {
+                List<NDArray> splitGrads = ensureSplitResult(gradient);
+                return splitGrads.get(partIndex);
+            };
+        }
+
+        @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+        private List<NDArray> ensureSplitResult(NDArray grad) {
+            synchronized (grad) {
+                return splitGradientsByMainGrad.computeIfAbsent(grad, gr -> gr.split(axis, axisLens));
+            }
+        }
     }
 
     public enum RunMode {

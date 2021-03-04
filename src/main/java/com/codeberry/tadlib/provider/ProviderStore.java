@@ -15,6 +15,10 @@ public class ProviderStore {
         ProviderStore.provider = provider;
     }
 
+    public static String getProviderShortDescription() {
+        return provider.getShortDescription();
+    }
+
     public static NDArray array(double v) {
         return provider.createArray(v);
     }

@@ -54,15 +54,17 @@ public class Device extends Pointer {
         public final int maxComputeUnits;
         public final long doubleFpConfig;
         public final long globalMemSize;
+        public final long localMemSize;
         public final SizeT maxWorkGroupSize;
         public final SizeT[] workItemSizes;
         public final DeviceType type;
 
-        public Info(String name, int maxComputeUnits, long doubleFpConfig, long globalMemSize, SizeT maxWorkGroupSize, SizeT[] workItemSizes, DeviceType type) {
+        public Info(String name, int maxComputeUnits, long doubleFpConfig, long globalMemSize, long localMemSize, SizeT maxWorkGroupSize, SizeT[] workItemSizes, DeviceType type) {
             this.name = name;
             this.maxComputeUnits = maxComputeUnits;
             this.doubleFpConfig = doubleFpConfig;
             this.globalMemSize = globalMemSize;
+            this.localMemSize = localMemSize;
             this.maxWorkGroupSize = maxWorkGroupSize;
             this.workItemSizes = workItemSizes;
             this.type = type;
@@ -75,6 +77,7 @@ public class Device extends Pointer {
                     ", maxComputeUnits=" + maxComputeUnits +
                     ", doubleFpConfig=" + doubleFpConfig +
                     ", globalMemSize=" + globalMemSize +
+                    ", localMemSize=" + localMemSize +
                     ", maxWorkGroupSize=" + maxWorkGroupSize +
                     ", workItemSizes=" + Arrays.toString(workItemSizes) +
                     ", type=" + type +

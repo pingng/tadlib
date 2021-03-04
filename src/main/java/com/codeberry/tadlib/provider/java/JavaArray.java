@@ -1,9 +1,6 @@
 package com.codeberry.tadlib.provider.java;
 
-import com.codeberry.tadlib.array.Comparison;
-import com.codeberry.tadlib.array.NDArray;
-import com.codeberry.tadlib.array.NDIntArray;
-import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.array.*;
 import com.codeberry.tadlib.array.util.FlatToMultiDimArrayConverter;
 import com.codeberry.tadlib.array.util.SoftmaxUtils;
 import com.codeberry.tadlib.provider.ProviderStore;
@@ -15,7 +12,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.function.IntFunction;
-import java.util.function.IntToDoubleFunction;
 
 import static com.codeberry.tadlib.array.NDArray.DimKeepRemove.REMOVE_DIM;
 import static com.codeberry.tadlib.array.util.DimensionUtils.*;
@@ -28,8 +24,6 @@ import static java.lang.Math.min;
 import static java.util.Arrays.*;
 
 public class JavaArray implements NDArray {
-    public static final JavaArray ZERO = new JavaArray(0.0);
-
     private final double[] data;
     public final JavaShape shape;
 
@@ -255,12 +249,8 @@ public class JavaArray implements NDArray {
     }
 
     @Override
-    public NDArray softMaxGrad(NDArray softmax, NDArray oneHotArray) {
-//        List<ValueUpdate> updates = SoftmaxUtils.getSoftmaxGradientUpdates(softmax, softmax.getShape().newIndexArray(),
-//                oneHotArray, 0);
-//
-//        return softmax.withUpdates(updates).mul(this);
-        return SoftmaxUtils.getSoftmaxGradientUpdatesNEW(softmax, oneHotArray).mul(this);
+    public NDArray softMaxCrossEntropyGrad(NDArray softmax, NDArray oneHotArray) {
+        return SoftmaxUtils.calcSoftmaxCrossEntropyGradient(softmax, oneHotArray).mul(this);
     }
 
     @Override
@@ -506,6 +496,121 @@ public class JavaArray implements NDArray {
         fillDiagonal(this, shape.newIndexArray(), data, outShape, outShape.newIndexArray(), 0);
 
         return new JavaArray(data, (JavaShape) outShape);
+    }
+
+    @Override
+    public NDArray concat(NDArray[] appendees, int axis) {
+        int safeAxis = getShape().wrapIndex(axis);
+
+        JavaArray[] srcs = toArray(this, appendees);
+        Shape[] shapes = extractShapes(srcs);
+
+        validateConcatShapes(shapes, safeAxis);
+        Shape outShape = evalConcatShape(shapes, safeAxis);
+
+        double[] data = new double[toIntExact(outShape.getSize())];
+
+        fillConcat(srcs, getShape().newIndexArray(),
+                safeAxis, extractAxisLen(shapes, safeAxis),
+                data, outShape, outShape.newIndexArray(), 0);
+
+        return new JavaArray(data, (JavaShape) outShape);
+    }
+
+    private static JavaArray[] toArray(JavaArray firstElement, NDArray[] appendees) {
+        JavaArray[] copy = new JavaArray[appendees.length + 1];
+        System.arraycopy(appendees, 0, copy, 1, appendees.length);
+        copy[0] = firstElement;
+        return copy;
+    }
+
+    private static Shape[] getShapes(Shape thisShape, NDArray[] appendees) {
+        Shape[] r = new Shape[appendees.length + 1];
+        r[0] = thisShape;
+        for (int i = 0; i < appendees.length; i++) {
+            r[i+1] = appendees[i].getShape();
+        }
+        return r;
+    }
+
+    private static void fillConcat(JavaArray[] srcs, int[] srcIndices,
+                                   int axis, int[] axisLens,
+                                   double[] data, Shape outShape, int[] outIndices, int dim) {
+        int outLen = outShape.at(dim);
+
+        for (int i = 0; i < outLen; i++) {
+            outIndices[dim] = i;
+            srcIndices[dim] = i;
+
+            if (dim == outIndices.length - 1) {
+                //... then is the last dimension
+                int workingIndex = outIndices[axis];
+
+                int srcIndex = 0;
+                while (workingIndex >= axisLens[srcIndex]) {
+                    workingIndex -= axisLens[srcIndex];
+                    srcIndex++;
+                }
+                srcIndices[axis] = workingIndex;
+                JavaArray src = srcs[srcIndex];
+
+                double val = src.dataAt(srcIndices);
+
+                data[outShape.calcDataIndex(outIndices)] = val;
+            } else {
+                fillConcat(srcs, srcIndices, axis, axisLens, data, outShape, outIndices, dim + 1);
+            }
+        }
+    }
+
+    @Override
+    public List<NDArray> split(int axis, int[] axisLens) {
+        Shape shape = getShape();
+        int safeAxis = shape.wrapNegIndex(axis);
+        validateSplitLens(shape, safeAxis, axisLens);
+
+        List<NDArray> parts = new ArrayList<>();
+        int offset = 0;
+        for (int axisLen : axisLens) {
+            Shape outShape = evalSplitShape(shape, safeAxis, axisLen);
+            double[] data = new double[toIntExact(outShape.getSize())];
+            fillSplit(this, shape.newIndexArray(), safeAxis, offset, axisLen,
+                    data, outShape, outShape.newIndexArray(), 0);
+
+            parts.add(new JavaArray(data, (JavaShape) outShape));
+
+            offset += axisLen;
+        }
+        return parts;
+    }
+
+    private static void fillSplit(JavaArray src, int[] srcIndices,
+                           int axis, int offset, int axisLen,
+                           double[] data, Shape outShape, int[] outIndices,
+                           int dim) {
+        int len, _offset;
+
+        if (dim == axis) {
+            len = axisLen;
+            _offset = offset;
+        } else {
+            len = src.shape.at(dim);
+            _offset = 0;
+        }
+
+        for (int i = 0; i < len; i++) {
+            srcIndices[dim] = i + _offset;
+            outIndices[dim] = i;
+
+            if (dim == outIndices.length - 1) {
+                //... then is the last dimension
+
+                int outOffset = outShape.calcDataIndex(outIndices);
+                data[outOffset] = src.dataAt(srcIndices);
+            } else {
+                fillSplit(src, srcIndices, axis, offset, axisLen, data, outShape, outIndices, dim + 1);
+            }
+        }
     }
 
     private static void fillDiagonal(JavaArray src, int[] srcIndices, double[] out, Shape outShape, int[] outIndices, int srcDim) {

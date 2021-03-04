@@ -19,4 +19,6 @@ public interface Provider {
     Shape createShape(int... dims);
 
     NDArray createArrayWithValue(Shape shape, double v);
+
+    String getShortDescription();
 }

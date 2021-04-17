@@ -320,7 +320,7 @@ public class FixedMNISTConvAttentionModel implements Model {
     private static class BlockDropoutLayer {
         private static final double DROP_KEEP_START = 0.999;
         private static final double[] DROP_KEEP_SLOW_DOWN = {0.9, 0.8, 0.75};
-        private static final double[] DROP_KEEP_REDUCE = {0.995, 0.9995, 0.9998};
+        private static final double[] DROP_KEEP_REDUCE = {0.992, 0.999, 0.9995};
         private static final double DROP_KEEP_MIN = DROP_KEEP_SLOW_DOWN[DROP_KEEP_SLOW_DOWN.length - 1];
 
         private final int blockSize;

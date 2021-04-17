@@ -7,6 +7,7 @@ import com.codeberry.tadlib.nn.model.optimizer.FixedLearningRate;
 import com.codeberry.tadlib.nn.model.optimizer.RMSProp;
 import com.codeberry.tadlib.nn.model.SequentialModel;
 import com.codeberry.tadlib.nn.model.layer.DenseLayer;
+import com.codeberry.tadlib.nn.model.optimizer.SawToothSchedule;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 
@@ -26,6 +27,7 @@ import static com.codeberry.tadlib.nn.model.layer.ReluLayer.Builder.relu;
 import static com.codeberry.tadlib.nn.model.layer.FlattenLayer.Builder.flatten;
 import static com.codeberry.tadlib.nn.model.optimizer.DecayingLearningRate.decayingLearningRate;
 import static com.codeberry.tadlib.nn.model.optimizer.FixedLearningRate.fixedLearningRate;
+import static com.codeberry.tadlib.nn.model.optimizer.SawToothSchedule.*;
 import static com.codeberry.tadlib.provider.ProviderStore.shape;
 
 public class TrainConfiguredConvMNISTMain {
@@ -39,8 +41,11 @@ public class TrainConfiguredConvMNISTMain {
 //                .batchSize(32)
 //                .optimizer(new SGD(0.1))
 //                .optimizer(new RMSProp(fixedLearningRate(0.0005)))
-                .optimizer(new RMSProp(decayingLearningRate(0.0005, 0.0000001, 50, 0.8)))
+                .optimizer(new RMSProp(sawTooth(
+                        decayingLearningRate(0.0005, 0.0000001, 10, 0.8),
+                        0.3, 6)))
                 .loaderParams(params()
+                        .loadFashionMNIST()
                         .downloadWhenMissing(true)
                         .trainingExamples(40_000)
                         .testExamples(10_000))
@@ -67,14 +72,14 @@ public class TrainConfiguredConvMNISTMain {
                         proportionalDropout().strength(0.3),
                         relu().leakyScale(0.01),
 
-                        blockDropout().blockSize(3).epochRange(0, 100).dropKeepRange(1.0, 0.95),
+                        blockDropout().blockSize(3).epochRange(0, 100).dropKeepRange(1.0, 0.90),
                         conv2d().biasParam(NO_BIAS).l2Lambda(0.01).filters(modelSize.filter1).kernelSize(5),
                         maxPool2d().size(2),
                         batchNorm(),
                         proportionalDropout().strength(0.3),
                         relu().leakyScale(0.01),
 
-                        blockDropout().blockSize(2).epochRange(0, 100).dropKeepRange(1.0, 0.95),
+                        blockDropout().blockSize(2).epochRange(0, 100).dropKeepRange(1.0, 0.85),
                         conv2d().biasParam(USE_BIAS).l2Lambda(0.01).filters(modelSize.filter2).kernelSize(3),
                         maxPool2d().size(2),
                         batchNorm(),

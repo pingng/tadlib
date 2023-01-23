@@ -1,28 +1,28 @@
 package com.codeberry.tadlib.example.mnist;
 
 import com.codeberry.tadlib.array.Comparison;
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.TArrayFactory;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;
-import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.ValueUpdate;
 import com.codeberry.tadlib.tensor.OpsExtended;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.TrainingDataUtils;
 
 import java.util.*;
 
-import static com.codeberry.tadlib.array.NDArray.DimKeepRemove.KEEP_DIM;
-import static com.codeberry.tadlib.array.NDArray.ValueUpdate.fromIndices;
 import static com.codeberry.tadlib.array.TArrayFactory.onesShaped;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.IMAGE_SIZE;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.OUTPUTS;
 import static com.codeberry.tadlib.nn.loss.L2Loss.l2LossOf;
 import static com.codeberry.tadlib.provider.ProviderStore.array;
 import static com.codeberry.tadlib.provider.ProviderStore.shape;
+import static com.codeberry.tadlib.provider.java.NDArray.DimKeepRemove.KEEP_DIM;
+import static com.codeberry.tadlib.provider.java.ValueUpdate.fromIndices;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static com.codeberry.tadlib.tensor.Tensor.TensorFactories.*;
 import static com.codeberry.tadlib.tensor.Tensor.constant;
@@ -223,13 +223,13 @@ public class FixedMNISTConvAttentionModel implements Model {
         return finalOutputLayer(y, rnd, runMode);
     }
 
-    private Tensor convReluBn(Tensor inputs, Tensor w, BatchNormLayer bn, List<Runnable> trainingTasks, RunMode runMode) {
+    private static Tensor convReluBn(Tensor inputs, Tensor w, BatchNormLayer bn, List<Runnable> trainingTasks, RunMode runMode) {
         Tensor h_w = conv2d(inputs, w);
         return bn.batchNorm(trainingTasks, runMode, leakyRelu(h_w, 0.01));
     }
 
     private Tensor finalOutputLayer(Tensor inputs, Random rnd, RunMode runMode) {
-        Shape shape = inputs.getShape();
+        Shape shape = inputs.shape();
         Tensor flattened = reshape(inputs, shape.at(0), -1);
 
         Tensor y_w = matmul(dropout(flattened, rnd, cfg.dropoutKeep, runMode), finalW);
@@ -334,7 +334,7 @@ public class FixedMNISTConvAttentionModel implements Model {
 
         Tensor forward(Random r, Tensor input, RunMode mode, IterationInfo iterationInfo) {
             if (mode == RunMode.TRAINING) {
-                Shape inputShape = input.getShape();
+                Shape inputShape = input.shape();
                 double featureSize = inputShape.at(-2);
 
                 if (iterationInfo.hasPrevEpochTrainInfo() &&
@@ -352,9 +352,9 @@ public class FixedMNISTConvAttentionModel implements Model {
                 }
 
                 double validRegionSize = featureSize - blockSize + 1;
-                double gamma = ((1. - dropKeep) / (blockSize * blockSize)) * ((featureSize * featureSize) / (validRegionSize * validRegionSize));
+                double gamma = ((1.0 - dropKeep) / (blockSize * blockSize)) * ((featureSize * featureSize) / (validRegionSize * validRegionSize));
 
-                List<NDArray.ValueUpdate> updates = createZeroUpdates(r, inputShape, gamma, this.blockSize);
+                List<ValueUpdate> updates = createZeroUpdates(r, inputShape, gamma, this.blockSize);
 
                 if (!updates.isEmpty()) {
                     int channels = inputShape.at(-1);
@@ -405,7 +405,7 @@ public class FixedMNISTConvAttentionModel implements Model {
         }
 
         private static void debugPrintMask(String title, NDArray mask, boolean firstOnly) {
-            Shape shape = mask.getShape();
+            Shape shape = mask.shape;
             if (shape.getDimCount() != 4) {
                 throw new RuntimeException("Expected 4 dims");
             }
@@ -441,7 +441,7 @@ public class FixedMNISTConvAttentionModel implements Model {
         }
 
         private static void debugPrintFilter(String title, NDArray mask, boolean firstOnly) {
-            Shape shape = mask.getShape();
+            Shape shape = mask.shape;
             if (shape.getDimCount() != 4) {
                 throw new RuntimeException("Expected 4 dims");
             }
@@ -476,15 +476,15 @@ public class FixedMNISTConvAttentionModel implements Model {
 
         }
 
-        private static List<NDArray.ValueUpdate> createZeroUpdates(Random r, Shape inputShape, double gamma, int blockSize) {
-            List<NDArray.ValueUpdate> ret = new ArrayList<>();
+        private static List<ValueUpdate> createZeroUpdates(Random r, Shape inputShape, double gamma, int blockSize) {
+            List<ValueUpdate> ret = new ArrayList<>();
 
             fillZeroUpdates(r, inputShape, gamma, blockSize, ret, inputShape.newIndexArray(), 0);
 
             return ret;
         }
 
-        private static void fillZeroUpdates(Random r, Shape shape, double gamma, int blockSize, List<NDArray.ValueUpdate> updates, int[] indices, int dim) {
+        private static void fillZeroUpdates(Random r, Shape shape, double gamma, int blockSize, List<ValueUpdate> updates, int[] indices, int dim) {
             int len = shape.at(dim);
             int from, to;
 
@@ -537,7 +537,7 @@ public class FixedMNISTConvAttentionModel implements Model {
         }
 
         public Tensor forward(List<Runnable> trainingTasks, RunMode runMode, Tensor inputs) {
-            Tensor positionEncoding = getPosEncodingForBatch(inputs.getShape().at(0));
+            Tensor positionEncoding = getPosEncodingForBatch(inputs.shape().at(0));
             Tensor withPosEnc = concat(-1, inputs, positionEncoding);
 
             Tensor[] headOuts = new Tensor[heads.length];
@@ -582,11 +582,11 @@ public class FixedMNISTConvAttentionModel implements Model {
             }
 
             Tensor forward(Tensor inputs) {
-                Shape shape = inputs.getShape();
+                Shape shape = inputs.shape();
                 int examples = shape.at(0);
                 int h = shape.at(1);
                 int w = shape.at(2);
-                int chan = attKeyW.getShape().at(3);
+                int chan = attKeyW.shape().at(3);
                 int area = h * w;
 
                 Tensor attKey = add(conv2d(inputs, attKeyW), attKeyB);
@@ -637,7 +637,7 @@ public class FixedMNISTConvAttentionModel implements Model {
             for (int p = 0; p < posEnc.length; p++) {
                 double[] chans = posEnc[p];
                 for (int c = 0; c < chans.length; c++) {
-                    double angleRate = 1 / pow(10000, (2 * floor(c/2.)) / channels);
+                    double angleRate = 1 / pow(10000, (2 * floor(c/ 2.0)) / channels);
                     double angle = angleRate * p;
 
                     chans[c] = ((c & 1) == 0 ?

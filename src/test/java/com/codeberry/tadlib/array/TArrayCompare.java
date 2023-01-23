@@ -1,8 +1,9 @@
 package com.codeberry.tadlib.array;
 
 import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.provider.java.JavaProvider;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import com.codeberry.tadlib.util.MatrixTestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +18,7 @@ public class TArrayCompare {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider());
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test

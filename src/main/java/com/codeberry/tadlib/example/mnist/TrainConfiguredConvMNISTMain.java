@@ -1,15 +1,10 @@
 package com.codeberry.tadlib.example.mnist;
 
-import com.codeberry.tadlib.example.mnist.SimpleTrainer.TrainParams;
-import com.codeberry.tadlib.nn.model.layer.ProportionalDropOutLayer;
-import com.codeberry.tadlib.nn.model.layer.ProportionalDropOutLayer.Builder;
-import com.codeberry.tadlib.nn.model.optimizer.FixedLearningRate;
 import com.codeberry.tadlib.nn.model.optimizer.RMSProp;
 import com.codeberry.tadlib.nn.model.SequentialModel;
 import com.codeberry.tadlib.nn.model.layer.DenseLayer;
-import com.codeberry.tadlib.nn.model.optimizer.SawToothSchedule;
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.JavaProvider;
 
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.LoadParams.params;
 import static com.codeberry.tadlib.example.mnist.SimpleTrainer.TrainParams.trainParams;
@@ -26,7 +21,6 @@ import static com.codeberry.tadlib.nn.model.layer.ProportionalDropOutLayer.Build
 import static com.codeberry.tadlib.nn.model.layer.ReluLayer.Builder.relu;
 import static com.codeberry.tadlib.nn.model.layer.FlattenLayer.Builder.flatten;
 import static com.codeberry.tadlib.nn.model.optimizer.DecayingLearningRate.decayingLearningRate;
-import static com.codeberry.tadlib.nn.model.optimizer.FixedLearningRate.fixedLearningRate;
 import static com.codeberry.tadlib.nn.model.optimizer.SawToothSchedule.*;
 import static com.codeberry.tadlib.provider.ProviderStore.shape;
 
@@ -34,7 +28,7 @@ public class TrainConfiguredConvMNISTMain {
 
     public static void main(String[] args) {
 //        ProviderStore.setProvider(new JavaProvider());
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
 
         SimpleTrainer trainer = new SimpleTrainer(trainParams("Conf")
                 .batchSize(64)

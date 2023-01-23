@@ -15,6 +15,10 @@ public class JavaShape implements Shape {
     public final int size;
     public final int dimCount;
 
+    private JavaShape() {
+        this(new int[] { } );
+    }
+
     public JavaShape(int... dims) {
 //        System.out.println("JavaShape.JavaShape");
         this.dims = dims;
@@ -26,19 +30,18 @@ public class JavaShape implements Shape {
         return new JavaShape(Arrays.copyOf(srcDims, srcDims.length));
     }
 
-    public static JavaShape zeroDim() {
-        return new JavaShape();
-    }
+    public static final JavaShape zeroDim = new JavaShape();
 
     public static JavaShape shape(int... dims) {
         return new JavaShape(dims);
     }
 
-    public static JavaShape like(double[][] values) {
-        return new JavaShape(values.length, values[0].length);
-    }
+//    public static JavaShape like(double[][] values) {
+//        return new JavaShape(values.length, values[0].length);
+//    }
 
     public int at(int dim) {
+        if (dims.length == 0) return 0;
         return dims[wrapIndex(dim)];
     }
 
@@ -61,8 +64,8 @@ public class JavaShape implements Shape {
     int getBroadcastOffset(int[] indices) {
         int offset = 0;
         int blockSize = 1;
-        int dimCount = this.dimCount;
-        for (int i = -1; i >= -dimCount; i--) {
+        int dimCount = -this.dimCount;
+        for (int i = -1; i >= dimCount; i--) {
             int shapeDimSize = at(i);
             int index = min(indices[indices.length + i], shapeDimSize - 1);
             offset += blockSize * index;

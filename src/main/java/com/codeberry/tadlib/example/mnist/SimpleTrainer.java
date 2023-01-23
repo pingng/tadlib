@@ -89,7 +89,7 @@ public class SimpleTrainer {
 
         List<Tensor> params = model.getParams();
         for (Tensor param : params) {
-            paramCount += param.getShape().getSize();
+            paramCount += param.shape().getSize();
         }
 
         System.out.println("Total (main) params: " + paramCount);
@@ -119,8 +119,7 @@ public class SimpleTrainer {
      * @return disposables that must be kept (not disposed/released) after a training/predict iteration.
      */
     private List<Disposable> getKeepInMemoryDisposables() {
-        List<Disposable> objects = new ArrayList<>();
-        objects.addAll(model.getKeepInMemoryDisposables());
+        List<Disposable> objects = new ArrayList<>(model.getKeepInMemoryDisposables());
         for (Tensor param : model.getParams()) {
             objects.addAll(param.getDisposables());
         }
@@ -219,7 +218,7 @@ public class SimpleTrainer {
                 if (progress10Percent != batchProgress) {
                     long now = System.currentTimeMillis();
                     long used = lastMillis > 0 ? now - lastMillis : -1;
-                    System.out.println(progress10Percent * 10 + "%" + (used != -1 ? " used: " + ((double) used / 1000.0) : ""));
+                    System.out.println(progress10Percent * 10 + "%" + (used != -1 ? " used: " + (used / 1000.0) : ""));
                     batchProgress = progress10Percent;
                     lastMillis = now;
                 }

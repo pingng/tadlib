@@ -1,10 +1,6 @@
 package com.codeberry.tadlib.provider.java;
 
 import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.provider.java.JavaArray;
-import com.codeberry.tadlib.provider.java.JavaShape;
-
-import java.util.Arrays;
 
 public class TMutableArray {
     private volatile double[] data;
@@ -46,8 +42,8 @@ public class TMutableArray {
     /**
      * The current instance cannot be used after this call.
      */
-    public synchronized JavaArray migrateToImmutable() {
-        JavaArray immutable = new JavaArray(this.data, (JavaShape) shape);
+    public synchronized NDArray migrateToImmutable() {
+        NDArray immutable = new NDArray(this.data, (JavaShape) shape);
 
         this.data = null;
 

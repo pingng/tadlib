@@ -19,7 +19,7 @@ public interface Layer {
 
     default long getTotalParamValues() {
         return stream(getTrainableParams())
-                .mapToLong(p -> p.getShape().getSize())
+                .mapToLong(p -> p.shape().getSize())
                 .sum();
     }
 

@@ -1,8 +1,9 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.JavaProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,7 @@ public class TensorMax2DTest {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -40,10 +41,11 @@ public class TensorMax2DTest {
         assertEqualsMatrix(expected.toDoubles(),
                 maxed.toDoubles());
 
+        NDArray ndArray = maxed.val();
         NDArray g = ProviderStore.array(new double[] {
                 1, 2, 3, 4,
                 5, 6, 7, 8
-        }).reshape(maxed.getVals().getShape().toDimArray());
+        }).reshape(ndArray.shape.toDimArray());
         maxed.backward(g);
 
         // [[[[0.0, 0.0], [0.0, 0.0], [3.0, 0.0], [0.0, 4.0]],
@@ -57,7 +59,7 @@ public class TensorMax2DTest {
                 0, 6, 0, 0, 0, 0, 0, 0
         }).reshape(1, 4, 4, 2);
         assertEqualsMatrix(inputGradExpected.toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
     }
 
     @Test
@@ -83,10 +85,11 @@ public class TensorMax2DTest {
         assertEqualsMatrix(expected.toDoubles(),
                 maxed.toDoubles());
 
+        NDArray ndArray = maxed.val();
         NDArray g = ProviderStore.array(new double[] {
                 1, 4,
                 5, 8
-        }).reshape(maxed.getVals().getShape().toDimArray());
+        }).reshape(ndArray.shape.toDimArray());
         maxed.backward(g);
 
         // [[[[0.0, 0.0], [0.0, 0.0], [3.0, 0.0], [0.0, 4.0]],
@@ -99,10 +102,10 @@ public class TensorMax2DTest {
                 0, 5, 8
         }).reshape(1, 3, 3, 1);
         printMatrix("--- Expected Grad", (double[][][][]) inputGradExpected.toDoubles());
-        printMatrix("--- Actual Grad", (double[][][][]) input.getGradient().toDoubles());
+        printMatrix("--- Actual Grad", (double[][][][]) input.grad().toDoubles());
 
         assertEqualsMatrix(inputGradExpected.toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
     }
 
     private static void printMatrix(String title, double[][][][] m) {

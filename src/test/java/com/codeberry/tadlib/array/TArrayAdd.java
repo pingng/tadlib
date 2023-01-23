@@ -1,8 +1,10 @@
 package com.codeberry.tadlib.array;
 
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.JavaProvider;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.array.TArrayFactory.*;
@@ -13,8 +15,8 @@ class TArrayAdd {
 
     @BeforeEach
     public void init() {
-//        ProviderStore.setProvider(new JavaProvider());
-        setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
+        //setProvider(new OpenCLProvider());
     }
 
     @Test
@@ -27,6 +29,7 @@ class TArrayAdd {
         assertEquals(8.0, (double) c.toDoubles());
     }
 
+    @Disabled
     @Test
     public void memoryIsGCedCorrectly_MeantForOpenCL() {
         double[] vals = rangeDoubles(100000);
@@ -129,7 +132,7 @@ class TArrayAdd {
                 {3, 4, 10}
         });
         ;
-        assertEquals(a.getShape(), b.getShape());
+        assertEquals(a.shape, b.shape);
 
         NDArray c = a.add(b);
 

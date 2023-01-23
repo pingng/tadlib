@@ -1,7 +1,8 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.JavaProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,7 @@ public class TensorMeanTest {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -29,7 +30,7 @@ public class TensorMeanTest {
                 4, 40, -8
         }).reshape(2, 2, 2, 3));
 
-        System.out.println(toJson(input.getVals().toDoubles()));
+        System.out.println(toJson(input.val().toDoubles()));
 
         Tensor mean = Ops.mean(input, 0, 1, 2);
         mean.backward(onesShaped(3));
@@ -39,7 +40,7 @@ public class TensorMeanTest {
                         (0.1 + 10 + 0.2 + 20 + 0.3 + 30 + 0.4 + 40) / 8,
                         (-1. - 2 - 3 - 4 - 5 - 6 - 7 - 8) / 8
                 }).toDoubles(),
-                mean.getVals().toDoubles());
+                mean.val().toDoubles());
         assertEqualsMatrix(ProviderStore.array(new double[]{
                         1.0 / 8, 1.0 / 8, 1.0 / 8,
                         1.0 / 8, 1.0 / 8, 1.0 / 8,
@@ -50,7 +51,7 @@ public class TensorMeanTest {
                         1.0 / 8, 1.0 / 8, 1.0 / 8,
                         1.0 / 8, 1.0 / 8, 1.0 / 8
                 }).reshape(2, 2, 2, 3).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
     }
 
     @Test
@@ -83,7 +84,7 @@ public class TensorMeanTest {
                                 0.04 + 0.4 + -7 +
                                 4 + 40 + -8) / 12
                 }).toDoubles(),
-                mean.getVals().toDoubles());
+                mean.val().toDoubles());
         assertEqualsMatrix(ProviderStore.array(new double[]{
                         10.0 / 12, 10.0 / 12, 10.0 / 12,
                         10.0 / 12, 10.0 / 12, 10.0 / 12,
@@ -97,7 +98,7 @@ public class TensorMeanTest {
                         20.0 / 12, 20.0 / 12, 20.0 / 12,
                         20.0 / 12, 20.0 / 12, 20.0 / 12
                 }).reshape(2, 2, 2, 3).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
 
     }
 
@@ -134,7 +135,7 @@ public class TensorMeanTest {
         assertEqualsMatrix(ProviderStore.array(new double[]{
                         0.5320078, 0.5306335, 0.52558774, 0.51413995
                 }).toDoubles(),
-                mean.getVals().toDoubles());
+                mean.val().toDoubles());
         assertEqualsMatrix(ProviderStore.array(new double[]{
                         0.03333334, 0.06666667, 0.1, 0.13333334, 0.03333334, 0.06666667, 0.1, 0.13333334,
                         0.03333334, 0.06666667, 0.1, 0.13333334, 0.03333334, 0.06666667, 0.1, 0.13333334,
@@ -152,6 +153,6 @@ public class TensorMeanTest {
                         0.03333334, 0.06666667, 0.1, 0.13333334, 0.03333334, 0.06666667, 0.1, 0.13333334,
                         0.03333334, 0.06666667, 0.1, 0.13333334, 0.03333334, 0.06666667, 0.1, 0.13333334
                 }).reshape(3, 5, 2, 4).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
     }
 }

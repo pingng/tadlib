@@ -1,9 +1,9 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.NDArray;
-import com.codeberry.tadlib.array.NDArray.ValueUpdate;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.provider.java.ValueUpdate;
 
 import java.util.List;
 import java.util.Random;
@@ -30,7 +30,7 @@ class ModelParamEstimator {
         Tensor param = params.get(paramIndex);
         double[] wData = param.getInternalData();
         double[] grad = new double[wData.length];
-        NDArray orgArray = param.getVals();
+        NDArray orgArray = param.val();
 
         int segLen = wData.length / 4 + 1;
         System.out.println("Param Index: " + paramIndex + " (" + wData.length + " values)");

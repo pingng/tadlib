@@ -9,7 +9,7 @@ import static com.codeberry.tadlib.provider.ProviderStore.shape;
 
 public abstract class TrainingDataUtils {
     public static Tensor toOneHot(Tensor yTrain, int outputUnits) {
-        Shape shape = yTrain.getShape();
+        Shape shape = yTrain.shape();
         if (shape.getDimCount() != 2) {
             throw new IllegalArgumentException("Expected 2 dimensions (batch, labelValue): actualShape=" + shape);
         }

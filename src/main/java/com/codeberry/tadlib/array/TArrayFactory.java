@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.array;
 
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
+import com.codeberry.tadlib.provider.java.NDArray;
 
 import java.util.Random;
 
@@ -56,7 +57,7 @@ public abstract class TArrayFactory {
     }
 
     public static NDArray randomWeight(Random rand, int size) {
-        return array(randomDoubles(rand, size)).add(-0.5).mul(2.0).mul(Math.sqrt(2. / size));
+        return array(randomDoubles(rand, size)).add(-0.5).mul(2.0).mul(Math.sqrt(2.0 / size));
     }
 
     static double[] randomDoubles(Random rand, int len) {
@@ -92,7 +93,7 @@ public abstract class TArrayFactory {
     }
 
     public static NDArray fillLike(Shape shape, NDArray zeroDim) {
-        if (zeroDim.getShape().getDimCount() != 0) {
+        if (zeroDim.shape.getDimCount() != 0) {
             throw new IllegalArgumentException("value must be of zero dim");
         }
         double v = (double) zeroDim.toDoubles();

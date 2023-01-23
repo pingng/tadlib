@@ -1,7 +1,7 @@
 package com.codeberry.tadlib.nn.model.optimizer;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.tensor.Tensor;
 
 import java.util.Collection;
@@ -12,11 +12,11 @@ import java.util.List;
 import static com.codeberry.tadlib.array.TArrayFactory.*;
 
 public class RMSProp implements Optimizer {
-    public static final double EPSILON = 1e-6;
+    public static final double EPSILON = 1.0e-6;
     private final LearningRateSchedule learningRateSchedule;
     private final double gamma;
 
-    private transient IdentityHashMap<Tensor, NDArray> sTMap = new IdentityHashMap<>();
+    private final transient IdentityHashMap<Tensor, NDArray> sTMap = new IdentityHashMap<>();
 
     public RMSProp(LearningRateSchedule learningRateSchedule) {
         this(learningRateSchedule, 0.9);
@@ -52,7 +52,7 @@ public class RMSProp implements Optimizer {
     private NDArray updateST(Tensor p, NDArray gradient) {
         NDArray sT = sTMap.get(p);
         if (sT == null) {
-            sT = zeros(gradient.getShape());
+            sT = zeros(gradient.shape);
         }
         NDArray gradSqr = gradient.sqr();
         sT = sT.mul(gamma).add(gradSqr.mul(1.0 - gamma));

@@ -3,7 +3,6 @@ package com.codeberry.tadlib.memorymanagement;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.LinkedHashSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -21,8 +20,8 @@ import static java.lang.Integer.toHexString;
 public class LeakDetector {
     private static final double LOG_OBJECT_RATE = 0.01;
 
-    private static int maxAge = 3;
-    private static int maxEntries = 256;
+    private static final int maxAge = 3;
+    private static final int maxEntries = 256;
     private static final ConcurrentMap<Long, AllocationInfo> infoPerObjectId = new ConcurrentHashMap<>();
     private static final ConcurrentMap<String, String> ignoreKeys = new ConcurrentHashMap<>();
     private static final AtomicLong objectYear = new AtomicLong();

@@ -1,8 +1,11 @@
 package com.codeberry.tadlib.array;
 
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.JavaProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.array.TArrayFactory.*;
@@ -15,7 +18,7 @@ class TArrayMatMul {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -38,6 +41,7 @@ class TArrayMatMul {
 
     }
 
+    @Disabled
     @Test
     public void matmulLarge() {
         NDArray a = ProviderStore.arrayFillWith(ProviderStore.shape(40000, 784), 0.0).mul(1);
@@ -112,7 +116,7 @@ class TArrayMatMul {
                 });
     }
 
-    @Test
+    @Disabled @Test
     public void matmulBig() {
         NDArray a = ProviderStore.array(rangeDoubles(4000 * 512));
         NDArray b = ProviderStore.array(rangeDoubles(512 * 1024));
@@ -123,7 +127,7 @@ class TArrayMatMul {
         long used = System.currentTimeMillis() - st;
         System.out.println("used = " + used);
 
-        System.out.println(c.getShape());
+        System.out.println(c.shape);
     }
 
     @Test

@@ -1,12 +1,11 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
+import com.codeberry.tadlib.provider.java.NDArray;
 
 import java.util.List;
 
-import static com.codeberry.tadlib.memorymanagement.DisposalRegister.*;
 import static com.codeberry.tadlib.tensor.Tensor.constant;
 import static java.util.Arrays.asList;
 
@@ -22,7 +21,8 @@ public abstract class OpsExtended {
     }
 
     public static BatchNormResult batchNorm(Tensor input, Tensor beta, Tensor gamma, BatchNormRunningAverages averages, Ops.RunMode runMode) {
-        Shape shape = input.getVals().getShape();
+        NDArray ndArray = input.val();
+        Shape shape = ndArray.shape;
         if (shape.getDimCount() != 2 && shape.getDimCount() != 4) {
             throw new IllegalArgumentException("Valid dims are 2 an 4");
         }
@@ -53,7 +53,7 @@ public abstract class OpsExtended {
             Tensor _scaled = Ops.mul(_normalized, gamma);
             Tensor scaledAndShifted = Ops.add(_scaled, beta);
 
-            return new BatchNormResult(scaledAndShifted, mean.getVals(), variance.getVals());
+            return new BatchNormResult(scaledAndShifted, mean.val(), variance.val());
         } else {
             Tensor mean;
             Tensor _diff;
@@ -76,7 +76,7 @@ public abstract class OpsExtended {
             Tensor _scaled = Ops.mul(_normalized, gamma);
             Tensor scaledAndShifted = Ops.add(_scaled, beta);
 
-            return new BatchNormResult(scaledAndShifted, mean.getVals(), variance.getVals());
+            return new BatchNormResult(scaledAndShifted, mean.val(), variance.val());
         }
     }
 

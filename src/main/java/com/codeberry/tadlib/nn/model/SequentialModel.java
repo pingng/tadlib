@@ -3,7 +3,6 @@ package com.codeberry.tadlib.nn.model;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.example.TrainingData.Batch;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
-import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.layer.Layer;
 import com.codeberry.tadlib.nn.model.layer.LayerBuilder;
 import com.codeberry.tadlib.tensor.Tensor;
@@ -70,7 +69,7 @@ public class SequentialModel implements Model {
                 .filter(Objects::nonNull)
                 .collect(toList());
 
-        Tensor scaledAdditionalCosts = scaleByBatch(trainingData.input.getShape(), otherCosts);
+        Tensor scaledAdditionalCosts = scaleByBatch(trainingData.input.shape(), otherCosts);
 
         Tensor totalLoss = add(avgSoftmaxCost, scaledAdditionalCosts);
 
@@ -113,7 +112,7 @@ public class SequentialModel implements Model {
         List<Runnable> tasks = new ArrayList<>();
 
         Tensor output = inputs;
-        for (int i = 0, layersSize = layers.size(); i < layersSize; i++) {
+        for (Layer l : layers) {
 //            double[] d = output.getInternalData();
 //            for (double v : d) {
 //                if (Double.isNaN(v)) {
@@ -121,7 +120,6 @@ public class SequentialModel implements Model {
 //                }
 //            }
 
-            Layer l = layers.get(i);
             Layer.ForwardResult result = l.forward(rnd, output, runMode, iterationInfo);
             result.putTasksInto(tasks);
 

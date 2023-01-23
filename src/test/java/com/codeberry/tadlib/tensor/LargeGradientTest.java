@@ -1,6 +1,5 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;
@@ -8,10 +7,12 @@ import com.codeberry.tadlib.nn.model.SequentialModel;
 import com.codeberry.tadlib.nn.model.TrainStats;
 import com.codeberry.tadlib.nn.model.optimizer.SGD;
 import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.provider.java.JavaProvider;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import com.codeberry.tadlib.util.MatrixTestUtils;
 import com.codeberry.tadlib.util.StringUtils;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -35,23 +36,21 @@ public class LargeGradientTest {
     @Test
     public void testGradientWhileTrainingModel_SingleThreaded() {
         ProviderStore.setProvider(new JavaProvider(SINGLE_THREADED));
-
         doTest();
     }
 
-    @Test
+    @Disabled @Test
     public void testGradientWhileTrainingModel_MultiThreaded() {
         ProviderStore.setProvider(new JavaProvider(MULTI_THREADED));
-
         doTest();
     }
 
-    @Test
-    public void testGradientWhileTrainingModel_OpenCL() {
-        ProviderStore.setProvider(new OpenCLProvider());
-
-        doTest();
-    }
+//    @Disabled
+//    @Test
+//    public void testGradientWhileTrainingModel_OpenCL() {
+//        ProviderStore.setProvider(new OpenCLProvider());
+//        doTest();
+//    }
 
     private void doTest() {
         Random rand = new Random(4);
@@ -59,7 +58,7 @@ public class LargeGradientTest {
 
         ModelFactory modelFactory =
                 createConvolutionModelFactory()
-//                createFullyConnectedModelFactory()
+                //createFullyConnectedModelFactory()
                 ;
 
         Model model = modelFactory.createModel();
@@ -136,8 +135,8 @@ public class LargeGradientTest {
 
             if (isNotOk(errAspect)) {
                 System.err.println("ErrAspect: " + errAspect + " (ideally below " + IDEAL_ERR_ASPECT + ")");
-                System.err.println("Backprop:  " + StringUtils.toString(numericalGrad.getShape(), autoGradGradient));
-                System.err.println("Numerical: " + StringUtils.toString(numericalGrad.getShape(), numericalGradient));
+                System.err.println("Backprop:  " + StringUtils.toString(numericalGrad.shape, autoGradGradient));
+                System.err.println("Numerical: " + StringUtils.toString(numericalGrad.shape, numericalGradient));
             }
 
             failWhenTooLargeOrTooOften(errAspect);

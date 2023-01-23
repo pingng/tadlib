@@ -1,9 +1,10 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.JavaProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +18,7 @@ public class TensorBatchNormTest {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -56,7 +57,8 @@ public class TensorBatchNormTest {
     @Test
     public void batchNorm2DForEachChannel() {
         Tensor input = new Tensor(Data2D.testInput().reshape(8, 16));
-        Shape inputShape = input.getVals().getShape();
+        NDArray ndArray = input.val();
+        Shape inputShape = ndArray.shape;
         Tensor gamma = new Tensor(onesShaped(1));
         Tensor beta = new Tensor(zerosShaped(1));
 
@@ -65,23 +67,24 @@ public class TensorBatchNormTest {
         batchNormResult.output.backward(range(toIntExact(inputShape.getSize())).reshape(inputShape.toDimArray()));
 
         assertEqualsMatrix(Data2D.testOutput().reshape(inputShape.toDimArray()).toDoubles(),
-                batchNormResult.output.getVals().toDoubles());
+                batchNormResult.output.val().toDoubles());
         assertEqualsMatrix(Data2D.meanValues().toDoubles(),
                 batchNormResult.mean.toDoubles());
         assertEqualsMatrix(Data2D.varianceValues().toDoubles(),
                 batchNormResult.variance.toDoubles());
         assertEqualsMatrix(Data2D.inputGradient().reshape(inputShape.toDimArray()).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
         assertEqualsMatrix(Data2D.betaGradient().toDoubles(),
-                beta.getGradient().toDoubles());
+                beta.grad().toDoubles());
         assertEqualsMatrix(Data2D.gammaGradient().toDoubles(),
-                gamma.getGradient().toDoubles());
+                gamma.grad().toDoubles());
     }
 
     @Test
     public void batchNorm4DForEachChannel() {
         Tensor input = new Tensor(Data4D.testInput().reshape(8, 3, 3, 5));
-        Shape inputShape = input.getVals().getShape();
+        NDArray ndArray = input.val();
+        Shape inputShape = ndArray.shape;
         Tensor gamma = new Tensor(onesShaped(5));
         Tensor beta = new Tensor(zerosShaped(5));
 
@@ -90,7 +93,7 @@ public class TensorBatchNormTest {
         batchNormResult.output.backward(range(toIntExact(inputShape.getSize())).reshape(inputShape.toDimArray()));
 
         assertEqualsMatrix(Data4D.testOutput().reshape(inputShape.toDimArray()).toDoubles(),
-                batchNormResult.output.getVals().toDoubles(),
+                batchNormResult.output.val().toDoubles(),
                 1.8e-7);
         assertEqualsMatrix(Data4D.meanValues().toDoubles(),
                 batchNormResult.mean.toDoubles(),
@@ -99,13 +102,13 @@ public class TensorBatchNormTest {
                 batchNormResult.variance.toDoubles(),
                 1.8e-7);
         assertEqualsMatrix(Data4D.inputGradient().reshape(inputShape.toDimArray()).toDoubles(),
-                input.getGradient().toDoubles(),
+                input.grad().toDoubles(),
                 1e-7);
         assertEqualsMatrix(Data4D.betaGradient().toDoubles(),
-                beta.getGradient().toDoubles(),
+                beta.grad().toDoubles(),
                 3.1e-7);
         assertEqualsMatrix(Data4D.gammaGradient().toDoubles(),
-                gamma.getGradient().toDoubles(),
+                gamma.grad().toDoubles(),
                 3.1e-7);
     }
 

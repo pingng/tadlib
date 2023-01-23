@@ -6,26 +6,33 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static java.lang.Math.max;
-import static java.lang.Math.min;
 
 public abstract class MultiThreadingSupport {
     private static volatile ForkJoinPool pool;
 
     public static void enableMultiThreading() {
-        int processors = Runtime.getRuntime().availableProcessors();
-        if (processors >= 2) {
-            int threads = max(processors - 1, 2);
-            pool = new ForkJoinPool(threads);
+        synchronized (MultiThreadingSupport.class) {
+            if (pool!=null) {
+                int processors = Runtime.getRuntime().availableProcessors();
+                if (processors >= 2) {
+                    int threads = max(processors - 1, 2);
+                    pool = new ForkJoinPool(threads);
+                }
+            }
         }
     }
 
     public static void disableMultiThreading() {
-        pool = null;
+        synchronized (MultiThreadingSupport.class) {
+            if (pool!=null) {
+                pool.shutdownNow();
+                pool = null;
+            }
+        }
     }
 
     public static <R> R multiThreadingSupportRun(TaskRange totalRange, Function<TaskRange, R> task, BiFunction<R, R, R> merger) {
-        if (pool == null ||
-                totalRange.isSmallEnoughForDirectWork()) {
+        if (pool == null || totalRange.isSmallEnoughForDirectWork()) {
             return task.apply(totalRange);
         } else {
             return pool.invoke(new MyRecursiveTask<>(totalRange, task, merger));

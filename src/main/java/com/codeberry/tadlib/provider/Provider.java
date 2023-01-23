@@ -1,8 +1,8 @@
 package com.codeberry.tadlib.provider;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.provider.java.NDArray;
 
 public interface Provider {
     NDArray createArray(double v);

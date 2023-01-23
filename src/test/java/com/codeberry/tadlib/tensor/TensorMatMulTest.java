@@ -2,8 +2,7 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.JavaProvider;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import com.codeberry.tadlib.util.MatrixTestUtils;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +17,7 @@ class TensorMatMulTest {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider());
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -36,8 +35,8 @@ class TensorMatMulTest {
         }).reshape(2, 2, 2));
         Tensor c = Ops.matmul(a, b);
 
-        Object cOut = c.getVals().toDoubles();
-        System.out.println("out shape: " + c.getShape());
+        Object cOut = c.val().toDoubles();
+        System.out.println("out shape: " + c.shape());
         System.out.println(deepToString((Object[]) cOut));
         assertEqualsMatrix(
                 new double[][][]{
@@ -61,16 +60,16 @@ class TensorMatMulTest {
         c.backward(array(gradient).reshape(2, 2, 2));
 
         System.out.println("---");
-        System.out.println(deepToString((Object[]) a.getGradient().toDoubles()));
-        System.out.println(deepToString((Object[]) b.getGradient().toDoubles()));
-        System.out.println(deepToString((Object[]) c.getGradient().toDoubles()));
+        System.out.println(deepToString((Object[]) a.grad().toDoubles()));
+        System.out.println(deepToString((Object[]) b.grad().toDoubles()));
+        System.out.println(deepToString((Object[]) c.grad().toDoubles()));
 
         assertEqualsMatrix(new double[][][]{
                 {
                         {1060, 1480},
                         {1800, 2560}
                 }
-        }, a.getGradient().toDoubles());
+        }, a.grad().toDoubles());
         assertEqualsMatrix(new double[][][]{
                 {
                         {12, 20.5},
@@ -80,7 +79,7 @@ class TensorMatMulTest {
                         {56, 76},
                         {76, 104}
                 }
-        }, b.getGradient().toDoubles());
+        }, b.grad().toDoubles());
     }
 
     @Test
@@ -98,8 +97,8 @@ class TensorMatMulTest {
         }).reshape(1, 2, 2));
         Tensor c = Ops.matmul(a, b);
 
-        Object cOut = c.getVals().toDoubles();
-        System.out.println("out shape: " + c.getShape());
+        Object cOut = c.val().toDoubles();
+        System.out.println("out shape: " + c.shape());
         System.out.println(deepToString((Object[]) cOut));
         assertEqualsMatrix(
                 new double[][][]{
@@ -123,9 +122,9 @@ class TensorMatMulTest {
         c.backward(array(gradient).reshape(2, 2, 2));
 
         System.out.println("---");
-        System.out.println(deepToString((Object[]) a.getGradient().toDoubles()));
-        System.out.println(deepToString((Object[]) b.getGradient().toDoubles()));
-        System.out.println(deepToString((Object[]) c.getGradient().toDoubles()));
+        System.out.println(deepToString((Object[]) a.grad().toDoubles()));
+        System.out.println(deepToString((Object[]) b.grad().toDoubles()));
+        System.out.println(deepToString((Object[]) c.grad().toDoubles()));
 
         assertEqualsMatrix(new double[][][]{
                 {
@@ -136,13 +135,13 @@ class TensorMatMulTest {
                         {38, 74},
                         {62, 122}
                 }
-        }, a.getGradient().toDoubles());
+        }, a.grad().toDoubles());
         assertEqualsMatrix(new double[][][]{
                 {
                         {1674, 2347},
                         {2014, 2835}
                 }
-        }, b.getGradient().toDoubles());
+        }, b.grad().toDoubles());
     }
 
     @Test
@@ -159,7 +158,7 @@ class TensorMatMulTest {
                 });
         Tensor c = Ops.matmul(a, b);
 
-        Object cOut = c.getVals().toDoubles();
+        Object cOut = c.val().toDoubles();
         System.out.println(deepToString((Object[]) cOut));
         assertTrue(deepEquals(new double[][]{
                 {19, 22},
@@ -173,18 +172,18 @@ class TensorMatMulTest {
         c.backward(array(gradient));
 
         System.out.println("---");
-        System.out.println(deepToString((Object[]) a.getGradient().toDoubles()));
-        System.out.println(deepToString((Object[]) b.getGradient().toDoubles()));
-        System.out.println(deepToString((Object[]) c.getGradient().toDoubles()));
+        System.out.println(deepToString((Object[]) a.grad().toDoubles()));
+        System.out.println(deepToString((Object[]) b.grad().toDoubles()));
+        System.out.println(deepToString((Object[]) c.grad().toDoubles()));
 
         assertTrue(deepEquals(new double[][]{
                 {11, 15},
                 {11, 15}
-        }, (Object[]) a.getGradient().toDoubles()));
+        }, (Object[]) a.grad().toDoubles()));
         assertTrue(deepEquals(new double[][]{
                 {4, 4},
                 {6, 6}
-        }, (Object[]) b.getGradient().toDoubles()));
-        assertTrue(deepEquals(gradient, (Object[]) c.getGradient().toDoubles()));
+        }, (Object[]) b.grad().toDoubles()));
+        assertTrue(deepEquals(gradient, (Object[]) c.grad().toDoubles()));
     }
 }

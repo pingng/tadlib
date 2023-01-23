@@ -27,14 +27,14 @@ public class JavaProvider implements Provider {
 
     @Override
     public NDArray createArray(double v) {
-        return new JavaArray(v);
+        return new NDArray(v);
     }
 
     @Override
     public NDArray createArray(Object multiDimArray) {
         MultiDimArrayFlattener<double[]> preparedData = MultiDimArrayFlattener.prepareFlatData(multiDimArray, double[]::new);
 
-        return new JavaArray(preparedData.data, new JavaShape(preparedData.dimensions));
+        return new NDArray(preparedData.data, new JavaShape(preparedData.dimensions));
     }
 
     @Override
@@ -58,7 +58,7 @@ public class JavaProvider implements Provider {
 
     @Override
     public NDArray createArray(double[] data, Shape shape) {
-        return new JavaArray(data, (JavaShape) shape);
+        return new NDArray(data, (JavaShape) shape);
     }
 
     @Override
@@ -70,7 +70,7 @@ public class JavaProvider implements Provider {
     public NDArray createArrayWithValue(Shape shape, double v) {
         double[] data = new double[Math.toIntExact(shape.getSize())];
         Arrays.fill(data, v);
-        return new JavaArray(data, (JavaShape) shape);
+        return new NDArray(data, (JavaShape) shape);
     }
 
     @Override

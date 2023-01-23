@@ -1,10 +1,7 @@
 package com.codeberry.tadlib.array;
 
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
-
-import java.util.List;
-
-import static java.util.Collections.singletonList;
+import com.codeberry.tadlib.provider.java.NDArray;
 
 public interface NDIntArray extends DisposalRegister.Disposable {
 

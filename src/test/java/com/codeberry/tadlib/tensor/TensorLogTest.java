@@ -2,7 +2,7 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.JavaProvider;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +14,7 @@ public class TensorLogTest {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider());
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -34,11 +34,11 @@ public class TensorLogTest {
                 }).reshape(1, 3, 3).toDoubles(),
                 log.toDoubles());
 
-        System.out.println(Arrays.deepToString((Object[]) input.getGradient().toDoubles()));
+        System.out.println(Arrays.deepToString((Object[]) input.grad().toDoubles()));
         assertEqualsMatrix(ProviderStore.array(new double[]{
                         1., 2., 15., 1.3333334, 12.5, 1.2, 11.666667, 1.1428572, 11.25
 //                        1./10, 1./1, 1./2, 1./3, 1./4, 1./5, 1./6, 1./7, 1./8
                 }).reshape(1, 3, 3).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
     }
 }

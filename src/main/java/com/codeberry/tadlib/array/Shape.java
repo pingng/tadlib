@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.IntFunction;
+import java.util.function.Predicate;
 
 import static java.lang.Boolean.FALSE;
 
@@ -63,9 +64,9 @@ public interface Shape {
         return Array.newInstance(componentType, toDimArray());
     }
 
-    default Boolean[] newCollapseArray() {
-        Boolean[] b = new Boolean[getDimCount()];
-        Arrays.fill(b, FALSE);
+    default boolean[] newCollapseArray() {
+        boolean[] b = new boolean[getDimCount()];
+        //Arrays.fill(b, FALSE);
         return b;
     }
 
@@ -127,11 +128,18 @@ public interface Shape {
         return dims;
     }
 
+    default  boolean[] forEachDim(Predicate<Integer> mapper, IntFunction<boolean[]> returnFactory) {
+        boolean[] data = returnFactory.apply(getDimCount());
+        for (int i = 0; i < data.length; i++) {
+            data[i] = mapper.test(at(i));
+        }
+        return data;
+    }
+
     default  <A> A[] forEachDim(Function<Integer, A> mapper, IntFunction<A[]> returnFactory) {
         A[] data = returnFactory.apply(getDimCount());
         for (int i = 0; i < data.length; i++) {
-            A v = mapper.apply(at(i));
-            data[i] = v;
+            data[i] = mapper.apply(at(i));
         }
         return data;
     }

@@ -3,6 +3,7 @@ package com.codeberry.tadlib.provider.java;
 import com.codeberry.tadlib.array.*;
 import com.codeberry.tadlib.array.util.FlatToMultiDimArrayConverter;
 import com.codeberry.tadlib.array.util.SoftmaxUtils;
+import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.util.MultiThreadingSupport;
 import com.codeberry.tadlib.util.StringUtils;
@@ -13,34 +14,35 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.IntFunction;
 
-import static com.codeberry.tadlib.array.NDArray.DimKeepRemove.REMOVE_DIM;
 import static com.codeberry.tadlib.array.util.DimensionUtils.*;
+import static com.codeberry.tadlib.provider.java.NDArray.DimKeepRemove.REMOVE_DIM;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.multiThreadingSupportRun;
-import static java.lang.Boolean.TRUE;
 import static java.lang.Math.*;
-import static java.lang.Math.max;
-import static java.lang.Math.min;
 import static java.util.Arrays.*;
 
-public class JavaArray implements NDArray {
-    private final double[] data;
+public class NDArray implements DisposalRegister.Disposable {
+    public final double[] data;
     public final JavaShape shape;
 
-    public JavaArray(double val) {
-        this(new double[]{val}, JavaShape.zeroDim());
+    public NDArray(double val) {
+        this(new double[]{val}, JavaShape.zeroDim);
     }
 
-    public JavaArray(double[] data) {
+    public NDArray(double[] data) {
         this(data, new JavaShape(data.length));
     }
 
-    public JavaArray(double[] data, JavaShape shape) {
+    public NDArray(JavaShape shape) {
+        this(new double[shape.size], shape);
+    }
+
+    public NDArray(double[] data, JavaShape shape) {
         this.data = data;
         this.shape = shape;
     }
 
-    public static JavaArray distribute2dMaxGrad(JavaArray grad, JavaShape inputShape, JavaShape maxIndexShape, int[] maxIndexData) {
+    public static NDArray distribute2dMaxGrad(NDArray grad, JavaShape inputShape, JavaShape maxIndexShape, int[] maxIndexData) {
         TMutableArray outputGrad = new TMutableArray(inputShape);
 
         int[] tmpOutputGradIndices = outputGrad.shape.newIndexArray();
@@ -52,7 +54,24 @@ public class JavaArray implements NDArray {
         return outputGrad.migrateToImmutable();
     }
 
-    private static void fillMax2dGradInto(TMutableArray outputGrad, JavaShape maxIndexShape, int[] maxIndexData, JavaArray grad, int dim,
+    public static void validateConv2dShapes(Shape inputShape, Shape filterShape) {
+        if (inputShape.getDimCount() < 4) {
+            throw new RuntimeException("input must have 4+ dims");
+        }
+        if (filterShape.getDimCount() != 4) {
+            throw new RuntimeException("filter must have dims [h,w,in,out]");
+        }
+    }
+
+    public void set(NDArray x) {
+        set(x.data);
+    }
+
+    public void set(double[] x) {
+        System.arraycopy(x, 0, data, 0, data.length);
+    }
+
+    private static void fillMax2dGradInto(TMutableArray outputGrad, JavaShape maxIndexShape, int[] maxIndexData, NDArray grad, int dim,
                                           int[] tmpOutputGradIndices, int[] tmpGradIndices, int[] tmpMaxIndices) {
         if (maxIndexShape.dimCount - dim == 4) {
             int maxILen = tmpMaxIndices.length;
@@ -102,7 +121,7 @@ public class JavaArray implements NDArray {
     }
 
     private static void toSoftmaxGradientOLD(TMutableArray tgt, NDArray predicted, int[] indices, NDArray labelsOneHot, int dim) {
-        int len = predicted.getShape().at(dim);
+        int len = predicted.shape.at(dim);
         if (indices.length - dim == 1) {
             // --- Find MAX index in last dim ---
             int maxIndex = -1;
@@ -128,21 +147,21 @@ public class JavaArray implements NDArray {
         }
     }
 
-    public JavaArray calcConv2dFilterGradient(NDArray input, NDArray filter) {
-        JavaShape filterShape = (JavaShape) filter.getShape();
+    public NDArray calcConv2dFilterGradient(NDArray input, NDArray filter) {
+        JavaShape filterShape = filter.shape;
         int[] dims = new int[filterShape.dimCount + 1];
         System.arraycopy(filterShape.toDimArray(), 0, dims, 1, filterShape.dimCount);
-        dims[0] = input.getShape().at(0);
+        dims[0] = input.shape.at(0);
         JavaShape tgtShape = new JavaShape(dims);
 
-        JavaArray gradPerInputExample = multiThreadingSupportRun(taskRange(0, shape.at(0)),
-                range -> accumulateFilterGradientAtFirstDim(range, (JavaArray) input, tgtShape),
+        NDArray gradPerInputExample = multiThreadingSupportRun(taskRange(0, shape.at(0)),
+                range -> accumulateFilterGradientAtFirstDim(range, input, tgtShape),
                 (left, right) -> left.add(right));
 
-        return (JavaArray) gradPerInputExample.sumFirstDims(1, REMOVE_DIM);
+        return gradPerInputExample.sumFirstDims(1, REMOVE_DIM);
     }
 
-    private JavaArray accumulateFilterGradientAtFirstDim(MultiThreadingSupport.TaskRange range, JavaArray input, JavaShape tgtShape) {
+    private NDArray accumulateFilterGradientAtFirstDim(MultiThreadingSupport.TaskRange range, NDArray input, JavaShape tgtShape) {
         TMutableArray tgtGrad = new TMutableArray(new double[tgtShape.size], tgtShape);
 
         int[] gradIndices = this.shape.newIndexArray();
@@ -160,7 +179,7 @@ public class JavaArray implements NDArray {
     }
 
     private void accumulateFilterGradient(int[] gradIndices, int dim,
-                                          JavaArray input, int[] inIndices,
+                                          NDArray input, int[] inIndices,
                                           TMutableArray tgtGrad, int[] tgtIndices) {
         if (gradIndices.length - dim == 3) {
             int filterH = tgtGrad.shape.at(1);
@@ -202,7 +221,7 @@ public class JavaArray implements NDArray {
 
     private double sumFilterGradAt(int filterH, int filterW,
                                    int[] gradIndices,
-                                   JavaArray input, int[] inIndices,
+                                   NDArray input, int[] inIndices,
                                    int inIdx, int outIdx,
                                    int offsetGradY, int offsetGradX) {
         int inputH = input.shape.at(-3);
@@ -231,16 +250,15 @@ public class JavaArray implements NDArray {
         return g;
     }
 
-    @Override
     public NDArray rot180(int yAxis, int xAxis) {
-        return new JavaArray(this.data, new JavaShapeRot180(this.shape, yAxis, xAxis));
+        return new NDArray(this.data, new JavaShapeRot180(this.shape, yAxis, xAxis));
     }
 
     public double[] getInternalData() {
         return data;
     }
 
-    public JavaArray softmax() {
+    public NDArray softmax() {
         TMutableArray output = new TMutableArray(new double[this.data.length], shape);
 
         fillSoftMax(this, output, output.shape.newIndexArray(), 0);
@@ -248,15 +266,13 @@ public class JavaArray implements NDArray {
         return output.migrateToImmutable();
     }
 
-    @Override
     public NDArray softMaxCrossEntropyGrad(NDArray softmax, NDArray oneHotArray) {
         return SoftmaxUtils.calcSoftmaxCrossEntropyGradient(softmax, oneHotArray).mul(this);
     }
 
-    @Override
     public DropOutResult dropOut(Random rnd, double dropoutKeep) {
         double gradValue = 1.0 / dropoutKeep;
-        JavaArray output = normalOrderedCopy();
+        NDArray output = normalOrderedCopy();
         double[] data = output.getInternalData();
         double[] gradMaskData = new double[data.length];
         int[] dims = output.shape.toDimArray();
@@ -272,7 +288,6 @@ public class JavaArray implements NDArray {
         return new JavaDropOutResult(output, gradMaskData, dims);
     }
 
-    @Override
     public NDArray withUpdates(List<ValueUpdate> updates) {
         TMutableArray output = new TMutableArray(Arrays.copyOf(this.data, this.data.length), shape);
         for (ValueUpdate update : updates) {
@@ -281,9 +296,8 @@ public class JavaArray implements NDArray {
         return output.migrateToImmutable();
     }
 
-    @Override
     public NDArray clip(Double min, Double max) {
-        JavaArray copy = normalOrderedCopy();
+        NDArray copy = normalOrderedCopy();
 
         for (int i = 0; i < copy.data.length; i++) {
             if (min != null) {
@@ -297,9 +311,8 @@ public class JavaArray implements NDArray {
         return copy;
     }
 
-    @Override
     public NDArray log() {
-        JavaArray copy = normalOrderedCopy();
+        NDArray copy = normalOrderedCopy();
 
         for (int i = 0; i < copy.data.length; i++) {
             copy.data[i] = Math.log(copy.data[i]);
@@ -308,13 +321,12 @@ public class JavaArray implements NDArray {
         return copy;
     }
 
-    @Override
     public NDIntArray argmax(int axis) {
-        validateAxisWithinBounds(getShape(), axis);
+        validateAxisWithinBounds(shape, axis);
 
-        JavaArray src = normalOrderedCopy();
+        NDArray src = normalOrderedCopy();
 
-        Shape shape = src.getShape();
+        Shape shape = src.shape;
         int safeAxis = shape.wrapNegIndex(axis);
         Shape outShape = shape.removeDimAt(safeAxis);
 
@@ -329,7 +341,7 @@ public class JavaArray implements NDArray {
         return new JavaIntArray(data, outShape);
     }
 
-    private static void fillArgMax(JavaArray src, int[] srcIndices, int axis, int[] tgt, Shape tgtShape, int[] tgtIndices, int tgtDim) {
+    private static void fillArgMax(NDArray src, int[] srcIndices, int axis, int[] tgt, Shape tgtShape, int[] tgtIndices, int tgtDim) {
         int len = tgtShape.at(tgtDim);
         for (int i = 0; i < len; i++) {
             tgtIndices[tgtDim] = i;
@@ -345,8 +357,8 @@ public class JavaArray implements NDArray {
         }
     }
 
-    private static int getMaxIndex(JavaArray src, int[] srcIndices, int axis) {
-        int axisLen = src.getShape().at(axis);
+    private static int getMaxIndex(NDArray src, int[] srcIndices, int axis) {
+        int axisLen = src.shape.at(axis);
         double max = Double.NEGATIVE_INFINITY;
         int maxIndex = Integer.MIN_VALUE;
         for (int i = 0; i < axisLen; i++) {
@@ -360,13 +372,12 @@ public class JavaArray implements NDArray {
         return maxIndex;
     }
 
-    @Override
     public NDArray getAtIndicesOnAxis(NDIntArray indices, int axis) {
-        validateAxisWithinBounds(getShape(), axis);
-        validateSameDimensionsExcept("indices", getShape(), indices.getShape(), axis);
+        validateAxisWithinBounds(shape, axis);
+        validateSameDimensionsExcept("indices", shape, indices.getShape(), axis);
 
-        JavaArray src = normalOrderedCopy();
-        Shape shape = src.getShape();
+        NDArray src = normalOrderedCopy();
+        Shape shape = src.shape;
 
         int safeAxis = shape.wrapNegIndex(axis);
 
@@ -380,10 +391,10 @@ public class JavaArray implements NDArray {
             data[0] = src.dataAt((Integer) indices.toInts());
         }
 
-        return new JavaArray(data, (JavaShape) outShape);
+        return new NDArray(data, (JavaShape) outShape);
     }
 
-    private static void fillValueAtIndicesOnAxis(NDIntArray valueIndices, JavaArray src, int[] srcIndices, int axis,
+    private static void fillValueAtIndicesOnAxis(NDIntArray valueIndices, NDArray src, int[] srcIndices, int axis,
                                                  double[] tgt, Shape tgtShape, int[] tgtIndices, int tgtDim) {
         int len = tgtShape.at(tgtDim);
         for (int i = 0; i < len; i++) {
@@ -400,14 +411,13 @@ public class JavaArray implements NDArray {
             }
         }
     }
-    @Override
     public NDArray withUpdateAtIndicesOnAxis(NDIntArray indices, int axis, NDArray change) {
-        JavaArray src = this.normalOrderedCopy();
-        JavaShape shape = src.getShape();
+        NDArray src = this.normalOrderedCopy();
+        JavaShape shape = src.shape;
 
         validateAxisWithinBounds(shape, axis);
         validateSameDimensionsExcept("indices", shape, indices.getShape(), axis);
-        validateSameDimensionsExcept("change", shape, change.getShape(), axis);
+        validateSameDimensionsExcept("change", shape, change.shape, axis);
 
 
         int safeAxis = shape.wrapNegIndex(axis);
@@ -416,13 +426,13 @@ public class JavaArray implements NDArray {
         double[] data = Arrays.copyOf(src.data, src.data.length);
 
         if (shape.getDimCount() == 1) {
-            data[((JavaIntArray) indices).data[0]] = ((JavaArray)change).data[0];
+            data[((JavaIntArray) indices).data[0]] = change.data[0];
         } else {
             fillValuesIndicesOnAxis(indices, data, shape, shape.newIndexArray(), safeAxis, axisLen,
-                    change, change.getShape(), change.getShape().newIndexArray(), 0);
+                    change, change.shape, change.shape.newIndexArray(), 0);
         }
 
-        return new JavaArray(data, shape);
+        return new NDArray(data, shape);
     }
 
     private static void fillValuesIndicesOnAxis(NDIntArray valueIndices, double[] tgt, Shape tgtShape, int[] tgtIndices,
@@ -449,7 +459,7 @@ public class JavaArray implements NDArray {
         }
     }
 
-    private static void fillSoftMax(JavaArray src, TMutableArray tgt, int[] indices, int dim) {
+    private static void fillSoftMax(NDArray src, TMutableArray tgt, int[] indices, int dim) {
         int len = tgt.shape.at(dim);
         if (indices.length - dim == 1) {
             //_mx = np.max(logits)
@@ -488,21 +498,19 @@ public class JavaArray implements NDArray {
         }
     }
 
-    @Override
     public NDArray diag() {
         Shape outShape = shape.appendDim(shape.at(-1));
 
         double[] data = new double[toIntExact(outShape.getSize())];
         fillDiagonal(this, shape.newIndexArray(), data, outShape, outShape.newIndexArray(), 0);
 
-        return new JavaArray(data, (JavaShape) outShape);
+        return new NDArray(data, (JavaShape) outShape);
     }
 
-    @Override
     public NDArray concat(NDArray[] appendees, int axis) {
-        int safeAxis = getShape().wrapIndex(axis);
+        int safeAxis = shape.wrapIndex(axis);
 
-        JavaArray[] srcs = toArray(this, appendees);
+        NDArray[] srcs = toArray(this, appendees);
         Shape[] shapes = extractShapes(srcs);
 
         validateConcatShapes(shapes, safeAxis);
@@ -510,15 +518,15 @@ public class JavaArray implements NDArray {
 
         double[] data = new double[toIntExact(outShape.getSize())];
 
-        fillConcat(srcs, getShape().newIndexArray(),
+        fillConcat(srcs, shape.newIndexArray(),
                 safeAxis, extractAxisLen(shapes, safeAxis),
                 data, outShape, outShape.newIndexArray(), 0);
 
-        return new JavaArray(data, (JavaShape) outShape);
+        return new NDArray(data, (JavaShape) outShape);
     }
 
-    private static JavaArray[] toArray(JavaArray firstElement, NDArray[] appendees) {
-        JavaArray[] copy = new JavaArray[appendees.length + 1];
+    private static NDArray[] toArray(NDArray firstElement, NDArray[] appendees) {
+        NDArray[] copy = new NDArray[appendees.length + 1];
         System.arraycopy(appendees, 0, copy, 1, appendees.length);
         copy[0] = firstElement;
         return copy;
@@ -528,12 +536,12 @@ public class JavaArray implements NDArray {
         Shape[] r = new Shape[appendees.length + 1];
         r[0] = thisShape;
         for (int i = 0; i < appendees.length; i++) {
-            r[i+1] = appendees[i].getShape();
+            r[i+1] = appendees[i].shape;
         }
         return r;
     }
 
-    private static void fillConcat(JavaArray[] srcs, int[] srcIndices,
+    private static void fillConcat(NDArray[] srcs, int[] srcIndices,
                                    int axis, int[] axisLens,
                                    double[] data, Shape outShape, int[] outIndices, int dim) {
         int outLen = outShape.at(dim);
@@ -552,7 +560,7 @@ public class JavaArray implements NDArray {
                     srcIndex++;
                 }
                 srcIndices[axis] = workingIndex;
-                JavaArray src = srcs[srcIndex];
+                NDArray src = srcs[srcIndex];
 
                 double val = src.dataAt(srcIndices);
 
@@ -563,9 +571,8 @@ public class JavaArray implements NDArray {
         }
     }
 
-    @Override
     public List<NDArray> split(int axis, int[] axisLens) {
-        Shape shape = getShape();
+        Shape shape = this.shape;
         int safeAxis = shape.wrapNegIndex(axis);
         validateSplitLens(shape, safeAxis, axisLens);
 
@@ -577,14 +584,14 @@ public class JavaArray implements NDArray {
             fillSplit(this, shape.newIndexArray(), safeAxis, offset, axisLen,
                     data, outShape, outShape.newIndexArray(), 0);
 
-            parts.add(new JavaArray(data, (JavaShape) outShape));
+            parts.add(new NDArray(data, (JavaShape) outShape));
 
             offset += axisLen;
         }
         return parts;
     }
 
-    private static void fillSplit(JavaArray src, int[] srcIndices,
+    private static void fillSplit(NDArray src, int[] srcIndices,
                            int axis, int offset, int axisLen,
                            double[] data, Shape outShape, int[] outIndices,
                            int dim) {
@@ -613,7 +620,7 @@ public class JavaArray implements NDArray {
         }
     }
 
-    private static void fillDiagonal(JavaArray src, int[] srcIndices, double[] out, Shape outShape, int[] outIndices, int srcDim) {
+    private static void fillDiagonal(NDArray src, int[] srcIndices, double[] out, Shape outShape, int[] outIndices, int srcDim) {
         int len = src.shape.at(srcDim);
 
         for (int i = 0; i < len; i++) {
@@ -633,7 +640,7 @@ public class JavaArray implements NDArray {
     }
 
     public NDArray subArray(int fromBatchIndex, int fromOffset, int endBatchIndex, int toOffset) {
-        JavaArray src = (shape.getClass() == JavaShape.class ? this : this.normalOrderedCopy());
+        NDArray src = (shape.getClass() == JavaShape.class ? this : this.normalOrderedCopy());
 
         double[] data = new double[toOffset - fromOffset];
         System.arraycopy(src.data, fromOffset, data, 0, data.length);
@@ -641,39 +648,33 @@ public class JavaArray implements NDArray {
         dims[0] = endBatchIndex - fromBatchIndex;
         JavaShape outShape = new JavaShape(dims);
 
-        return new JavaArray(data, outShape);
+        return new NDArray(data, outShape);
     }
 
-    public JavaArray reshape(int... dims) {
-        return new JavaArray(this.data, this.shape.reshape(dims));
+    public NDArray reshape(int... dims) {
+        return new NDArray(this.data, this.shape.reshape(dims));
     }
 
-    public JavaArray reshape(JavaShape shape) {
-        return (JavaArray) reshape((Shape) shape);
+    public NDArray reshape(JavaShape shape) {
+        return reshape((Shape) shape);
     }
 
-    @Override
     public Object toDoubles() {
         return FlatToMultiDimArrayConverter.toDoubles(this.shape, i -> data[(int) i]);
     }
 
-    @Override
     public NDArray matmul(NDArray b) {
-        return matmul((JavaArray) b);
-    }
-
-    public JavaArray matmul(JavaArray b) {
         return matmul(this, b);
     }
 
-    public JavaArray add(NDArray b) {
-        return add(this, (JavaArray) b);
+    public NDArray add(NDArray b) {
+        return add(this, b);
     }
 
-    private static JavaArray add(JavaArray a, JavaArray b) {
+    private static NDArray add(NDArray a, NDArray b) {
         if (a.shape.dimCount == 0 &&
                 b.shape.dimCount == 0) {
-            return new JavaArray(a.data[0] + b.data[0]);
+            return new NDArray(a.data[0] + b.data[0]);
         }
         if (a.shape.getClass() == b.shape.getClass() &&
                 Arrays.equals(a.shape.dims, b.shape.dims)) {
@@ -688,28 +689,22 @@ public class JavaArray implements NDArray {
 
         add(a, b, data, outShape, indexArray, 0);
 
-        return new JavaArray(data, outShape);
+        return new NDArray(data, outShape);
     }
 
-    private static JavaArray fastAdd(JavaArray a, JavaArray b) {
+    private static NDArray fastAdd(NDArray a, NDArray b) {
         double[] data = copyOf(a.data, a.data.length);
         for (int i = data.length - 1; i >= 0; i--) {
             data[i] += b.data[i];
         }
-        return new JavaArray(data, a.shape.copy());
+        return new NDArray(data, a.shape/*.copy()*/);
     }
 
-    @Override
-    public JavaShape getShape() {
-        return shape;
+    public NDArray conv2d(NDArray filter, int offsetY, int offsetX) {
+        return conv2d(this, filter, offsetY, offsetX);
     }
 
-    @Override
-    public JavaArray conv2d(NDArray filter, int offsetY, int offsetX) {
-        return conv2d(this, (JavaArray) filter, offsetY, offsetX);
-    }
-
-    private static JavaArray conv2d(JavaArray input, JavaArray filter, int offsetY, int offsetX) {
+    private static NDArray conv2d(NDArray input, NDArray filter, int offsetY, int offsetX) {
         NDArray.validateConv2dShapes(input.shape, filter.shape);
 
         JavaShape outShape = evalConv2DShape(input.shape, filter.shape);
@@ -720,11 +715,11 @@ public class JavaArray implements NDArray {
                         data, outShape),
                 (left, ignored) -> left);
 
-        return new JavaArray(filledData, outShape);
+        return new NDArray(filledData, outShape);
     }
 
     private static double[] conv2dSegmentedAtFirstDim(int start, int end,
-                                                      JavaArray input, JavaArray filter,
+                                                      NDArray input, NDArray filter,
                                                       int offsetY, int offsetX,
                                                       double[] data, JavaShape outShape) {
         int[] inIndices = input.shape.newIndexArray();
@@ -740,8 +735,8 @@ public class JavaArray implements NDArray {
         return data;
     }
 
-    private static void conv2dMain(JavaArray input, int[] inIndices, int inDim,
-                                   JavaArray filter, int[] fIndices, int offsetY, int offsetX,
+    private static void conv2dMain(NDArray input, int[] inIndices, int inDim,
+                                   NDArray filter, int[] fIndices, int offsetY, int offsetX,
                                    double[] data, JavaShape outShape, int[] outIndices) {
         if (inIndices.length - inDim == 3) {
             int h = outShape.at(-3);
@@ -771,8 +766,8 @@ public class JavaArray implements NDArray {
     }
 
     // Eg.: in: <...,5,5,2> filter: <3,3,2,3>
-    private static void conv2dAt(JavaArray input, int[] inIndices,
-                                 JavaArray filter, int[] fIndices, int offsetY, int offsetX,
+    private static void conv2dAt(NDArray input, int[] inIndices,
+                                 NDArray filter, int[] fIndices, int offsetY, int offsetX,
                                  double[] data, JavaShape outShape, int[] outIndices) {
         int fLen = fIndices.length;
         int inLen = inIndices.length;
@@ -825,7 +820,6 @@ public class JavaArray implements NDArray {
         return 0;
     }
 
-    @Override
     public NDArray compare(NDIntArray other, Comparison comparison, double trueValue, double falseValue) {
         Shape leftShape = this.shape;
         Shape rightShape = other.getShape();
@@ -836,12 +830,11 @@ public class JavaArray implements NDArray {
                 leftShape, rightShape, left, right, new DoubleNDArrayWriter());
     }
 
-    @Override
     public NDArray compare(NDArray other, Comparison comparison, double trueValue, double falseValue) {
         Shape leftShape = this.shape;
-        Shape rightShape = other.getShape();
+        Shape rightShape = other.shape;
         IntFunction<Double> left = offset -> this.data[offset];
-        IntFunction<Double> right = offset -> ((JavaArray) other).data[offset];
+        IntFunction<Double> right = offset -> other.data[offset];
 
         return CompareHelper.compare(comparison::doubleIsTrue, trueValue, falseValue,
                 leftShape, rightShape, left, right, new DoubleNDArrayWriter());
@@ -853,17 +846,16 @@ public class JavaArray implements NDArray {
         return new JavaShape(dims);
     }
 
-    private static JavaArray matmul(JavaArray a, JavaArray b) {
+    private static NDArray matmul(NDArray a, NDArray b) {
         MatMulParams params = MatMulParams.expandSingleDimArrays(a.shape, b.shape, JavaShape::new);
-
         validateMatMulShapes(params.leftShape, params.rightShape);
         validateBroadcastShapes(params.leftShape, params.rightShape, -3);
 
         JavaShape outShape = evalMatMulShape(params.leftShape, params.rightShape);
         double[] data = new double[outShape.size];
 
-        JavaArray left = params.promoteLeft ? new JavaArray(a.data, (JavaShape) params.leftShape) : a;
-        JavaArray right = params.promoteRight ? new JavaArray(b.data, (JavaShape) params.rightShape) : b;
+        NDArray left = params.promoteLeft ? new NDArray(a.data, (JavaShape) params.leftShape) : a;
+        NDArray right = params.promoteRight ? new NDArray(b.data, (JavaShape) params.rightShape) : b;
 
         int outputRows = outShape.at(-2);
         double[] filledData = multiThreadingSupportRun(
@@ -873,32 +865,33 @@ public class JavaArray implements NDArray {
                         data, outShape, outShape.newIndexArray(), 0),
                 (_left, ignored_) -> _left);
 
-        return new JavaArray(filledData,
-                (JavaShape) params.revertDimExpandOfOutputShape(outShape));
+        JavaShape shape = (JavaShape) params.revertDimExpandOfOutputShape(outShape);
+
+        return new NDArray(filledData, shape);
     }
 
-    private static int decideMinimumRowsPerThread(Shape leftShape, Shape outShape) {
+    public static int decideMinimumRowsPerThread(Shape leftShape, Shape outShape) {
         int valuesToMulPerOutput = leftShape.at(-1);
         int outputsPerRow = outShape.at(-1);
 
         return 1 + 512 / (valuesToMulPerOutput * outputsPerRow);
     }
 
-    public JavaArray normalOrderedCopy() {
+    public NDArray normalOrderedCopy() {
         JavaShape tgtShape = this.shape.normalOrderedCopy();
         double[] data = this.shape.convertDataToShape(this.data, tgtShape);
 
-        return new JavaArray(data, tgtShape);
+        return new NDArray(data, tgtShape);
     }
 
-    private JavaArray expandDims(int... indicesForSingleDims) {
+    private NDArray expandDims(int... indicesForSingleDims) {
         if (shape instanceof ReorderedJavaShape) {
             return expandDims(this.normalOrderedCopy(), indicesForSingleDims);
         }
         return expandDims(this, indicesForSingleDims);
     }
 
-    private static JavaArray expandDims(JavaArray m, int... indicesForSingleDims) {
+    private static NDArray expandDims(NDArray m, int... indicesForSingleDims) {
         int[] _tmp = copyOf(indicesForSingleDims, indicesForSingleDims.length);
         for (int i = 0; i < _tmp.length; i++) {
             if (_tmp[i] <= -1)
@@ -917,10 +910,10 @@ public class JavaArray implements NDArray {
             dimArr[i] = dims.get(i);
         }
 
-        return new JavaArray(m.data, new JavaShape(dimArr));
+        return new NDArray(m.data, new JavaShape(dimArr));
     }
 
-    private static void add(JavaArray a, JavaArray b,
+    private static void add(NDArray a, NDArray b,
                             double[] out, JavaShape outShape,
                             int[] indices, int dim) {
         if (indices.length - dim == 1) {
@@ -943,8 +936,8 @@ public class JavaArray implements NDArray {
         }
     }
 
-    private static double[] matmul(MultiThreadingSupport.TaskRange rowRange,
-                                   JavaArray a, JavaArray b,
+    public static double[] matmul(MultiThreadingSupport.TaskRange rowRange,
+                                   NDArray a, NDArray b,
                                    double[] out, JavaShape outShape,
                                    int[] indices, int dim) {
 
@@ -982,34 +975,30 @@ public class JavaArray implements NDArray {
     }
 
     private double getBroadcasted(int[] indices) {
-        int offset = shape.getBroadcastOffset(indices);
-
-        return data[offset];
+        return data[shape.getBroadcastOffset(indices)];
     }
 
-    static JavaShape evalBroadcastOutputShape(Shape a, Shape b) {
+    public static JavaShape evalBroadcastOutputShape(Shape a, Shape b) {
         return new JavaShape(createBroadcastResultDims(a, b));
     }
 
-    private static JavaShape evalMatMulShape(Shape a, Shape b) {
+    public static JavaShape evalMatMulShape(Shape a, Shape b) {
         int[] dims = evalMatMulResultDims(a, b);
         return new JavaShape(dims);
     }
 
-    @Override
-    public JavaArray transpose(int... axes) {
+    public NDArray transpose(int... axes) {
         ReorderedJavaShape shape = axes.length == 0 ?
                 ReorderedJavaShape.reverseOf(this.shape) : ReorderedJavaShape.customOrder(this.shape, axes);
-        return new JavaArray(data, shape);
+        return new NDArray(data, shape);
     }
 
-    public JavaArray sum() {
-        Boolean[] toCollapse = new Boolean[shape.dimCount];
-        fill(toCollapse, TRUE);
+    public NDArray sum() {
+        boolean[] toCollapse = new boolean[shape.dimCount];
+        fill(toCollapse, true);
         return sum(toCollapse, REMOVE_DIM);
     }
 
-    @Override
     public JavaMaxPool2dResult maxPool2d(int size) {
         JavaShape outShape = (JavaShape) getMaxPool2dResultShape(shape, size);
 
@@ -1114,15 +1103,13 @@ public class JavaArray implements NDArray {
         return max;
     }
 
-    @Override
     public NDArray maxPool2dGrad(MaxPool2dResult result) {
         JavaMaxPool2dResult r = (JavaMaxPool2dResult) result;
         return distribute2dMaxGrad(this, r.inputShape, r.maxIndexShape, r.maxIndexData);
     }
 
-    @Override
     public ReluResult relu(double leakyScale) {
-        JavaArray copy = normalOrderedCopy();
+        NDArray copy = normalOrderedCopy();
         double[] data = copy.getInternalData();
         double[] gradMaskData = new double[data.length];
 
@@ -1146,8 +1133,7 @@ public class JavaArray implements NDArray {
         return new JavaShape(idxDims);
     }
 
-    @Override
-    public JavaArray sum(Boolean[] dimsToCollapse, DimKeepRemove keepRemove) {
+    public NDArray sum(boolean[] dimsToCollapse, DimKeepRemove keepRemove) {
         if (dimsToCollapse.length != shape.dimCount) {
             throw new RuntimeException("input collapse dims must have same length as shape");
         }
@@ -1159,11 +1145,30 @@ public class JavaArray implements NDArray {
                 target, physicalShape, physicalShape.newIndexArray(), dimMapping);
 
         if (keepRemove == DimKeepRemove.KEEP_DIM) {
-            return new JavaArray(target, toPhysicalShapeWithKeep(shape, dimsToCollapse));
+            return new NDArray(target, toPhysicalShapeWithKeep(shape, dimsToCollapse));
         }
-        return new JavaArray(target, (JavaShape) physicalShape);
+        return new NDArray(target, (JavaShape) physicalShape);
     }
 
+    public void sum(NDArray x, boolean[] dimsToCollapse, DimKeepRemove keepRemove) {
+//        if (dimsToCollapse.length != shape.dimCount)
+//            throw new RuntimeException("input collapse dims must have same length as shape");
+
+        //Shape physicalShape = toPhysicalShape(shape, dimsToCollapse);
+        JavaShape tShape = shape;
+        int[] dimMapping = createSrcToTargetMapping(dimsToCollapse);
+
+        //double[] t = new double[toIntExact(physicalShape.getSize())];
+        sum(x.data, x.shape,  0,
+            data, tShape, dimMapping);
+    }
+
+    private static void sum(double[] src, Shape srcShape, int srcI,
+                            double[] tgt, Shape tgtShape,
+                            int[] srcToTgtMapping) {
+        sum(src, srcShape, srcShape.newIndexArray(), srcI,
+                tgt, tgtShape, tgtShape.newIndexArray(), srcToTgtMapping);
+    }
     private static void sum(double[] src, Shape srcShape, int[] srcIndices, int srcI,
                             double[] tgt, Shape tgtShape, int[] tgtIndices,
                             int[] srcToTgtMapping) {
@@ -1194,12 +1199,12 @@ public class JavaArray implements NDArray {
         }
     }
 
-    private static int[] createSrcToTargetMapping(Boolean[] dimsToCollapse) {
+    private static int[] createSrcToTargetMapping(boolean[] dimsToCollapse) {
         int[] mapping = new int[dimsToCollapse.length];
         fill(mapping, -1);
         int idx = 0;
         for (int i = 0; i < dimsToCollapse.length; i++) {
-            boolean collapseDimension = (dimsToCollapse[i] != null && dimsToCollapse[i]);
+            boolean collapseDimension = dimsToCollapse[i];
             if (!collapseDimension) {
                 mapping[i] = idx;
                 idx++;
@@ -1208,12 +1213,12 @@ public class JavaArray implements NDArray {
         return mapping;
     }
 
-    private static Shape toPhysicalShape(Shape shape, Boolean[] dimsToCollapse) {
+    public static Shape toPhysicalShape(Shape shape, boolean[] dimsToCollapse) {
         int count = countFalse(dimsToCollapse);
         int[] physicalDims = new int[count];
         int idx = 0;
         for (int i = 0; i < dimsToCollapse.length; i++) {
-            if (!(dimsToCollapse[i] != null && dimsToCollapse[i])) {
+            if (!dimsToCollapse[i]) {
                 physicalDims[idx] = shape.at(i);
                 idx++;
             }
@@ -1221,50 +1226,50 @@ public class JavaArray implements NDArray {
         return ProviderStore.shape(physicalDims);
     }
 
-    private static JavaShape toPhysicalShapeWithKeep(JavaShape shape, Boolean[] dimsToCollapse) {
+    private static JavaShape toPhysicalShapeWithKeep(JavaShape shape, boolean[] dimsToCollapse) {
         int[] physicalDims = new int[dimsToCollapse.length];
         fill(physicalDims, 1);
         for (int i = 0; i < dimsToCollapse.length; i++) {
-            if (!(dimsToCollapse[i] != null && dimsToCollapse[i])) {
+            if (!(dimsToCollapse[i])) {
                 physicalDims[i] = shape.at(i);
             }
         }
         return new JavaShape(physicalDims);
     }
 
-    private static int countFalse(Boolean[] dimsToCollapse) {
+    private static int countFalse(boolean[] dimsToCollapse) {
         int count = 0;
         for (Boolean c : dimsToCollapse) if (!(c != null && c)) count++;
         return count;
     }
 
-    public JavaArray negate() {
+    public NDArray negate() {
         if (this.shape instanceof ReorderedJavaShape) {
             throw new UnsupportedOperationException("reordered shape not yet supported");
         }
-        double[] data = copyOf(this.data, this.data.length);
+        double[] data = this.data.clone();
         for (int i = 0; i < data.length; i++) {
             data[i] *= -1;
         }
-        return new JavaArray(data, new JavaShape(this.shape.dims));
+        return new NDArray(data, shape);
     }
 
-    public JavaArray sqr() {
+    public NDArray sqr() {
         double[] cp = copyOf(data, data.length);
         for (int i = 0; i < cp.length; i++) {
             cp[i] *= cp[i];
         }
 
-        return new JavaArray(cp, shape.copy());
+        return new NDArray(cp, shape.copy());
     }
 
-    public JavaArray pow(double power) {
+    public NDArray pow(double power) {
         double[] data = copyOf(this.data, this.data.length);
         double[] filledData = multiThreadingSupportRun(taskRange(0, this.data.length, 64),
                 range -> pow(range.start, range.end, data, power),
                 (left, ignored) -> left);
 
-        return new JavaArray(filledData, shape.copy());
+        return new NDArray(filledData, shape.copy());
     }
 
     private static double[] pow(int start, int end, double[] data, double power) {
@@ -1274,13 +1279,13 @@ public class JavaArray implements NDArray {
         return data;
     }
 
-    public JavaArray sqrt() {
+    public NDArray sqrt() {
         double[] data = copyOf(this.data, this.data.length);
         double[] filledData = multiThreadingSupportRun(taskRange(0, data.length, 64),
                 range -> sqrt(range.start, range.end, data),
                 (left, ignored) -> left);
 
-        return new JavaArray(filledData, shape.copy());
+        return new NDArray(filledData, shape.copy());
     }
 
     private static double[] sqrt(int start, int end, double[] data) {
@@ -1290,12 +1295,11 @@ public class JavaArray implements NDArray {
         return data;
     }
 
-    @Override
-    public JavaArray div(NDArray b) {
-        return div(this, (JavaArray) b);
+    public NDArray div(NDArray b) {
+        return div(this, b);
     }
 
-    private static JavaArray div(JavaArray a, JavaArray b) {
+    private static NDArray div(NDArray a, NDArray b) {
         if (a.shape.getClass() == b.shape.getClass() &&
                 Arrays.equals(a.shape.dims, b.shape.dims)) {
             return fastDiv(a, b);
@@ -1311,18 +1315,18 @@ public class JavaArray implements NDArray {
                 data, outShape,
                 indexArray, 0);
 
-        return new JavaArray(data, outShape);
+        return new NDArray(data, outShape);
     }
 
-    private static JavaArray fastDiv(JavaArray a, JavaArray b) {
+    private static NDArray fastDiv(NDArray a, NDArray b) {
         double[] data = copyOf(a.data, a.data.length);
         for (int i = data.length - 1; i >= 0; i--) {
             data[i] /= b.data[i];
         }
-        return new JavaArray(data, a.shape.copy());
+        return new NDArray(data, a.shape.copy());
     }
 
-    private static void div(JavaArray a, JavaArray b,
+    private static void div(NDArray a, NDArray b,
                             double[] out, JavaShape outShape,
                             int[] indices, int dim) {
         if (indices.length - dim == 1) {
@@ -1345,20 +1349,15 @@ public class JavaArray implements NDArray {
         }
     }
 
-    @Override
-    public NDArray mul(NDArray other) {
-        return mul((JavaArray) other);
-    }
-
-    public JavaArray mul(JavaArray b) {
+    public NDArray mul(NDArray b) {
         return mul(this, b);
     }
 
-    private static JavaArray mul(JavaArray a, JavaArray b) {
-        if (a.shape.getClass() == b.shape.getClass() &&
-                Arrays.equals(a.shape.dims, b.shape.dims)) {
-            return fastMul(a, b);
-        }
+    private static NDArray mul(NDArray a, NDArray b) {
+//        if (a.shape.getClass() == b.shape.getClass() &&
+//                Arrays.equals(a.shape.dims, b.shape.dims)) {
+//            return fastMul(a, b);
+//        }
 
         validateBroadcastShapes(a.shape, b.shape, -1);
         JavaShape outShape = evalBroadcastOutputShape(a.shape, b.shape);
@@ -1370,18 +1369,18 @@ public class JavaArray implements NDArray {
                 data, outShape,
                 indexArray, 0);
 
-        return new JavaArray(data, outShape);
+        return new NDArray(data, outShape);
     }
 
-    private static JavaArray fastMul(JavaArray a, JavaArray b) {
+    private static NDArray fastMul(NDArray a, NDArray b) {
         double[] data = copyOf(a.data, a.data.length);
         for (int i = data.length - 1; i >= 0; i--) {
             data[i] *= b.data[i];
         }
-        return new JavaArray(data, a.shape.copy());
+        return new NDArray(data, a.shape.copy());
     }
 
-    private static void mul(JavaArray a, JavaArray b,
+    private static void mul(NDArray a, NDArray b,
                             double[] out, JavaShape outShape,
                             int[] indices, int dim) {
         if (indices.length - dim == 1) {
@@ -1404,26 +1403,25 @@ public class JavaArray implements NDArray {
         }
     }
 
-    public JavaArray div(double v) {
+    public NDArray div(double v) {
         double[] data = copyOf(this.data, this.data.length);
         for (int i = 0; i < data.length; i++) {
             data[i] /= v;
         }
-        return new JavaArray(data, shape.copy());
+        return new NDArray(data, shape.copy());
     }
 
-    @Override
     public NDArray conv2d(NDArray filter, int offsetY, int offsetX, int outHeight, int outWidth) {
         throw new UnsupportedOperationException();
     }
 
-    public JavaArray mul(double v) {
+    public NDArray mul(double v) {
         double[] data = copyOf(this.data, this.data.length);
         double[] filledData = multiThreadingSupportRun(taskRange(0, data.length, 64),
                 range -> mul(range.start, range.end, data, v),
                 (left, ignored) -> left);
 
-        return new JavaArray(filledData, shape.copy());
+        return new NDArray(filledData, shape.copy());
     }
 
     private static double[] mul(int start, int end, double[] data, double v) {
@@ -1433,12 +1431,12 @@ public class JavaArray implements NDArray {
         return data;
     }
 
-    public JavaArray add(double v) {
+    public NDArray add(double v) {
         double[] data = copyOf(this.data, this.data.length);
         for (int i = 0; i < data.length; i++) {
             data[i] += v;
         }
-        return new JavaArray(data, shape.copy());
+        return new NDArray(data, shape.copy());
     }
 
     @Override
@@ -1446,13 +1444,161 @@ public class JavaArray implements NDArray {
         return StringUtils.toString(this);
     }
 
+    public NDArray sub(NDArray m) {
+        return add(m.negate());
+    }
+
+    public NDArray conv2d(NDArray filter) {
+        return conv2d(filter, 0, 0);
+    }
+
+    @Override
+    public void prepareDependenciesForDisposal() {
+        waitForValueReady();
+    }
+
+    public void waitForValueReady() {
+        // do nothing
+    }
+
+    public NDArray sum(DimKeepRemove keepRemove, int... axes) {
+        Shape inputShape = shape;
+        boolean[] dimsToCollapse = inputShape.newCollapseArray();
+        for (int axis : axes)
+            dimsToCollapse[inputShape.wrapNegIndex(axis)] = true;
+
+        return sum(dimsToCollapse, keepRemove);
+    }
+
+    public NDArray sumFirstDims(int firstDimsToRemove, DimKeepRemove keepRemove) {
+        boolean[] dimsToCollapse = new boolean[shape.getDimCount()];
+        Arrays.fill(dimsToCollapse, false);
+        for (int i = 0; i < firstDimsToRemove; i++)
+            dimsToCollapse[i] = true;
+
+        return sum(dimsToCollapse, keepRemove);
+    }
+
+    @Override
+    public void dispose() {
+        // do nothing
+    }
+
+    public NDArray transposeLast2D() {
+        int dimCount = shape.getDimCount();
+        if (dimCount <= 1) {
+            throw new DimensionMissing("Expected 2+ dimensions: actualDim=" + dimCount);
+        }
+        int[] axes = new int[dimCount];
+        for (int i = 0; i < axes.length; i++) {
+            axes[i] = i;
+        }
+        axes[dimCount - 2] = dimCount - 1;
+        axes[dimCount - 1] = dimCount - 2;
+
+        return transpose(axes);
+    }
+
+    public NDArray concat(NDArray appendee, int axis) {
+        return concat(new NDArray[]{appendee}, axis);
+    }
+
+    public NDArray reshape(Shape shape) {
+        if (this.shape.getClass() != shape.getClass()) {
+            throw new UnsupportedOperationException();
+        }
+        int[] dims = new int[shape.getDimCount()];
+        for (int i = 0; i < dims.length; i++) {
+            dims[i] = shape.at(i);
+        }
+        return reshape(dims);
+    }
+
+    public NDArray subBatch(int batchId, int batchSize) {
+        Shape shape = this.shape;
+
+        int[] indices = shape.newIndexArray();
+        int fromBatchIndex = batchId * batchSize;
+        indices[0] = fromBatchIndex;
+        int fromOffset = shape.calcDataIndex(indices);
+        int endBatchIndex = min(shape.at(0), (batchId + 1) * batchSize);
+        indices[0] = endBatchIndex;
+        int toOffset = shape.calcDataIndex(indices);
+
+        return subArray(fromBatchIndex, fromOffset, endBatchIndex, toOffset);
+    }
+
+    public void zero() {
+        Arrays.fill(data, 0);
+    }
+
+    public enum DimKeepRemove {
+        REMOVE_DIM {
+            @Override
+            public Shape toActualOutShape(Shape inShape, Shape outShapeWithSingleDimensions, Boolean[] dimsToSum) {
+                int dimCount = countFalse(dimsToSum);
+                int[] dims = new int[dimCount];
+                int t = 0;
+
+                int orgCount = inShape.getDimCount();
+                for (int i = 0; i < orgCount; i++) {
+                    if (!dimsToSum[i]) {
+                        dims[t++] = inShape.at(i);
+                    }
+                }
+
+                return ProviderStore.shape(dims);
+            }
+
+            private int countFalse(Boolean[] dimsToSum) {
+                int c = 0;
+                for (Boolean d : dimsToSum)
+                    if (!d)
+                        c++;
+                return c;
+            }
+        },
+        KEEP_DIM {
+            @Override
+            public Shape toActualOutShape(Shape inShape, Shape outShapeWithSingleDimensions, Boolean[] dimsToSum) {
+                return outShapeWithSingleDimensions;
+            }
+        };
+
+        public abstract Shape toActualOutShape(Shape inShape, Shape outShapeWithSingleDimensions, Boolean[] dimsToSum);
+    }
+
+    public interface InternalIntReader {
+        int readValue(long index);
+    }
+
+    public interface InternalDoubleReader {
+        double readValue(long index);
+    }
+
+    public interface MaxPool2dResult {
+        NDArray getOutput();
+    }
+
+    public interface ReluResult {
+        NDArray getOutput();
+
+        NDArray createMask();
+    }
+
+    public interface DropOutResult {
+        NDArray getOutput();
+
+        NDArray createMask();
+    }
+
     private static class JavaMaxPool2dResult implements MaxPool2dResult {
-        private final JavaArray output;
+        private final NDArray output;
         private final JavaShape inputShape;
         private final JavaShape maxIndexShape;
         private final int[] maxIndexData;
 
-        private JavaMaxPool2dResult(JavaArray output, JavaShape inputShape, JavaShape maxIndexShape, int[] maxIndexData) {
+        private JavaMaxPool2dResult(NDArray output, JavaShape inputShape, JavaShape maxIndexShape, int[] maxIndexData) {
             this.output = output;
             this.inputShape = inputShape;
             this.maxIndexShape = maxIndexShape;
@@ -1478,21 +1624,21 @@ public class JavaArray implements NDArray {
 
         @Override
         public NDArray getOutput() {
-            return new JavaArray(data, shape);
+            return new NDArray(data, shape);
         }
 
         @Override
         public NDArray createMask() {
-            return new JavaArray(gradMaskData, shape);
+            return new NDArray(gradMaskData, shape);
         }
     }
 
     private static class JavaDropOutResult implements DropOutResult {
-        private final JavaArray output;
+        private final NDArray output;
         private final double[] gradMaskData;
         private final int[] dims;
 
-        public JavaDropOutResult(JavaArray output, double[] gradMaskData, int[] dims) {
+        public JavaDropOutResult(NDArray output, double[] gradMaskData, int[] dims) {
             this.output = output;
             this.gradMaskData = gradMaskData;
             this.dims = dims;
@@ -1505,21 +1651,21 @@ public class JavaArray implements NDArray {
 
         @Override
         public NDArray createMask() {
-            return new JavaArray(gradMaskData, JavaShape.of(dims));
+            return new NDArray(gradMaskData, JavaShape.of(dims));
         }
     }
 
-    private static class DoubleNDArrayWriter implements CompareHelper.CompareWriter<Double, JavaArray> {
+    private static class DoubleNDArrayWriter implements CompareHelper.CompareWriter<Double, NDArray> {
         private double[] data;
 
         @Override
-        public JavaArray scalar(Double value) {
-            return new JavaArray(value);
+        public NDArray scalar(Double value) {
+            return new NDArray(value);
         }
 
         @Override
-        public JavaArray toArray(JavaShape shape) {
-            return new JavaArray(data, shape);
+        public NDArray toArray(JavaShape shape) {
+            return new NDArray(data, shape);
         }
 
         @Override
@@ -1532,4 +1678,5 @@ public class JavaArray implements NDArray {
             data[offset] = outVal;
         }
     }
+
 }

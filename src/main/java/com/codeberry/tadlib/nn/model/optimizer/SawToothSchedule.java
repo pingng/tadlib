@@ -16,8 +16,8 @@ public class SawToothSchedule implements LearningRateSchedule {
         this.schedule = schedule;
         this.periodEpochs = periodEpochs;
 
-        this.leftPart = new Interpolation(1. + change, 1. - change, 0, periodEpochs / 2);
-        this.rightPart = new Interpolation(1. - change, 1. + change, periodEpochs / 2, periodEpochs);
+        this.leftPart = new Interpolation(1.0 + change, 1.0 - change, 0, periodEpochs / 2);
+        this.rightPart = new Interpolation(1.0 - change, 1.0 + change, periodEpochs / 2, periodEpochs);
     }
 
     public static SawToothSchedule sawTooth(LearningRateSchedule schedule, double change, int periodEpochs) {

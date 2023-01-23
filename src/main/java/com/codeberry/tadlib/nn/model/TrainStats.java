@@ -40,7 +40,7 @@ public class TrainStats {
                 ", accuracy=" + getAverageAccuracy() +
                 ", costTotal=" + getAverageCost() +
                 ", costL2Total=" + (costL2Total / iterations) +
-                ", createdSince=" + ((double)(System.currentTimeMillis() - createdAt)/1000.0) +
+                ", createdSince=" + ((System.currentTimeMillis() - createdAt) /1000.0) +
                 '}';
     }
 

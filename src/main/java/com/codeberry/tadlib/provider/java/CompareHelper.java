@@ -36,7 +36,7 @@ public class CompareHelper {
         }
 
         validateBroadcastShapes(leftShape, rightShape, -1);
-        JavaShape outShape = JavaArray.evalBroadcastOutputShape(leftShape, rightShape);
+        JavaShape outShape = NDArray.evalBroadcastOutputShape(leftShape, rightShape);
 
         writer.prepareDate(toIntExact(outShape.getSize()));
 

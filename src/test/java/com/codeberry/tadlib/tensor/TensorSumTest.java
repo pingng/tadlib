@@ -1,23 +1,25 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.java.JavaProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.provider.ProviderStore.array;
-import static com.codeberry.tadlib.provider.ProviderStore.setProvider;
 import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TensorSumTest {
     @BeforeEach
     public void init() {
-//        ProviderStore.setProvider(new JavaProvider());
-        setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
+        //setProvider(new OpenCLProvider());
     }
 
     @Test
     public void sum() {
-        Tensor input = new Tensor(array(new double[]{
+        Tensor x = new Tensor(new double[]{
                 0.01, 0.1, -1,
                 1, 10, -2,
                 0.02, 0.2, -3,
@@ -26,17 +28,22 @@ public class TensorSumTest {
                 3, 30, -6,
                 0.04, 0.4, -7,
                 4, 40, -8
-        }).reshape(2, 2, 2, 3));
+        }, 2, 2, 2, 3);
 
-        Tensor sum = Ops.sum(input, 0, 1, 2);
-        sum.backward(array(new double[]{0.5, 5.5, 10.9}));
+        //Tensor _y = Ops.sum(x, 0, 1, 2);
+        Tensor y = Ops.SUM(x, 0, 1, 2);
+
+        var Y = y.val();
+        //assertEquals(_y.value(), Y);
+        y.backward(array(new double[]{0.5, 5.5, 10.9}));
 
         assertEqualsMatrix(array(new double[]{
                         (0.01 + 1 + 0.02 + 2 + 0.03 + 3 + 0.04 + 4),
                         (0.1 + 10 + 0.2 + 20 + 0.3 + 30 + 0.4 + 40),
                         (-1. - 2 - 3 - 4 - 5 - 6 - 7 - 8)
                 }).toDoubles(),
-                sum.getVals().toDoubles());
+                Y.toDoubles());
+
         assertEqualsMatrix(array(new double[]{
                         0.5, 5.5, 10.9,
                         0.5, 5.5, 10.9,
@@ -47,7 +54,7 @@ public class TensorSumTest {
                         0.5, 5.5, 10.9,
                         0.5, 5.5, 10.9
                 }).reshape(2, 2, 2, 3).toDoubles(),
-                input.getGradient().toDoubles());
+                x.grad().toDoubles());
     }
 
     @Test
@@ -80,7 +87,7 @@ public class TensorSumTest {
                                 0.04 + 0.4 + -7 +
                                 4 + 40 + -8)
                 }).toDoubles(),
-                sum.getVals().toDoubles());
+                sum.val().toDoubles());
         assertEqualsMatrix(array(new double[]{
                         10.0, 10.0, 10.0,
                         10.0, 10.0, 10.0,
@@ -94,7 +101,7 @@ public class TensorSumTest {
                         20.0, 20.0, 20.0,
                         20.0, 20.0, 20.0
                 }).reshape(2, 2, 2, 3).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
 
     }
 }

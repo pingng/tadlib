@@ -1,6 +1,5 @@
 package com.codeberry.tadlib.nn.model.optimizer;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.tensor.Tensor;
 

@@ -8,7 +8,7 @@ import java.util.Objects;
 
 public class MatrixTestUtils {
     public static void assertEqualsMatrix(Object a, Object b) {
-        assertEqualsMatrix(a, b, 10e-8);
+        assertEqualsMatrix(a, b, 10.0e-8);
     }
 
     public static double assertEqualsMatrix(Object expected, Object actual, double aspectLimit) {

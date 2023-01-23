@@ -1,10 +1,10 @@
 package com.codeberry.tadlib.nn.model.layer;
 
-import com.codeberry.tadlib.array.Comparison;
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.TArrayFactory;
 import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.ValueUpdate;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.Interpolation;
 
@@ -13,14 +13,13 @@ import java.util.List;
 import java.util.Random;
 
 import static com.codeberry.tadlib.array.Comparison.*;
-import static com.codeberry.tadlib.array.NDArray.DimKeepRemove.KEEP_DIM;
-import static com.codeberry.tadlib.array.NDArray.ValueUpdate.fromIndices;
 import static com.codeberry.tadlib.nn.model.layer.Layer.ForwardResult.result;
 import static com.codeberry.tadlib.provider.ProviderStore.array;
+import static com.codeberry.tadlib.provider.java.NDArray.DimKeepRemove.KEEP_DIM;
+import static com.codeberry.tadlib.provider.java.ValueUpdate.fromIndices;
 import static com.codeberry.tadlib.tensor.Ops.RunMode;
 import static com.codeberry.tadlib.tensor.Ops.mul;
 import static com.codeberry.tadlib.tensor.Tensor.constant;
-import static java.lang.Math.max;
 
 /**
  * Reference: https://papers.nips.cc/paper/2018/file/7edcfb2d8f6a659ef4cd1e6c9b6d7079-Paper.pdf
@@ -40,13 +39,13 @@ public class BlockDropOutLayer implements Layer {
     @Override
     public ForwardResult forward(Random rnd, Tensor inputs, RunMode runMode, Model.IterationInfo iterationInfo) {
         if (runMode == RunMode.TRAINING) {
-            Shape inputShape = inputs.getShape();
+            Shape inputShape = inputs.shape();
             double featureSize = getFeatureSize(inputShape);
 
             double gamma = calcGamma(runMode, iterationInfo, featureSize);
 
             // Pick position as drop block 'seeds'
-            List<NDArray.ValueUpdate> updates = createRandomUpdatesBasedOnGamma(rnd, inputShape, gamma, this.blockSize, -Float.MAX_VALUE);
+            List<ValueUpdate> updates = createRandomUpdatesBasedOnGamma(rnd, inputShape, gamma, this.blockSize, -Float.MAX_VALUE);
 
             if (!updates.isEmpty()) {
                 int channels = inputShape.at(-1);
@@ -80,7 +79,7 @@ public class BlockDropOutLayer implements Layer {
         }
         double validRegionSize = featureSize - blockSize + 1;
 
-        return ((1. - dropKeep) / (blockSize * blockSize)) * ((featureSize * featureSize) / (validRegionSize * validRegionSize));
+        return ((1.0 - dropKeep) / (blockSize * blockSize)) * ((featureSize * featureSize) / (validRegionSize * validRegionSize));
     }
 
     private static double getFeatureSize(Shape inputShape) {
@@ -95,15 +94,15 @@ public class BlockDropOutLayer implements Layer {
         return featureWidth;
     }
 
-    private static List<NDArray.ValueUpdate> createRandomUpdatesBasedOnGamma(Random r, Shape inputShape, double gamma, int blockSize, double value) {
-        List<NDArray.ValueUpdate> ret = new ArrayList<>();
+    private static List<ValueUpdate> createRandomUpdatesBasedOnGamma(Random r, Shape inputShape, double gamma, int blockSize, double value) {
+        List<ValueUpdate> ret = new ArrayList<>();
 
         fillUpdates(r, inputShape, gamma, blockSize, ret, inputShape.newIndexArray(), 0, value);
 
         return ret;
     }
 
-    private static void fillUpdates(Random r, Shape shape, double gamma, int blockSize, List<NDArray.ValueUpdate> updates, int[] indices, int dim, double value) {
+    private static void fillUpdates(Random r, Shape shape, double gamma, int blockSize, List<ValueUpdate> updates, int[] indices, int dim, double value) {
         int len = shape.at(dim);
         int from, to;
 

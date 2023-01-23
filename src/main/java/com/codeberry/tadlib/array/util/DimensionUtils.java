@@ -2,7 +2,7 @@ package com.codeberry.tadlib.array.util;
 
 import com.codeberry.tadlib.array.*;
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.array.DimensionMissing;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.provider.java.ReorderedJavaShape;
 
 import java.util.function.Function;
@@ -237,7 +237,7 @@ public abstract class DimensionUtils {
     public static Shape[] extractShapes(NDArray[] arrays) {
         Shape[] r = new Shape[arrays.length];
         for (int i = 0; i < arrays.length; i++) {
-            r[i] = arrays[i].getShape();
+            r[i] = arrays[i].shape;
         }
         return r;
     }

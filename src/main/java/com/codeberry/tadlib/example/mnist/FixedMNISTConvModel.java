@@ -1,6 +1,5 @@
 package com.codeberry.tadlib.example.mnist;
 
-import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.ModelFactory;

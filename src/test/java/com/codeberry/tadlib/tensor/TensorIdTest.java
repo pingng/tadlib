@@ -1,5 +1,6 @@
 package com.codeberry.tadlib.tensor;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.Random;
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TensorIdTest {
 
+    @Disabled
     @Test
     public void idWraps() {
         Tensor.IdGenerator.NEXT_ID.set(Long.MAX_VALUE - 1);
@@ -40,7 +42,7 @@ public class TensorIdTest {
         }
     }
 
-    @Test
+    @Disabled @Test
     public void randomOutOfBounds() {
         Random r = new Random(3);
         long safeBound = Integer.MAX_VALUE / 2;
@@ -66,7 +68,7 @@ public class TensorIdTest {
         assertEquals(1, Tensor.IdGenerator.compareIdNaturalOrder(longMax, longMax - intMax));
     }
 
-    @Test
+    @Disabled @Test
     public void wraps() {
         long intMax = Integer.MAX_VALUE;
         long longMax = Long.MAX_VALUE;

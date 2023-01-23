@@ -1,6 +1,6 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.provider.java.JavaArray;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.provider.java.JavaShape;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.Model;
@@ -20,14 +20,14 @@ class NumericalGradientEstimator {
         this.rndSeed = rndSeed;
     }
 
-    public JavaArray estimateParamGradIndex(int paramIndex) {
+    public NDArray estimateParamGradIndex(int paramIndex) {
         ModelParamEstimator task = new ModelParamEstimator(rndSeed, model, paramIndex, trainingData);
 
         double[] doubles = task.estimate();
         List<Tensor> params = model.getParams();
         Tensor param = params.get(paramIndex);
 
-        return new JavaArray(doubles, new JavaShape(param.getShape().toDimArray()));
+        return new NDArray(doubles, new JavaShape(param.shape().toDimArray()));
     }
 
 }

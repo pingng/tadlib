@@ -1,8 +1,9 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.JavaProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +13,7 @@ public class TensorReluTest {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -35,14 +36,14 @@ public class TensorReluTest {
                 0, 0, 9,
                 1, 2, 0
         }).reshape(1, 3, 3, 1);
-        assertEqualsMatrix(expected.toDoubles(), relu.getVals().toDoubles());
+        assertEqualsMatrix(expected.toDoubles(), relu.val().toDoubles());
 
         NDArray expectedGrad = ProviderStore.array(new double[]{
                 10, 0, 30,
                 0, 0, 60,
                 70, 80, 0
         }).reshape(1, 3, 3, 1);
-        assertEqualsMatrix(expectedGrad.toDoubles(), input.getGradient().toDoubles());
+        assertEqualsMatrix(expectedGrad.toDoubles(), input.grad().toDoubles());
 
     }
 }

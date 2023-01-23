@@ -42,9 +42,7 @@ public class Value {
             this.grad += grad;
 
             for (ParentLink dep : dependencies) {
-                double backward_grad = dep.gradFunc.calcGradient(grad);
-
-                dep.value.backward(backward_grad);
+                dep.value.backward(dep.gradFunc.calcGradient(grad));
             }
         }
     }

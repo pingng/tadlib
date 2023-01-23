@@ -1,7 +1,8 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.JavaProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,7 @@ public class TensorSqrtTest {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -32,11 +33,11 @@ public class TensorSqrtTest {
                 }).reshape(1, 3, 3).toDoubles(),
                 sqrt.toDoubles());
 
-        System.out.println(Arrays.deepToString((Object[]) input.getGradient().toDoubles()));
+        System.out.println(Arrays.deepToString((Object[]) input.grad().toDoubles()));
         assertEqualsMatrix(ProviderStore.array(new double[]{
                         1.5811388, 1.0000001, 10.606603, 1.1547005, 12.500002, 1.3416407,
                         14.288691, 1.511858, 15.909903
                 }).reshape(1, 3, 3).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
     }
 }

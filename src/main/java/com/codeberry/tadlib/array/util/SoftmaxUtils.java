@@ -1,12 +1,7 @@
 package com.codeberry.tadlib.array.util;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.NDIntArray;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.codeberry.tadlib.array.NDArray.ValueUpdate.fromIndices;
+import com.codeberry.tadlib.provider.java.NDArray;
 
 public abstract class SoftmaxUtils {
     public static NDArray calcSoftmaxCrossEntropyGradient(NDArray predicted, NDArray labelsOneHot) {

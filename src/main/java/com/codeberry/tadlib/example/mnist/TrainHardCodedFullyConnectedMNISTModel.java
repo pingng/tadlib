@@ -1,9 +1,9 @@
 package com.codeberry.tadlib.example.mnist;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.TArrayFactory;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.provider.java.JavaProvider;
 import com.codeberry.tadlib.tensor.Tensor;
 import com.codeberry.tadlib.util.AccuracyUtils;
@@ -15,7 +15,6 @@ import static com.codeberry.tadlib.example.mnist.MNISTLoader.LoadParams.params;
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.OUTPUTS;
 import static com.codeberry.tadlib.provider.ProviderStore.shape;
 import static com.codeberry.tadlib.tensor.Ops.*;
-import static com.codeberry.tadlib.tensor.Ops.matmul;
 import static com.codeberry.tadlib.tensor.Tensor.constant;
 import static com.codeberry.tadlib.tensor.Tensor.tensor;
 import static com.codeberry.tadlib.util.TrainingDataUtils.toOneHot;
@@ -41,7 +40,7 @@ public class TrainHardCodedFullyConnectedMNISTModel {
     }
 
     public static void main(String[] args) {
-//        ProviderStore.setProvider(new OpenCLProvider());
+//        ProviderStore.setProvider(new JavaProvider());
         ProviderStore.setProvider(new JavaProvider());
 
         TrainingData trainingData = MNISTLoader.load(params()
@@ -92,7 +91,7 @@ public class TrainHardCodedFullyConnectedMNISTModel {
                 (costTotal / batchCount) + ", accuracy=" + (accTotal / batchCount));
     }
 
-    private Tensor calcCost(TrainingData.Batch batch, Tensor prediction) {
+    private static Tensor calcCost(TrainingData.Batch batch, Tensor prediction) {
         Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(batch.output, OUTPUTS), prediction);
         Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(batch.getBatchSize()));
 
@@ -100,13 +99,13 @@ public class TrainHardCodedFullyConnectedMNISTModel {
     }
 
     private void updateWeights() {
-        hiddenW.update(this::sgdUpdate);
-        hiddenB.update(this::sgdUpdate);
-        outW.update(this::sgdUpdate);
-        outB.update(this::sgdUpdate);
+        hiddenW.update(TrainHardCodedFullyConnectedMNISTModel::sgdUpdate);
+        hiddenB.update(TrainHardCodedFullyConnectedMNISTModel::sgdUpdate);
+        outW.update(TrainHardCodedFullyConnectedMNISTModel::sgdUpdate);
+        outB.update(TrainHardCodedFullyConnectedMNISTModel::sgdUpdate);
     }
 
-    private NDArray sgdUpdate(NDArray currentValues, NDArray gradient) {
+    private static NDArray sgdUpdate(NDArray currentValues, NDArray gradient) {
         return currentValues.sub(gradient.mul(Config.LEARNING_RATE));
     }
 

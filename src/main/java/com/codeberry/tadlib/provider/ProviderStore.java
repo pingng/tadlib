@@ -1,8 +1,9 @@
 package com.codeberry.tadlib.provider;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.NDIntArray;
 import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.provider.java.JavaShape;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.provider.java.JavaProvider;
 
 import java.util.Stack;
@@ -39,6 +40,8 @@ public class ProviderStore {
     }
 
     public static Shape shape(int... dims) {
+        if (dims.length==0)
+            return JavaShape.zeroDim;
         return provider.createShape(dims);
     }
 

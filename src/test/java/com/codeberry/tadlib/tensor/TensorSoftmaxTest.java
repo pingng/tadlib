@@ -1,10 +1,9 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.provider.java.JavaProvider;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import com.codeberry.tadlib.util.MatrixTestUtils;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,7 +16,7 @@ public class TensorSoftmaxTest {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider());
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -31,7 +30,7 @@ public class TensorSoftmaxTest {
                 softmax.toDoubles());
 
         assertEqualsMatrix(new double[]{28.33357917, -3.70457745, -6.71783678, -17.91116494},
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
     }
 
     @Test
@@ -57,7 +56,7 @@ public class TensorSoftmaxTest {
                         28.33357917, -3.70457745, -6.71783678, -17.91116494,
                         5.13268867e-04, -8.14883583e-03, 7.63572451e-03, -1.57551721e-07
                 }).reshape(2, 4).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
     }
 
     @Test
@@ -83,7 +82,7 @@ public class TensorSoftmaxTest {
                         28.33357917, -3.70457745, -6.71783678, -17.91116494,
                         5.13268867e-04, -8.14883583e-03, 7.63572451e-03, -1.57551721e-07
                 }).reshape(2, 1, 4).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
     }
 
     @Test
@@ -142,7 +141,7 @@ public class TensorSoftmaxTest {
                         -0.02152104, -0.0168951, 0.03841614,
                         0.09871497, -0.01353433, -0.08518063
                 }).reshape(2, 2, 2, 3).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
     }
 
     @Test
@@ -152,7 +151,7 @@ public class TensorSoftmaxTest {
         Tensor labels = new Tensor(array(new double[]{1., 0., 0., 0, 0, 0})
                 .reshape(1, -1));
 
-        NDArray softmax = input.getVals().softmax();
+        NDArray softmax = input.val().softmax();
 
         assertEqualsMatrix(array(new double[]{
                 2.88811444e-02, 3.50439801e-01, 1.14085049e-04, 1.68880090e-01, 4.23769188e-01, 2.79156912e-02
@@ -162,14 +161,14 @@ public class TensorSoftmaxTest {
         Tensor cost = Ops.sumSoftmaxCrossEntropy(labels, input);
         cost.backward(array(backpropGrad));
 
-        Assertions.assertEquals(3.5445664, (double) cost.getVals().toDoubles(), 0.000001);
+        Assertions.assertEquals(3.5445664, (double) cost.val().toDoubles(), 0.000001);
 
         NDArray expectedGrad = array(new double[]{
                 -9.71118867e-01, 3.50439727e-01, 1.14085015e-04, 1.68880060e-01, 4.23769146e-01, 2.79156882e-02
         }).reshape(1, -1).mul(backpropGrad);
         System.out.println(deepToString((Object[]) expectedGrad.toDoubles()));
-        System.out.println(deepToString((Object[]) input.getGradient().toDoubles()));
-        assertEqualsMatrix(expectedGrad.toDoubles(), input.getGradient().toDoubles());
+        System.out.println(deepToString((Object[]) input.grad().toDoubles()));
+        assertEqualsMatrix(expectedGrad.toDoubles(), input.grad().toDoubles());
 
     }
 }

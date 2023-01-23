@@ -1,7 +1,6 @@
 package com.codeberry.tadlib.nn.model.layer;
 
 import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.tensor.Ops;
 import com.codeberry.tadlib.tensor.Tensor;
 
@@ -16,7 +15,7 @@ public class FlattenLayer implements Layer {
 
     private final Shape outputShape;
 
-    public FlattenLayer(Random rnd, Shape inputShape, Builder params) {
+    public FlattenLayer(Shape inputShape) {
         int exampleSize = Ops.calcFlattenExampleSize(inputShape);
 
         outputShape = shape(-1, exampleSize);
@@ -36,7 +35,7 @@ public class FlattenLayer implements Layer {
 
         @Override
         public Layer build(Random rnd, Shape inputShape) {
-            return new FlattenLayer(rnd, inputShape, this);
+            return new FlattenLayer(inputShape);
         }
 
         public static Builder flatten() {

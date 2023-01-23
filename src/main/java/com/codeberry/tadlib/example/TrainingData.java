@@ -16,12 +16,12 @@ public class TrainingData {
     }
 
     public int calcTrainingBatchCountOfSize(int batchSize) {
-        int exCount = xTrain.getShape().at(0);
+        int exCount = xTrain.shape().at(0);
         return (exCount + batchSize - 1) / batchSize;
     }
 
     public int calcTestBatchCountOfSize(int batchSize) {
-        int exCount = xTest.getShape().at(0);
+        int exCount = xTest.shape().at(0);
         return (exCount + batchSize - 1) / batchSize;
     }
 
@@ -31,7 +31,7 @@ public class TrainingData {
     }
 
     public Batch getTrainingBatchAll() {
-        int examples = xTrain.getShape().at(0);
+        int examples = xTrain.shape().at(0);
         return getTrainingBatch(0, examples);
     }
 
@@ -50,7 +50,7 @@ public class TrainingData {
         }
 
         public int getBatchSize() {
-            return input.getShape().at(0);
+            return input.shape().at(0);
         }
     }
 }

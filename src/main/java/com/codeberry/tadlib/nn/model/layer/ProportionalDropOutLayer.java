@@ -1,11 +1,9 @@
 package com.codeberry.tadlib.nn.model.layer;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.nn.model.Model.IterationInfo;
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.tensor.GradFunc;
-import com.codeberry.tadlib.tensor.Ops;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.tensor.Tensor;
 
 import java.util.Random;
@@ -14,7 +12,6 @@ import static com.codeberry.tadlib.nn.model.layer.Layer.ForwardResult.result;
 import static com.codeberry.tadlib.tensor.Ops.RunMode;
 import static com.codeberry.tadlib.tensor.Ops.add;
 import static java.lang.Math.*;
-import static java.util.Collections.singletonList;
 
 public class ProportionalDropOutLayer implements Layer {
     private final double strength;
@@ -34,14 +31,14 @@ public class ProportionalDropOutLayer implements Layer {
     private Tensor getForwardResult(Random rnd, Tensor inputs, RunMode runMode) {
         if (runMode == RunMode.TRAINING) {
 
-            Shape shape = inputs.getShape();
+            Shape shape = inputs.shape();
             double[] rndVals = new double[toIntExact(shape.getSize())];
             for (int i = 0; i < rndVals.length; i++) {
                 rndVals[i] = rnd.nextGaussian() * strength;
             }
 
             NDArray randomArr = ProviderStore.array(rndVals, shape);
-            Tensor randomTensor = Tensor.constant(randomArr.mul(inputs.getVals()));
+            Tensor randomTensor = Tensor.constant(randomArr.mul(inputs.val()));
 
             return add(inputs, randomTensor);
         }

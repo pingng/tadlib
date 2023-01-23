@@ -1,6 +1,6 @@
 package com.codeberry.tadlib.nn.loss;
 
-import com.codeberry.tadlib.array.NDArray;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.tensor.Ops;
 
 public class SoftmaxCrossEntropyLoss {

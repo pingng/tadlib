@@ -1,9 +1,8 @@
 package com.codeberry.tadlib.util;
 
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.provider.opencl.SizeT;
+import com.codeberry.tadlib.provider.java.NDArray;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -18,13 +17,11 @@ import static java.util.AbstractMap.Entry;
 import static java.util.AbstractMap.SimpleEntry;
 import static java.util.Arrays.deepToString;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 public class StringUtils {
     private static final Set<Class<?>> OUTPUT_CLASSES = Set.of(Boolean.class, Byte.class, Short.class,
             Character.class, Integer.class, Long.class, Float.class, Double.class, Temporal.class,
-            String.class, Class.class,
-            SizeT.class);
+            String.class, Class.class);
     private static final Set<Class<?>> NO_QUOTE_CLASSES = Set.of(
             Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class,
             boolean.class, byte.class, short.class, char.class, int.class, long.class, float.class, double.class);
@@ -206,7 +203,7 @@ public class StringUtils {
     }
 
     public static String toString(NDArray ndArray) {
-        return toString(ndArray.getShape(), ndArray.toDoubles());
+        return toString(ndArray.shape, ndArray.toDoubles());
     }
 
     public static String toString(Shape shape, Object doubles) {

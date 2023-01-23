@@ -1,28 +1,45 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.array.TArrayFactory;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister.Disposable;
 import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.JavaShape;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 import static com.codeberry.tadlib.tensor.Tensor.GradientMode.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
 public class Tensor {
-    public static final Tensor ZERO = new Tensor(ProviderStore.array(0.), NONE);
+    public static final Tensor ZERO = new Tensor(ProviderStore.array(0.0), NONE);
 
     private final long id;
     private final List<ParentLink> links;
+
+    /** list of tensors dependent on this's value */
+    private final Set<Tensor> linked = new HashSet();
+
+    @Override
+    public int hashCode() {
+        return Long.hashCode(id);
+    }
+
     private final GradientMode gradientMode;
 
-    private NDArray vals;
+    /** provided with val, for setter */
+    private final Consumer<NDArray> fwd;
+
+    private final NDArray val;
+
+    boolean valInvalid = true;
+
     private NDArray gradient;
 
     public Tensor(double val) {
@@ -33,33 +50,53 @@ public class Tensor {
         this(ProviderStore.array(val), emptyList(), mode);
     }
 
-    public Tensor(double[][] vals) {
-        this(ProviderStore.array(vals), emptyList(), CALCULATE_GRAD);
+    public Tensor(double[][] val) {
+        this(ProviderStore.array(val), emptyList(), CALCULATE_GRAD);
     }
 
-    public Tensor(double[] vals) {
-        this(ProviderStore.array(vals), emptyList(), CALCULATE_GRAD);
+    public Tensor(double[] val) {
+        this(ProviderStore.array(val), emptyList(), CALCULATE_GRAD);
     }
 
-    public Tensor(double[][][][] vals) {
-        this(ProviderStore.array(vals), emptyList(), CALCULATE_GRAD);
+    public Tensor(double[][][][] val) {
+        this(ProviderStore.array(val), emptyList(), CALCULATE_GRAD);
     }
 
-    public Tensor(NDArray vals) {
-        this(vals, CALCULATE_GRAD);
+    public Tensor(double[] val, int... shape) {
+        this(val, JavaShape.shape(shape));
     }
 
-    public Tensor(NDArray vals, GradientMode gradientMode) {
-        this(vals, emptyList(), gradientMode);
+    public Tensor(double[] val, Shape shape) {
+        this(ProviderStore.array(val).reshape(shape));
     }
 
-    Tensor(NDArray vals, List<ParentLink> links) {
-        this(vals, links, CALCULATE_GRAD);
+    public Tensor(NDArray val) {
+        this(val, CALCULATE_GRAD);
     }
 
-    private Tensor(NDArray vals, List<ParentLink> links, GradientMode gradientMode) {
-        this.vals = vals;
+    public Tensor(NDArray val, GradientMode gradientMode) {
+        this(val, null, emptyList(), gradientMode);
+    }
+
+    Tensor(NDArray val, List<ParentLink> links) {
+        this(val, null, links, CALCULATE_GRAD);
+    }
+
+    Tensor(Consumer<NDArray> fwd, Shape shape, List<ParentLink> links) {
+        this(new NDArray((JavaShape) shape), fwd, links, CALCULATE_GRAD);
+    }
+
+    private Tensor(NDArray val, List<ParentLink> links, GradientMode gradientMode) {
+        this(val, null, links, gradientMode);
+    }
+
+    private Tensor(NDArray val, Consumer<NDArray> fwd, List<ParentLink> links, GradientMode gradientMode) {
+        this.val = val;
+        this.fwd = fwd;
         this.links = links;
+        for (var l : links) {
+            l.parent.linked.add(this);
+        }
         this.gradientMode = gradientMode;
         this.id = IdGenerator.nextId();
     }
@@ -89,21 +126,45 @@ public class Tensor {
     }
 
     public List<Disposable> getDisposables() {
-        return asList(vals, gradient);
+        return asList(val, gradient);
     }
 
-    public NDArray getVals() {
-        return vals;
-    }
 
-    private void addGradient(NDArray gradient) {
-        if (!gradient.getShape().correspondsTo(this.vals.getShape())) {
-            throw new IllegalArgumentException("Wrong shape: param:" + this.vals.getShape() + " vs grad:" + gradient.getShape());
-        }
+    private void gradientAccum(NDArray gradient) {
+        ensureGradientShape(gradient);
 
         this.gradient = this.gradient == null ?
-                gradient :
-                this.gradient.add(gradient);
+            gradient :
+            this.gradient.add(gradient);
+    }
+
+    @Deprecated private void ensureGradientShape(NDArray gradient) {
+        if (!gradient.shape.correspondsTo(val.shape)) {
+            NDArray ndArray = this.val;
+            throw new IllegalArgumentException("Wrong shape: param:" + ndArray.shape + " vs grad:" + gradient.shape);
+        }
+    }
+
+    public final NDArray val() {
+        NDArray v = this.val;
+        if (fwd!=null) {
+            if (valInvalid) {
+                fwd.accept(v);
+                valInvalid = false;
+            }
+        }
+        return v;
+    }
+
+    public void set(NDArray x) {
+        val.set(x);
+        invalidateParents();
+    }
+    protected void invalidateParents() {
+        for (var l : linked) {
+            l.valInvalid = true;
+            l.invalidateParents();
+        }
     }
 
     public static abstract class TensorFactories {
@@ -120,8 +181,22 @@ public class Tensor {
         }
     }
 
+    public void gradientZero() {
+        if (gradient!=null)
+            gradient.zero();
+        for (var p : links)
+            p.parent.gradientZero();
+    }
+
+    public void backward(boolean zero) {
+        if (zero)
+            gradientZero();
+
+        backward(TArrayFactory.ones(val.shape));
+    }
+
     public void backward() {
-        backward(TArrayFactory.ones(this.vals.getShape()));
+        backward(true);
     }
 
     public void backward(NDArray gradient) {
@@ -131,70 +206,64 @@ public class Tensor {
 
     private void backwardDepthFirst(NDArray gradient) {
         if (gradientMode == CALCULATE_GRAD) {
-            addGradient(gradient);
-//            System.out.println("Assigned gradient: "+getShape()+", "+gradient);
+            gradientAccum(gradient);
 
-            for (ParentLink link : links) {
-                if (link.parent.gradientMode == CALCULATE_GRAD) {
-                    NDArray linkGrad = link.gradFunc.calcGradient(gradient);
-
-                    link.parent.backwardDepthFirst(linkGrad);
-                }
-            }
+            for (var link : links)
+                if (link.parent.gradientMode == CALCULATE_GRAD)
+                    link.parent.backwardDepthFirst(link.gradFunc.calcGradient(gradient));
         }
     }
 
     private void backwardBreadthFirst(NDArray gradient) {
         if (gradientMode == CALCULATE_GRAD) {
             PriorityQueue<Tensor> gradientsToAdd = new PriorityQueue<>(IdGenerator::compareId);
-            this.addGradient(gradient);
+
+            this.gradientAccum(gradient);
             gradientsToAdd.add(this);
 
             backwardBreadthFirst(gradientsToAdd);
         }
     }
 
-    private void backwardBreadthFirst(PriorityQueue<Tensor> tensorsById) {
-        while (!tensorsById.isEmpty()) {
-            Tensor tensor = tensorsById.poll();
+
+    private static void backwardBreadthFirst(PriorityQueue<Tensor> each) {
+        while (!each.isEmpty()) {
+            Tensor tensor = each.poll();
             NDArray gradient = tensor.gradient;
 
-            for (ParentLink link : tensor.links) {
+            for (var link : tensor.links) {
                 Tensor parent = link.parent;
-
                 if (parent.gradientMode == CALCULATE_GRAD) {
-                    NDArray parentGrad = link.gradFunc.calcGradient(gradient);
-
-                    parent.addGradient(parentGrad);
-
-                    if (!tensorsById.contains(parent)) {
-                        tensorsById.add(parent);
-                    }
+                    parent.gradientAccum(link.gradFunc.calcGradient(gradient));
+                    each.add(parent);
                 }
             }
         }
     }
 
-    public Object toDoubles() {
-        return vals.toDoubles();
+    @Deprecated public Object toDoubles() {
+        return val().toDoubles();
     }
 
     @Override
     public String toString() {
-        return "Tensor{" + vals.getShape() + "}";
+        NDArray ndArray = val();
+        return "Tensor{" + ndArray.shape + "}";
     }
 
     public Tensor subBatch(int batchId, int batchSize) {
-        return new Tensor(this.vals.subBatch(batchId, batchSize), this.gradientMode);
+        return new Tensor(this.val().subBatch(batchId, batchSize), this.gradientMode);
     }
 
     public void update(BiFunction<NDArray, NDArray, NDArray> convertFunc) {
-        testNan(vals);
         testNan(gradient);
 
-        NDArray old = this.vals;
-        this.vals = convertFunc.apply(old, this.gradient);
-        testNan(this.vals);
+        NDArray old = this.val();
+        testNan(old);
+
+        var newVals = convertFunc.apply(old, this.gradient);
+        val.set(newVals);
+        testNan(val);
 
         DisposalRegister.registerForDisposal(old);
 
@@ -217,19 +286,19 @@ public class Tensor {
 //        return new Tensor(vals.normalOrderedCopy(), gradientMode);
 //    }
 
-    public Shape getShape() {
-        return vals.getShape();
+    public Shape shape() {
+        return val.shape;
     }
 
     public double[] getInternalData() {
-        return vals.getInternalData();
+        return val.getInternalData();
     }
 
     public double dataAt(int... indices) {
-        return vals.dataAt(indices);
+        return val.dataAt(indices);
     }
 
-    public NDArray getGradient() {
+    public NDArray grad() {
         return gradient;
     }
 
@@ -247,12 +316,7 @@ public class Tensor {
     static class IdGenerator {
         static final AtomicLong NEXT_ID = new AtomicLong();
         static long nextId() {
-            return NEXT_ID.getAndUpdate(current -> {
-                if (current == Long.MAX_VALUE) {
-                    return 0;
-                }
-                return current + 1L;
-            });
+            return NEXT_ID.getAndIncrement();
         }
 
         static int compareId(Tensor left, Tensor right) {
@@ -261,29 +325,22 @@ public class Tensor {
         }
 
         static int compareIdNaturalOrder(long l, long r) {
-            long diff = diff(l, r);
-
-            if (diff > Integer.MAX_VALUE) {
-                //... interpret as wrapped, then swap values
-                long tmp = l;
-                l = r;
-                r = tmp;
-            }
-
-            if (l < r) {
-                return -1;
-            }
-            if (l > r) {
-                return 1;
-            }
-            return 0;
+//            long diff = diff(l, r);
+//
+//            if (diff > Integer.MAX_VALUE) {
+//                //... interpret as wrapped, then swap values
+//                long tmp = l;
+//                l = r;
+//                r = tmp;
+//            }
+            return Long.compare(l, r);
         }
 
-        private static long diff(long l, long r) {
-            if (l < r) {
-                return r - l;
-            }
-            return l - r;
-        }
+//        private static long diff(long l, long r) {
+//            if (l < r) {
+//                return r - l;
+//            }
+//            return l - r;
+//        }
     }
 }

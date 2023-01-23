@@ -1,22 +1,18 @@
 package com.codeberry.tadlib.example.mnist;
 
-import com.codeberry.tadlib.example.mnist.SimpleTrainer.TrainParams;
-import com.codeberry.tadlib.nn.model.optimizer.DecayingLearningRate;
-import com.codeberry.tadlib.nn.model.optimizer.FixedLearningRate;
 import com.codeberry.tadlib.nn.model.optimizer.RMSProp;
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.JavaProvider;
 
 import static com.codeberry.tadlib.example.mnist.MNISTLoader.LoadParams.params;
 import static com.codeberry.tadlib.example.mnist.SimpleTrainer.TrainParams.trainParams;
 import static com.codeberry.tadlib.nn.model.optimizer.DecayingLearningRate.decayingLearningRate;
-import static com.codeberry.tadlib.nn.model.optimizer.FixedLearningRate.fixedLearningRate;
 import static com.codeberry.tadlib.nn.model.optimizer.SawToothSchedule.sawTooth;
 
 public class TrainFixedMNISTConvAttentionMain {
 
     public static void main(String[] args) {
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
 
         SimpleTrainer trainer = new SimpleTrainer(trainParams("Att")
                 .batchSize(32)

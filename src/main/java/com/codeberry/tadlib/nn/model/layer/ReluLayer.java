@@ -1,7 +1,6 @@
 package com.codeberry.tadlib.nn.model.layer;
 
 import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.nn.model.Model.IterationInfo;
 import com.codeberry.tadlib.tensor.Tensor;
 

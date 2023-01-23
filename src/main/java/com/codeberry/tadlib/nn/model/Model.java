@@ -1,9 +1,9 @@
 package com.codeberry.tadlib.nn.model;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.example.TrainingData;
 import com.codeberry.tadlib.nn.model.optimizer.Optimizer;
+import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.tensor.Tensor;
 
 import java.util.ArrayList;
@@ -55,7 +55,7 @@ public interface Model {
 
         List<NDArray> grads = new ArrayList<>();
         for (Tensor p : params) {
-            grads.add(p.getGradient());
+            grads.add(p.grad());
         }
         return grads;
     }

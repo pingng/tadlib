@@ -196,7 +196,7 @@ public class MNISTLoader {
 
     private static Tensor generateXTrain(Random rand, int examples) {
         int imageSize = 28;
-        return new Tensor(random(rand, examples * imageSize * imageSize * 1)
+        return new Tensor(random(rand, examples * imageSize * imageSize)
                 .reshape(examples, imageSize, imageSize, 1), Tensor.GradientMode.NONE);
     }
 

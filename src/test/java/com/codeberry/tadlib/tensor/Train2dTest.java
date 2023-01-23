@@ -1,8 +1,9 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.JavaProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,8 +19,8 @@ import static java.util.Arrays.deepToString;
 public class Train2dTest {
     @BeforeEach
     public void init() {
-//        ProviderStore.setProvider(new JavaProvider());
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
+        //ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -27,7 +28,7 @@ public class Train2dTest {
         Random rand = new Random(4);
         int examples = 40;
         int out = 1;
-        Tensor x_train = new Tensor(randMatrix(rand, examples * 4 * 4 * 1)
+        Tensor x_train = new Tensor(randMatrix(rand, examples * 16)
                 .reshape(examples, 4, 4, 1), Tensor.GradientMode.NONE);
         Tensor y_train = new Tensor(randMatrix(rand, examples * out)
                 .reshape(examples, out), Tensor.GradientMode.NONE);
@@ -62,7 +63,8 @@ public class Train2dTest {
             Tensor diff = sub(y, y_train);
             Tensor squared = mul(diff, diff);
             Tensor totalErr = sum(squared);
-            totalErr.backward(new Tensor(1).getVals());
+            //Tensor tensor = new Tensor(1);
+            totalErr.backward();
 
             lastError = (Double) totalErr.toDoubles();
             if (initialError == null) {
@@ -90,7 +92,7 @@ public class Train2dTest {
     }
 
     private static Tensor updateParam(Tensor w, double lr) {
-        return new Tensor(w.getVals().sub(w.getGradient().mul(lr)));
+        return new Tensor(w.val().sub(w.grad().mul(lr)));
         //return new Tensor(w.m.sub(w.gradient.m.mul(lr)));
     }
 

@@ -1,8 +1,9 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.NDArray;
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.JavaProvider;
+//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import com.codeberry.tadlib.util.MatrixTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,7 @@ public class TensorFlattenTest {
     @BeforeEach
     public void init() {
 //        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new OpenCLProvider());
+        ProviderStore.setProvider(new JavaProvider());
     }
 
     @Test
@@ -23,7 +24,7 @@ public class TensorFlattenTest {
         Tensor input = new Tensor(raw.reshape(3, 4, 4, 1));
 
         Tensor flattened = Ops.flatten(input);
-        System.out.println(deepToString((Object[]) flattened.getVals().toDoubles()));
+        System.out.println(deepToString((Object[]) flattened.val().toDoubles()));
 
         NDArray g = ProviderStore.array(new double[] {
                 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 1100, 1101, 1102, 1103, 1104, 1105,
@@ -34,11 +35,11 @@ public class TensorFlattenTest {
 
         NDArray expected = raw.reshape(3, 4 * 4 * 1);
         MatrixTestUtils.assertEqualsMatrix(expected.toDoubles(),
-                flattened.getVals().toDoubles());
+                flattened.val().toDoubles());
 
-        System.out.println(deepToString((Object[]) input.getGradient().toDoubles()));
+        System.out.println(deepToString((Object[]) input.grad().toDoubles()));
         MatrixTestUtils.assertEqualsMatrix(g.reshape(3, 4, 4, 1).toDoubles(),
-                input.getGradient().toDoubles());
+                input.grad().toDoubles());
 
 
     }

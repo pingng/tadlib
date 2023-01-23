@@ -3,7 +3,6 @@ package com.codeberry.tadlib.nn.model.layer;
 import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.nn.model.Model;
-import com.codeberry.tadlib.tensor.OpsExtended;
 import com.codeberry.tadlib.tensor.Tensor;
 
 import java.util.List;

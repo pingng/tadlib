@@ -9,7 +9,7 @@ public class ParentLink {
         this.gradFunc = gradFunc;
     }
 
-    static ParentLink parentLink(Tensor parent, GradFunc gradFunc) {
+    static ParentLink parent(Tensor parent, GradFunc gradFunc) {
         return new ParentLink(parent, gradFunc);
     }
 }

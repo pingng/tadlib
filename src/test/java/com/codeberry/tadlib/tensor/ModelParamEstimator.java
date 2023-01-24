@@ -1,14 +1,14 @@
 package com.codeberry.tadlib.tensor;
 
+import com.codeberry.tadlib.nn.Model;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.example.TrainingData;
-import com.codeberry.tadlib.nn.model.Model;
 import com.codeberry.tadlib.provider.java.ValueUpdate;
+import com.codeberry.tadlib.util.TrainingData;
 
 import java.util.List;
 import java.util.Random;
 
-import static java.util.Collections.*;
+import static java.util.Collections.singletonList;
 
 class ModelParamEstimator {
     private static final double DELTA = 0.000008;

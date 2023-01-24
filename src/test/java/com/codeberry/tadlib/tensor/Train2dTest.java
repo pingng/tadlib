@@ -2,10 +2,7 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Random;
@@ -17,11 +14,6 @@ import static com.codeberry.tadlib.util.StringUtils.toJson;
 import static java.util.Arrays.deepToString;
 
 public class Train2dTest {
-    @BeforeEach
-    public void init() {
-        ProviderStore.setProvider(new JavaProvider());
-        //ProviderStore.setProvider(new JavaProvider());
-    }
 
     @Test
     public void testMethod() {
@@ -96,7 +88,7 @@ public class Train2dTest {
         //return new Tensor(w.m.sub(w.gradient.m.mul(lr)));
     }
 
-    private NDArray randMatrix(Random rand, int size) {
+    private static NDArray randMatrix(Random rand, int size) {
         return ProviderStore.array(random(rand, size));
     }
 }

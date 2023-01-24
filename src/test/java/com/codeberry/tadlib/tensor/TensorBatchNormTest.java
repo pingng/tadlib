@@ -1,11 +1,8 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import org.junit.jupiter.api.BeforeEach;
+import com.codeberry.tadlib.provider.java.Shape;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.array.TArrayFactory.*;
@@ -15,11 +12,6 @@ import static java.lang.Math.toIntExact;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class TensorBatchNormTest {
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new JavaProvider());
-    }
 
     @Test
     public void averageUpdate() {
@@ -64,7 +56,7 @@ public class TensorBatchNormTest {
 
         OpsExtended.BatchNormRunningAverages averages = new OpsExtended.BatchNormRunningAverages();
         OpsExtended.BatchNormResult batchNormResult = OpsExtended.batchNorm(input, beta, gamma, averages, RunMode.TRAINING);
-        batchNormResult.output.backward(range(toIntExact(inputShape.getSize())).reshape(inputShape.toDimArray()));
+        batchNormResult.output.backward(range(toIntExact(inputShape.size)).reshape(inputShape.toDimArray()));
 
         assertEqualsMatrix(Data2D.testOutput().reshape(inputShape.toDimArray()).toDoubles(),
                 batchNormResult.output.val().toDoubles());
@@ -90,7 +82,7 @@ public class TensorBatchNormTest {
 
         OpsExtended.BatchNormRunningAverages averages = new OpsExtended.BatchNormRunningAverages();
         OpsExtended.BatchNormResult batchNormResult = OpsExtended.batchNorm(input, beta, gamma, averages, RunMode.TRAINING);
-        batchNormResult.output.backward(range(toIntExact(inputShape.getSize())).reshape(inputShape.toDimArray()));
+        batchNormResult.output.backward(range(toIntExact(inputShape.size)).reshape(inputShape.toDimArray()));
 
         assertEqualsMatrix(Data4D.testOutput().reshape(inputShape.toDimArray()).toDoubles(),
                 batchNormResult.output.val().toDoubles(),
@@ -103,7 +95,7 @@ public class TensorBatchNormTest {
                 1.8e-7);
         assertEqualsMatrix(Data4D.inputGradient().reshape(inputShape.toDimArray()).toDoubles(),
                 input.grad().toDoubles(),
-                1e-7);
+                1.0e-7);
         assertEqualsMatrix(Data4D.betaGradient().toDoubles(),
                 beta.grad().toDoubles(),
                 3.1e-7);

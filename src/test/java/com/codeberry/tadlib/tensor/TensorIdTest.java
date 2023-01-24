@@ -42,7 +42,8 @@ public class TensorIdTest {
         }
     }
 
-    @Disabled @Test
+    @Disabled
+    @Test
     public void randomOutOfBounds() {
         Random r = new Random(3);
         long safeBound = Integer.MAX_VALUE / 2;
@@ -68,7 +69,8 @@ public class TensorIdTest {
         assertEquals(1, Tensor.IdGenerator.compareIdNaturalOrder(longMax, longMax - intMax));
     }
 
-    @Disabled @Test
+    @Disabled
+    @Test
     public void wraps() {
         long intMax = Integer.MAX_VALUE;
         long longMax = Long.MAX_VALUE;

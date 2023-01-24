@@ -1,8 +1,8 @@
 package com.codeberry.tadlib.util;
 
 
-import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.Shape;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -49,7 +49,7 @@ public class StringUtils {
     private static void renderString(Object value, JsonPrintMode mode, int indent, StringBuilder buf) {
         if (value instanceof Map) {
             renderMap((Map<String, Object>) value, mode, indent, buf);
-        } else if(value instanceof Object[]) {
+        } else if (value instanceof Object[]) {
             renderArray((Object[]) value, mode, indent, buf);
         } else {
             buf.append(value);
@@ -104,8 +104,7 @@ public class StringUtils {
             return '"' + value.toString() + '"';
         }
 
-        if (value instanceof List) {
-            List<?> l = (List<?>) value;
+        if (value instanceof List<?> l) {
             Object[] out = new Object[l.size()];
             for (int i = 0; i < l.size(); i++) {
                 out[i] = asMapOrValue(l.get(i));

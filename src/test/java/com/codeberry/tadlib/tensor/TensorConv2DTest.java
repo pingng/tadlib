@@ -1,11 +1,7 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import com.codeberry.tadlib.tensor.conv2ddata.*;
 import com.google.gson.Gson;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
@@ -18,14 +14,10 @@ import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.deepEquals;
 import static java.util.Arrays.deepToString;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TensorConv2DTest {
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new JavaProvider());
-    }
 
     // TODO: test in/out channels
 
@@ -55,12 +47,12 @@ public class TensorConv2DTest {
             Conv2DExample.Config cfg = list[i].config;
             System.out.println("Filer=" + cfg.filter_size + " input=" + cfg.input_size +
                     " chanIn=" + cfg.input_channels +
-                    " chanOut=" + cfg.output_channels + (failedExamples.get(i) == false ? " FAIL" : ""));
+                    " chanOut=" + cfg.output_channels + (!failedExamples.get(i) ? " FAIL" : ""));
         }
         assertFalse(failed);
     }
 
-    private void testExample(Conv2DExample ex) {
+    private static void testExample(Conv2DExample ex) {
         System.out.println("'" + ex.config.name + "'");
 
         Tensor input = new Tensor((double[][][][]) ex.input);
@@ -81,6 +73,7 @@ public class TensorConv2DTest {
         //System.out.println(deepToString((Object[]) filter.gradient.m.toArray()));
         assertEqualsMatrix(ex.grad_filter, filter.grad().toDoubles());
     }
+
     @Test
     public void conv2D_Simple() {
         Tensor input = new Tensor(Conv2DData_3x3_2x2_Filter.input);

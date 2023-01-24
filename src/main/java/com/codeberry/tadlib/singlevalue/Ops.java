@@ -1,6 +1,6 @@
 package com.codeberry.tadlib.singlevalue;
 
-import static com.codeberry.tadlib.singlevalue.ParentLink.dependency;
+import static com.codeberry.tadlib.singlevalue.GradLink.dependency;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 

@@ -6,7 +6,7 @@ import static java.util.Collections.emptyList;
 
 public class Value {
     public final double v;
-    public final List<ParentLink> dependencies;
+    private final GradLink[] dependencies;
 
     public double grad;
     private final boolean hasGradient;
@@ -15,13 +15,13 @@ public class Value {
         this(v, emptyList(), true);
     }
 
-    public Value(double v, List<ParentLink> dependencies) {
+    public Value(double v, List<GradLink> dependencies) {
         this(v, dependencies, true);
     }
 
-    public Value(double v, List<ParentLink> dependencies, boolean hasGradient) {
+    public Value(double v, List<GradLink> dependencies, boolean hasGradient) {
         this.v = v;
-        this.dependencies = dependencies;
+        this.dependencies = dependencies.toArray(GradLink[]::new);
         this.hasGradient = hasGradient;
     }
 
@@ -40,10 +40,8 @@ public class Value {
     public void backward(double grad) {
         if (hasGradient) {
             this.grad += grad;
-
-            for (ParentLink dep : dependencies) {
-                dep.value.backward(dep.gradFunc.calcGradient(grad));
-            }
+            for (var d : dependencies)
+                d.value.backward(d.gradFunc.calcGradient(grad));
         }
     }
 

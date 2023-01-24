@@ -2,11 +2,11 @@ package com.codeberry.tadlib.provider.java;
 
 import java.util.Arrays;
 
-public class JavaShapeRot180 extends JavaShape {
+public class JavaShapeRot180 extends Shape {
     private final int yAxis;
     private final int xAxis;
 
-    public JavaShapeRot180(JavaShape parent, int yAxis, int xAxis) {
+    public JavaShapeRot180(Shape parent, int yAxis, int xAxis) {
         super(parent.dims);
         this.yAxis = yAxis;
         this.xAxis = xAxis;
@@ -21,11 +21,11 @@ public class JavaShapeRot180 extends JavaShape {
         return super.calcDataIndex(cp);
     }
 
-    // Rot180 has the same dimensions, so we use the super implementation
-    @Override
-    public boolean isValid(int[] indices) {
-        return super.isValid(indices);
-    }
+//    // Rot180 has the same dimensions, so we use the super implementation
+//    @Override
+//    public boolean isValid(int[] indices) {
+//        return super.isValid(indices);
+//    }
 
     @Override
     int getBroadcastOffset(int[] indices) {

@@ -1,9 +1,6 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.tensor.Tensor.tensor;
@@ -13,11 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TensorAddTest {
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider());
-        ProviderStore.setProvider(new JavaProvider());
-    }
 
     @Test
     public void add() {
@@ -56,8 +48,8 @@ class TensorAddTest {
 
         assertTrue(deepEquals(new double[][]
                 {
-                        {13+1, 17+2, 19+3},
-                        {13+0.1, 17+0.2, 19+0.3}
+                        {13 + 1, 17 + 2, 19 + 3},
+                        {13 + 0.1, 17 + 0.2, 19 + 0.3}
                 }, (Object[]) c.val().toDoubles()));
 
         double[][] gradient = {
@@ -69,13 +61,13 @@ class TensorAddTest {
         assertTrue(deepEquals(gradient, (Object[]) c.grad().toDoubles()));
         assertTrue(deepEquals(gradient, (Object[]) a.grad().toDoubles()));
         double[] doubles = {11, 22, 33};
-        assertArrayEquals( doubles, (double[]) b.grad().toDoubles());
+        assertArrayEquals(doubles, (double[]) b.grad().toDoubles());
     }
 
     @Test
     public void addBroadcast_MissingDims_Left() {
         Tensor a = tensor(new double[]{1, 2, 3});
-        Tensor b = tensor(new double[][] {
+        Tensor b = tensor(new double[][]{
                 {5, 7, 11},
                 {13, 17, 19}
         });
@@ -83,8 +75,8 @@ class TensorAddTest {
 
         assertTrue(deepEquals(new double[][]
                 {
-                        {5+1, 7+2, 11+3},
-                        {13+1, 17+2, 19+3}
+                        {5 + 1, 7 + 2, 11 + 3},
+                        {13 + 1, 17 + 2, 19 + 3}
                 }, (Object[]) c.val().toDoubles()));
 
         double[][] gradient = {
@@ -96,7 +88,7 @@ class TensorAddTest {
         assertTrue(deepEquals(gradient, (Object[]) c.grad().toDoubles()));
         assertTrue(deepEquals(gradient, (Object[]) b.grad().toDoubles()));
         double[] doubles = {11, 22, 33};
-        assertArrayEquals( doubles, (double[]) a.grad().toDoubles());
+        assertArrayEquals(doubles, (double[]) a.grad().toDoubles());
     }
 
     @Test
@@ -111,8 +103,8 @@ class TensorAddTest {
 
         assertTrue(deepEquals(new double[][]
                 {
-                        {13+1, 17+2, 19+3},
-                        {13+0.1, 17+0.2, 19+0.3}
+                        {13 + 1, 17 + 2, 19 + 3},
+                        {13 + 0.1, 17 + 0.2, 19 + 0.3}
                 }, (Object[]) c.val().toDoubles()));
 
         double[][] gradient = {

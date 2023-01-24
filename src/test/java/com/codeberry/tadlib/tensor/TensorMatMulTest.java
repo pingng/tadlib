@@ -1,9 +1,5 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.provider.ProviderStore.array;
@@ -14,11 +10,6 @@ import static java.util.Arrays.deepToString;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TensorMatMulTest {
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider());
-        ProviderStore.setProvider(new JavaProvider());
-    }
 
     @Test
     public void matMulLeftBroadcast() {

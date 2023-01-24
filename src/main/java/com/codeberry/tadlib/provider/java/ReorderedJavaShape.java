@@ -4,7 +4,7 @@ import static com.codeberry.tadlib.array.util.DimensionUtils.validateTransposeAx
 import static java.lang.Math.min;
 import static java.util.Arrays.copyOf;
 
-public class ReorderedJavaShape extends JavaShape {
+public class ReorderedJavaShape extends Shape {
     private final int[] order;
     private final int[] blockSizes;
 
@@ -57,17 +57,17 @@ public class ReorderedJavaShape extends JavaShape {
     }
 
     @Override
-    public JavaShape normalOrderedCopy() {
+    public Shape normalOrderedCopy() {
         int[] dims = new int[dimCount];
         for (int i = 0; i < dims.length; i++) {
             dims[i] = at(i);
         }
-        return new JavaShape(dims);
+        return new Shape(dims);
     }
 
     @Override
-    public JavaShape copy() {
-        return new ReorderedJavaShape(copyOf(dims, dimCount), copyOf(order,dimCount));
+    public Shape copy() {
+        return new ReorderedJavaShape(copyOf(dims, dimCount), copyOf(order, dimCount));
     }
 
     @Override
@@ -80,7 +80,7 @@ public class ReorderedJavaShape extends JavaShape {
         return true;
     }
 
-    public static ReorderedJavaShape reverseOf(JavaShape shape) {
+    public static ReorderedJavaShape reverseOf(Shape shape) {
         int[] order = new int[shape.dimCount];
         for (int i = 0; i < order.length; i++) {
             order[i] = order.length - 1 - i;
@@ -88,7 +88,7 @@ public class ReorderedJavaShape extends JavaShape {
         return new ReorderedJavaShape(shape.dims, order);
     }
 
-    public static ReorderedJavaShape customOrder(JavaShape shape, int[] axes) {
+    public static ReorderedJavaShape customOrder(Shape shape, int[] axes) {
         validateTransposeAxes(shape, axes);
 
         return new ReorderedJavaShape(shape.dims, axes);

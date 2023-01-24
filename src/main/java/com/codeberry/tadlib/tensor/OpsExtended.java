@@ -1,8 +1,8 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.memorymanagement.DisposalRegister;
 import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.Shape;
+import com.codeberry.tadlib.util.memory.DisposalRegister;
 
 import java.util.List;
 
@@ -13,9 +13,8 @@ public abstract class OpsExtended {
     public static int guessParamLength(Shape shape) {
         int dimCount = shape.getDimCount();
         if (dimCount == 2 || dimCount == 4) {
-            int channels = shape.at(-1);
 
-            return channels;
+            return shape.at(-1);
         }
         throw new IllegalArgumentException("Valid dims are 2 an 4");
     }
@@ -23,11 +22,13 @@ public abstract class OpsExtended {
     public static BatchNormResult batchNorm(Tensor input, Tensor beta, Tensor gamma, BatchNormRunningAverages averages, Ops.RunMode runMode) {
         NDArray ndArray = input.val();
         Shape shape = ndArray.shape;
-        if (shape.getDimCount() != 2 && shape.getDimCount() != 4) {
-            throw new IllegalArgumentException("Valid dims are 2 an 4");
+        if (shape.getDimCount() != 2) {
+            if (shape.dimCount != 4) {
+                throw new IllegalArgumentException("Valid dims are 2 an 4");
+            }
         }
 
-        if (shape.getDimCount() == 4) {
+        if (shape.dimCount == 4) {
             int channels = shape.at(-1);
 
             Tensor mean;

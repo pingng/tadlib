@@ -2,20 +2,11 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 
 public class TensorReluTest {
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new JavaProvider());
-    }
-
     @Test
     public void relu() {
         Tensor input = new Tensor(ProviderStore.array(new double[]{

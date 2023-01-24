@@ -1,13 +1,11 @@
 package com.codeberry.tadlib.tensor;
 
+import com.codeberry.tadlib.nn.Model;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaShape;
-import com.codeberry.tadlib.example.TrainingData;
-import com.codeberry.tadlib.nn.model.Model;
+import com.codeberry.tadlib.provider.java.Shape;
+import com.codeberry.tadlib.util.TrainingData;
 
 import java.util.List;
-
-import static java.lang.Math.min;
 
 class NumericalGradientEstimator {
     private final TrainingData trainingData;
@@ -27,7 +25,7 @@ class NumericalGradientEstimator {
         List<Tensor> params = model.getParams();
         Tensor param = params.get(paramIndex);
 
-        return new NDArray(doubles, new JavaShape(param.shape().toDimArray()));
+        return new NDArray(doubles, new Shape(param.shape().toDimArray()));
     }
 
 }

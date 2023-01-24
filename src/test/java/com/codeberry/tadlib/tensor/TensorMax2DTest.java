@@ -2,20 +2,12 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 import static com.codeberry.tadlib.tensor.Ops.maxpool2d;
+import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 
 public class TensorMax2DTest {
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new JavaProvider());
-    }
 
     @Test
     public void allOutputsHaveCompleteInputWindow() {
@@ -42,7 +34,7 @@ public class TensorMax2DTest {
                 maxed.toDoubles());
 
         NDArray ndArray = maxed.val();
-        NDArray g = ProviderStore.array(new double[] {
+        NDArray g = ProviderStore.array(new double[]{
                 1, 2, 3, 4,
                 5, 6, 7, 8
         }).reshape(ndArray.shape.toDimArray());
@@ -86,7 +78,7 @@ public class TensorMax2DTest {
                 maxed.toDoubles());
 
         NDArray ndArray = maxed.val();
-        NDArray g = ProviderStore.array(new double[] {
+        NDArray g = ProviderStore.array(new double[]{
                 1, 4,
                 5, 8
         }).reshape(ndArray.shape.toDimArray());
@@ -115,7 +107,7 @@ public class TensorMax2DTest {
             for (int c = 0; c < channels; c++) {
                 for (double[][] row : volume) {
                     for (double[] col : row) {
-                        System.out.print(col[c]+", ");
+                        System.out.print(col[c] + ", ");
                     }
                     System.out.println();
                 }

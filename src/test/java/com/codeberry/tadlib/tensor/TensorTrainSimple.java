@@ -2,31 +2,22 @@ package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.Random;
 
-import static com.codeberry.tadlib.provider.ProviderStore.array;
 import static com.codeberry.tadlib.tensor.Ops.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TensorTrainSimple {
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new JavaProvider());
-    }
 
     @Test
     public void testMethod() {
         Random rand = new Random(3);
-        Tensor x_data = new Tensor(random(rand,100, 3));
-        NDArray yM = x_data.val().matmul(ProviderStore.array(new double[]{5, -2, 3.5})).add(5.0);
-        Tensor y_data = new Tensor(yM.reshape(100, 1));
+
+        Tensor x_data = new Tensor(random(rand, 100, 3));
+        Tensor y_data = new Tensor(x_data.val().matmul(ProviderStore.array(new double[]{5, -2, 3.5})).add(5.0).reshape(100, 1));
 
         Random wR = new Random(3);
         Tensor w = new Tensor(random(wR, 3, 1));
@@ -42,12 +33,11 @@ public class TensorTrainSimple {
         double err = Double.POSITIVE_INFINITY;
         for (int i = 0; i < 1000; i++) {
 
-            var Y = diffSqSum.val();
-
-            err = Y.dataAt(0);
+            err = diffSqSum.val().scalar();
 
             diffSqSum.backward();
 
+            System.out.println(err);
             //System.out.println(Y.toDoubles());
             //System.out.println(Arrays.deepToString((Object[]) w.getGradient().toDoubles()));
 
@@ -65,7 +55,7 @@ public class TensorTrainSimple {
     @Test
     public void testMethod2() {
         Random rand = new Random(3);
-        Tensor x_data = new Tensor(random(rand,100, 3));
+        Tensor x_data = new Tensor(random(rand, 100, 3));
         Tensor coeff = new Tensor(new double[]{4, -2, 7});
         Tensor y_data = new Tensor(x_data.val().matmul(coeff.val()));
 

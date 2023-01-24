@@ -5,8 +5,11 @@ It only supports single scalar values, and is easier to understand.
 
 Example
 ---
+
 ### Simple usage
+
 For variable *a* and *b*, find the values so that **(a + b) == 11** and **(a * b) == 18**:
+
 ```java
 Value a = newParam(rndZeroMean(rand));
 Value b = newParam(rndZeroMean(rand));
@@ -27,10 +30,13 @@ for (int epoch = 0; epoch < EPOCHS; epoch++) {
     b = value(b.v - b.grad * LEARNING_RATE);
 }
 ```
+
 See the [example source](example/SimpleExample.java).
 
 ### Solving an Age Problem
+
 Let us try to solve this assignment:
+
 ```
 Adam is 24 years older than Belle, but in six years,
 Adam will by three times older than Belle.
@@ -38,6 +44,7 @@ Adam will by three times older than Belle.
 ```
 
 The answer can be found by minimizing the loss of the following equations:
+
 ```
 From the equation: 
     Adam - 24 = Belle
@@ -49,7 +56,9 @@ From the equation:
 ...minimize (to zero):
     secondLoss = ((Adam + 6) - (Belle + 6) * 3)^2
 ```
+
 Code:
+
 ```java
 Value adam = newParam(rndZeroMean(rand));
 Value belle = newParam(rndZeroMean(rand));
@@ -76,4 +85,5 @@ for (int epoch = 0; epoch < EPOCHS; epoch++) {
     belle = value(belle.v - belle.grad * LEARNING_RATE);
 }
 ```
+
 See the [example source](example/AgeProblemExample.java).

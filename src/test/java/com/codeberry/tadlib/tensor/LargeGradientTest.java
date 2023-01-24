@@ -1,58 +1,33 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.example.TrainingData;
-import com.codeberry.tadlib.nn.model.Model;
-import com.codeberry.tadlib.nn.model.ModelFactory;
-import com.codeberry.tadlib.nn.model.SequentialModel;
-import com.codeberry.tadlib.nn.model.TrainStats;
-import com.codeberry.tadlib.nn.model.optimizer.SGD;
-import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.nn.Model;
+import com.codeberry.tadlib.nn.ModelFactory;
+import com.codeberry.tadlib.nn.SequentialModel;
+import com.codeberry.tadlib.nn.optimizer.SGD;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import com.codeberry.tadlib.util.MatrixTestUtils;
 import com.codeberry.tadlib.util.StringUtils;
-import org.junit.jupiter.api.Disabled;
+import com.codeberry.tadlib.util.TrainStats;
+import com.codeberry.tadlib.util.TrainingData;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 
-import static com.codeberry.tadlib.example.mnist.MNISTLoader.generate;
-import static com.codeberry.tadlib.example.mnist.TrainConfiguredConvMNISTMain.ModelSize;
-import static com.codeberry.tadlib.example.mnist.TrainConfiguredConvMNISTMain.createModelFactory;
-import static com.codeberry.tadlib.nn.model.optimizer.FixedLearningRate.fixedLearningRate;
-import static com.codeberry.tadlib.provider.java.JavaProvider.ThreadMode.MULTI_THREADED;
-import static com.codeberry.tadlib.provider.java.JavaProvider.ThreadMode.SINGLE_THREADED;
+import static com.codeberry.tadlib.mnist.MNISTLoader.generate;
+import static com.codeberry.tadlib.mnist.TrainConfiguredConvMNISTMain.ModelSize;
+import static com.codeberry.tadlib.mnist.TrainConfiguredConvMNISTMain.createModelFactory;
+import static com.codeberry.tadlib.nn.optimizer.schedule.FixedLearningRate.fixedLearningRate;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class LargeGradientTest {
 
     public static final int TEST_EPOCHS = 3;
     public static final int TRAINING_EXAMPLES = 16;
-    public static final double LEARNING_RATE = 0.1;
+//    public static final double LEARNING_RATE = 0.1;
 
     @Test
     public void testGradientWhileTrainingModel_SingleThreaded() {
-        ProviderStore.setProvider(new JavaProvider(SINGLE_THREADED));
-        doTest();
-    }
-
-    @Disabled @Test
-    public void testGradientWhileTrainingModel_MultiThreaded() {
-        ProviderStore.setProvider(new JavaProvider(MULTI_THREADED));
-        doTest();
-    }
-
-//    @Disabled
-//    @Test
-//    public void testGradientWhileTrainingModel_OpenCL() {
-//        ProviderStore.setProvider(new OpenCLProvider());
-//        doTest();
-//    }
-
-    private void doTest() {
         Random rand = new Random(4);
         TrainingData data = generate(rand, TRAINING_EXAMPLES);
 
@@ -79,12 +54,12 @@ public class LargeGradientTest {
         return createModelFactory(ModelSize.TINY);
     }
 
-    private double testGradients(TrainingData trainingData, Model model, int epoch) {
+    private static double testGradients(TrainingData trainingData, Model model, int epoch) {
         model.calcGradient(new Random(epoch), trainingData.getTrainingBatchAll(), new Model.IterationInfo(0, 0, 1));
         List<NDArray> gradients = model.getGradients();
         List<Object> gradientDoubles = gradients.stream()
                 .map(NDArray::toDoubles)
-                .collect(Collectors.toList());
+                .toList();
 
         ErrorValidator errorValidator = new ErrorValidator();
         NumericalGradientEstimator estimator = new NumericalGradientEstimator(trainingData, model, epoch);
@@ -99,7 +74,7 @@ public class LargeGradientTest {
     }
 
     private static class ErrorValidator {
-        private static final double IDEAL_ERR_ASPECT = 5e-7;
+        private static final double IDEAL_ERR_ASPECT = 5.0e-7;
         private static final double MAX_ERR_ASPECT = 0.055;
         private static final int MAX_CONSECUTIVE_LARGE_ASPECT_TIMES = 4;
 
@@ -107,7 +82,7 @@ public class LargeGradientTest {
         private int sumErrorCount;
         private double sumError;
 
-        public boolean isNotOk(double errAspect) {
+        public static boolean isNotOk(double errAspect) {
             return errAspect >= IDEAL_ERR_ASPECT;
         }
 
@@ -150,7 +125,7 @@ public class LargeGradientTest {
         }
     }
 
-    private void trainModel(TrainingData trainingData, Model model, int epoch) {
+    private static void trainModel(TrainingData trainingData, Model model, int epoch) {
         Random dropRnd = new Random(epoch);
         TrainStats stats = new TrainStats();
 

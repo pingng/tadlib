@@ -1,7 +1,5 @@
 package com.codeberry.tadlib.provider.java;
 
-import com.codeberry.tadlib.array.Shape;
-
 public class ValueUpdate {
     public final int offset;
     public final double value;

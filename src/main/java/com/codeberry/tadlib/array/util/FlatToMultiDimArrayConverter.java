@@ -1,7 +1,7 @@
 package com.codeberry.tadlib.array.util;
 
-import com.codeberry.tadlib.array.Shape;
 import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.Shape;
 
 import java.lang.reflect.Array;
 
@@ -43,7 +43,7 @@ public abstract class FlatToMultiDimArrayConverter {
     }
 
     public static Object toDoubles(Shape shape, NDArray.InternalDoubleReader r) {
-        if (shape.getDimCount() == 0) {
+        if (shape.dimCount == 0) {
             //...no shape, return Double
             return r.readValue(0);
         }

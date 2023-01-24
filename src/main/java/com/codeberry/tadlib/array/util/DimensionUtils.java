@@ -1,9 +1,10 @@
 package com.codeberry.tadlib.array.util;
 
-import com.codeberry.tadlib.array.*;
+import com.codeberry.tadlib.array.exception.*;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.provider.java.ReorderedJavaShape;
+import com.codeberry.tadlib.provider.java.Shape;
 
 import java.util.function.Function;
 
@@ -34,11 +35,13 @@ public abstract class DimensionUtils {
     }
 
     public static int[] createBroadcastResultDims(Shape a, Shape b) {
-        int len = max(a.getDimCount(), b.getDimCount());
+        int len = max(a.dimCount, b.dimCount);
         int[] dims = new int[len];
-        for (int i = -1; i >= -dims.length; i--) {
+        int end = -dims.length;
+        for (int i = -1; i >= end; i--) {
             // Either a or b _will_ have a positive value
-            dims[len + i] = max(a.atOrDefault(i, Integer.MIN_VALUE),
+            dims[len + i] = max(
+                    a.atOrDefault(i, Integer.MIN_VALUE),
                     b.atOrDefault(i, Integer.MIN_VALUE));
         }
         return dims;
@@ -58,8 +61,18 @@ public abstract class DimensionUtils {
     }
 
     public static long mulDimRange(Shape shape, int from, int to) {
-        int _f = (from >= 0 ? from : shape.getDimCount() + from);
-        int _t = (to >= 0 ? to : shape.getDimCount() + to);
+        int _f;
+        if (from >= 0) {
+            _f = (from);
+        } else {
+            _f = (shape.dimCount + from);
+        }
+        int _t;
+        if (to >= 0) {
+            _t = (to);
+        } else {
+            _t = (shape.dimCount + to);
+        }
         long count = 1;
         for (int i = _f; i < _t; i++) {
             count *= shape.at(i);
@@ -72,18 +85,18 @@ public abstract class DimensionUtils {
     }
 
     public static int[] calcBroadcastBlockSizes(Shape shape) {
-        return calcBroadcastBlockSizes(shape, shape.getDimCount());
+        return calcBroadcastBlockSizes(shape, shape.dimCount);
     }
 
     /**
      * @return array of element offsets within each dimension, multiplied by indices
-     *         to calculate the offset of a specific coordinate
+     * to calculate the offset of a specific coordinate
      */
     public static int[] calcBroadcastBlockSizes(Shape shape, int outDimCount) {
         int[] blockSizes = new int[outDimCount];
 
         int blockSize = 1;
-        for (int i = -1; i >= -shape.getDimCount(); i--) {
+        for (int i = -1; i >= -shape.dimCount; i--) {
             int dimLen = shape.at(i);
             if (dimLen == SINGLE_DIM_THUS_CAN_BROADCAST) {
                 //... is a broadcast dim, the final read offset should not
@@ -98,11 +111,11 @@ public abstract class DimensionUtils {
     }
 
     public static int[] calcBlockSizes(Shape shape) {
-        return calcBlockSizes(shape, 0, shape.getDimCount());
+        return calcBlockSizes(shape, 0, shape.dimCount);
     }
 
     public static int[] calcBlockSizes(Shape shape, int from, int to) {
-        int dimCount = shape.getDimCount();
+        int dimCount = shape.dimCount;
         int _f = (from >= 0 ? from : dimCount + from);
         int _t = (to >= 0 ? to : dimCount + to);
 
@@ -120,11 +133,11 @@ public abstract class DimensionUtils {
     }
 
     public static void validateTransposeAxes(Shape shape, int[] axes) {
-        if (shape.getDimCount() != axes.length) {
-            throw new DimensionMismatch("The requested transpose axes must have equal dimensions: " + shape.getDimCount());
+        if (shape.dimCount != axes.length) {
+            throw new DimensionMismatch("The requested transpose axes must have equal dimensions: " + shape.dimCount);
         }
         if (!hasAllAxis(axes)) {
-            throw new DimensionMissing("The requested transpose must contain all axis indices: 0-" + (shape.getDimCount() - 1));
+            throw new DimensionMissing("The requested transpose must contain all axis indices: 0-" + (shape.dimCount - 1));
         }
     }
 
@@ -155,18 +168,18 @@ public abstract class DimensionUtils {
 
     public static void validateAxisWithinBounds(Shape shape, int axis) {
         int safeAxis = shape.wrapNegIndex(axis);
-        if (safeAxis < 0 || safeAxis >= shape.getDimCount()) {
-            throw new AxisOutOfBounds("Valid axes: [0," + (shape.getDimCount() - 1) + "], but is " + axis);
+        if (safeAxis < 0 || safeAxis >= shape.dimCount) {
+            throw new AxisOutOfBounds("Valid axes: [0," + (shape.dimCount - 1) + "], but is " + axis);
         }
     }
 
     public static void validateSameDimensionsExcept(String targetName, Shape src, Shape target, int exceptAxis) {
         int safeAxis = src.wrapNegIndex(exceptAxis);
-        int srcDimCount = src.getDimCount();
-        if (target.getDimCount() != srcDimCount - 1) {
-            throw new DimensionMismatch("Expected " + (srcDimCount - 1) + " dimensions: actual=" + target.getDimCount());
+        int srcDimCount = src.dimCount;
+        if (target.dimCount != srcDimCount - 1) {
+            throw new DimensionMismatch("Expected " + (srcDimCount - 1) + " dimensions: actual=" + target.dimCount);
         }
-        for (int i = 0; i < target.getDimCount(); i++) {
+        for (int i = 0; i < target.dimCount; i++) {
             int srcI = (i < safeAxis ? i : i + 1);
             int expected = src.at(srcI);
             if (expected != target.at(i)) {
@@ -198,11 +211,11 @@ public abstract class DimensionUtils {
     public static void validateConcatShapes(Shape[] shapes, int axis) {
         Shape first = shapes[0];
 
-        int dimCount = first.getDimCount();
+        int dimCount = first.dimCount;
         for (int sI = 1; sI < shapes.length; sI++) {
             Shape s = shapes[sI];
-            if (dimCount != s.getDimCount()) {
-                throw new DimensionMismatch(dimCount + " != " + s.getDimCount());
+            if (dimCount != s.dimCount) {
+                throw new DimensionMismatch(dimCount + " != " + s.dimCount);
             }
 
             for (int i = 0; i < dimCount; i++) {
@@ -287,14 +300,14 @@ public abstract class DimensionUtils {
                 throw new UnsupportedOperationException();
             }
 
-            int[] copy = new int[shape.getDimCount() + 1];
+            int[] copy = new int[shape.dimCount + 1];
             copy(shape, 0, copy, 1);
             copy[0] = 1;
             return factory.apply(copy);
         }
 
         private static void copy(Shape shape, int srcOffset, int[] copy, int dstOffset) {
-            int srcLen = shape.getDimCount();
+            int srcLen = shape.dimCount;
             int srcIdx = srcOffset;
             for (int i = dstOffset; i < copy.length; i++) {
                 if (srcIdx < srcLen) {
@@ -309,15 +322,15 @@ public abstract class DimensionUtils {
                 throw new UnsupportedOperationException();
             }
 
-            int[] copy = new int[shape.getDimCount() + 1];
+            int[] copy = new int[shape.dimCount + 1];
             copy(shape, 0, copy, 0);
             copy[copy.length - 1] = 1;
             return factory.apply(copy);
         }
 
         public static MatMulParams expandSingleDimArrays(Shape leftShape, Shape rightShape, Function<int[], Shape> factory) {
-            boolean promoteLeft = leftShape.getDimCount() == 1;
-            boolean promoteRight = rightShape.getDimCount() == 1;
+            boolean promoteLeft = leftShape.dimCount == 1;
+            boolean promoteRight = rightShape.dimCount == 1;
 
             return new MatMulParams(promoteLeft, leftShape,
                     promoteRight, rightShape, factory);
@@ -335,14 +348,14 @@ public abstract class DimensionUtils {
         }
 
         private Shape removeFirstSingleDim(Shape shape) {
-            int[] copy = new int[shape.getDimCount() - 1];
+            int[] copy = new int[shape.dimCount - 1];
             copy(shape, 1, copy, 0);
 
             return factory.apply(copy);
         }
 
         private Shape removeLastSingleDim(Shape shape) {
-            int[] copy = new int[shape.getDimCount() - 1];
+            int[] copy = new int[shape.dimCount - 1];
             copy(shape, 0, copy, 0);
 
             return factory.apply(copy);

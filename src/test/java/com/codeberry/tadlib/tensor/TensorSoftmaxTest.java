@@ -1,30 +1,21 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.provider.ProviderStore.array;
-import static com.codeberry.tadlib.util.MatrixTestUtils.*;
+import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 import static java.util.Arrays.deepToString;
 
 public class TensorSoftmaxTest {
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider());
-        ProviderStore.setProvider(new JavaProvider());
-    }
 
     @Test
     public void softmax1D() {
         Tensor input = new Tensor(array(new double[]{5, 2.4, 3, 4}));
 
         Tensor softmax = Ops.softmax(input);
-        softmax.backward(array(new double[]{123.5, 0.123, 0.5, 2.}));
+        softmax.backward(array(new double[]{123.5, 0.123, 0.5, 2.0}));
 
         assertEqualsMatrix(new double[]{0.63391912, 0.04708344, 0.08579162, 0.23320581},
                 softmax.toDoubles());
@@ -42,8 +33,8 @@ public class TensorSoftmaxTest {
 
         Tensor softmax = Ops.softmax(input);
         softmax.backward(array(new double[]{
-                123.5, 0.123, 0.5, 2.,
-                11.5, -10.75, 11.3, 5.
+                123.5, 0.123, 0.5, 2.0,
+                11.5, -10.75, 11.3, 5.0
         }).reshape(2, 4));
 
         assertEqualsMatrix(array(new double[]{
@@ -68,8 +59,8 @@ public class TensorSoftmaxTest {
 
         Tensor softmax = Ops.softmax(input);
         softmax.backward(array(new double[]{
-                123.5, 0.123, 0.5, 2.,
-                11.5, -10.75, 11.3, 5.
+                123.5, 0.123, 0.5, 2.0,
+                11.5, -10.75, 11.3, 5.0
         }).reshape(2, 1, 4));
 
         assertEqualsMatrix(array(new double[]{
@@ -148,7 +139,7 @@ public class TensorSoftmaxTest {
     public void softmaxCrossEntropy() {
         Tensor input = new Tensor(array(new double[]{0.234, 2.73, -5.3, 2, 2.92, 0.2})
                 .reshape(1, -1));
-        Tensor labels = new Tensor(array(new double[]{1., 0., 0., 0, 0, 0})
+        Tensor labels = new Tensor(array(new double[]{1.0, 0.0, 0.0, 0, 0, 0})
                 .reshape(1, -1));
 
         NDArray softmax = input.val().softmax();

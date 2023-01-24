@@ -1,62 +1,64 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.array.*;
+import com.codeberry.tadlib.array.TArrayFactory;
 import com.codeberry.tadlib.array.util.DimensionUtils;
 import com.codeberry.tadlib.nn.loss.SoftmaxCrossEntropyLoss;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaShape;
+import com.codeberry.tadlib.provider.java.Shape;
 import com.codeberry.tadlib.util.MultiThreadingSupport;
 
 import java.util.*;
 
-import static com.codeberry.tadlib.provider.java.NDArray.*;
-import static com.codeberry.tadlib.provider.java.NDArray.DimKeepRemove.KEEP_DIM;
-import static com.codeberry.tadlib.provider.java.NDArray.DimKeepRemove.REMOVE_DIM;
-import static com.codeberry.tadlib.array.TArrayFactory.*;
+import static com.codeberry.tadlib.array.TArrayFactory.fillLike;
+import static com.codeberry.tadlib.array.TArrayFactory.ones;
 import static com.codeberry.tadlib.array.util.DimensionUtils.validateBroadcastShapes;
 import static com.codeberry.tadlib.array.util.DimensionUtils.validateMatMulShapes;
-import static com.codeberry.tadlib.memorymanagement.DisposalRegister.disposeAllExceptReturnedValue;
-import static com.codeberry.tadlib.tensor.ParentLink.parent;
+import static com.codeberry.tadlib.provider.java.NDArray.DimKeepRemove.KEEP_DIM;
+import static com.codeberry.tadlib.provider.java.NDArray.DimKeepRemove.REMOVE_DIM;
+import static com.codeberry.tadlib.provider.java.NDArray.*;
+import static com.codeberry.tadlib.tensor.GradLink.grad;
 import static com.codeberry.tadlib.util.MultiThreadingSupport.TaskRange.taskRange;
+import static com.codeberry.tadlib.util.memory.DisposalRegister.disposeAllExceptReturnedValue;
 import static java.lang.Boolean.TRUE;
-import static java.util.Arrays.*;
+import static java.util.Arrays.asList;
+import static java.util.Arrays.stream;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.synchronizedMap;
 import static java.util.stream.Collectors.toList;
 
 public abstract class Ops {
-    public static final double EPSILON = 0.000001;
+    public static final double EPSILON = Double.MIN_NORMAL; //0.000001;
 
     public static Tensor MATMUL(Tensor a, Tensor b) {
-        DimensionUtils.MatMulParams params = DimensionUtils.MatMulParams.expandSingleDimArrays(a.shape(), b.shape(), JavaShape::new);
+        DimensionUtils.MatMulParams params = DimensionUtils.MatMulParams.expandSingleDimArrays(a.shape(), b.shape(), Shape::new);
         validateMatMulShapes(params.leftShape, params.rightShape);
         validateBroadcastShapes(params.leftShape, params.rightShape, -3);
 
-        JavaShape outShape = evalMatMulShape(params.leftShape, params.rightShape);
+        Shape outShape = evalMatMulShape(params.leftShape, params.rightShape);
         double[] data = new double[outShape.size];
 
 
         int outputRows = outShape.at(-2);
 
-        JavaShape shape = (JavaShape) params.revertDimExpandOfOutputShape(outShape);
+        Shape shape = params.revertDimExpandOfOutputShape(outShape);
 
         GradFunc gF_a = grad -> disposeAllExceptReturnedValue(() ->
-            aggregateBroadcastedDims(a, grad.matmul(b.val().transposeLast2D())));
+                aggregateBroadcastedDims(a, grad.matmul(b.val().transposeLast2D())));
         GradFunc gF_b = grad -> disposeAllExceptReturnedValue(() ->
-            aggregateBroadcastedDims(b, a.val().transposeLast2D().matmul(grad)));
+                aggregateBroadcastedDims(b, a.val().transposeLast2D().matmul(grad)));
 
         MultiThreadingSupport.TaskRange totalRange = taskRange(0, outputRows).withMinimumWorkLength(decideMinimumRowsPerThread(params.leftShape, outShape));
 
-        return new Tensor(v-> {
-            NDArray left = params.promoteLeft ? new NDArray(a.val().data, (JavaShape) params.leftShape) : a.val();
-            NDArray right = params.promoteRight ? new NDArray(b.val().data, (JavaShape) params.rightShape) : b.val();
+        return new Tensor(v -> {
+            NDArray left = params.promoteLeft ? new NDArray(a.val().data, params.leftShape) : a.val();
+            NDArray right = params.promoteRight ? new NDArray(b.val().data, params.rightShape) : b.val();
             v.set(
                     MultiThreadingSupport.<double[]>multiThreadingSupportRun(
-                        totalRange,
-                        range -> NDArray.matmul(range, left, right, data, outShape, outShape.newIndexArray(), 0),
-                        (_left, ignored_) -> _left));
-            }, shape,
-            asList(parent(a, gF_a), parent(b, gF_b)));
+                            totalRange,
+                            range -> NDArray.matmul(range, left, right, data, outShape, outShape.newIndexArray(), 0),
+                            (_left, ignored_) -> _left));
+        }, shape,
+                asList(grad(a, gF_a), grad(b, gF_b)));
     }
 
     public static Tensor matmul(Tensor a, Tensor b) {
@@ -72,7 +74,7 @@ public abstract class Ops {
         });
 
         return new Tensor(y,
-                asList(parent(a, gF_a), parent(b, gF_b)));
+                asList(grad(a, gF_a), grad(b, gF_b)));
     }
 
     public static Tensor NEGATE(Tensor x) {
@@ -81,7 +83,7 @@ public abstract class Ops {
             double[] yy = y.data;
             for (int i = 0; i < xx.length; i++)
                 yy[i] = -xx[i];
-        }, x.shape(), singletonList(parent(x, NDArray::negate)));
+        }, x.shape(), singletonList(grad(x, NDArray::negate)));
     }
 
     public static Tensor negate(Tensor a) {
@@ -89,7 +91,7 @@ public abstract class Ops {
 
         GradFunc gF = NDArray::negate;
 
-        return new Tensor(y, singletonList(parent(a, gF)));
+        return new Tensor(y, singletonList(grad(a, gF)));
     }
 
     public static Tensor sub(Tensor a, Tensor b) {
@@ -102,12 +104,12 @@ public abstract class Ops {
 
     public static Tensor add(Tensor... tensors) {
         NDArray y = stream(tensors)
-                .map(tensor -> tensor.val())
+                .map(Tensor::val)
                 .reduce(NDArray::add)
                 .orElseGet(TArrayFactory::zerosShaped);
 
-        List<ParentLink> parents = stream(tensors)
-                .map(t -> parent(t, funcGradientAdd(t)))
+        List<GradLink> parents = stream(tensors)
+                .map(t -> grad(t, funcGradientAdd(t)))
                 .collect(toList());
 
         return new Tensor(y, parents);
@@ -119,13 +121,14 @@ public abstract class Ops {
         GradFunc gF_a = funcGradientAdd(a);
         GradFunc gF_b = funcGradientAdd(b);
 
-        return new Tensor(y, asList(parent(a, gF_a), parent(b, gF_b)));
+        return new Tensor(y, asList(grad(a, gF_a), grad(b, gF_b)));
     }
+
     public static Tensor ADD(Tensor a, Tensor b) {
-        return new Tensor(v->{
+        return new Tensor(v -> {
             //TODO direct write
             v.set(a.val().add(b.val()));
-        }, a.shape(), asList(parent(a, funcGradientAdd(a)), parent(b, funcGradientAdd(b))));
+        }, a.shape(), asList(grad(a, funcGradientAdd(a)), grad(b, funcGradientAdd(b))));
     }
 
     public static Tensor add(Tensor a, double constant) {
@@ -133,7 +136,7 @@ public abstract class Ops {
 
         GradFunc gF_a = funcGradientAdd(a);
 
-        return new Tensor(y, singletonList(parent(a, gF_a)));
+        return new Tensor(y, singletonList(grad(a, gF_a)));
     }
 
     private static GradFunc funcGradientAdd(Tensor tensor) {
@@ -145,7 +148,7 @@ public abstract class Ops {
 
         GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> grad.mul(a.val()).mul(2.0));
 
-        return new Tensor(y, singletonList(parent(a, gF)));
+        return new Tensor(y, singletonList(grad(a, gF)));
     }
 
     public static Tensor sqrt(Tensor a) {
@@ -153,7 +156,7 @@ public abstract class Ops {
 
         GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> grad.mul(a.val().pow(-0.5).mul(0.5)));
 
-        return new Tensor(y, singletonList(parent(a, gF)));
+        return new Tensor(y, singletonList(grad(a, gF)));
     }
 
     public static Tensor softmax(Tensor input) {
@@ -189,7 +192,7 @@ public abstract class Ops {
             return gradWithExtraDim.reshape(backGradShape);
         });
 
-        return new Tensor(softmax, singletonList(parent(input, gF)));
+        return new Tensor(softmax, singletonList(grad(input, gF)));
     }
 
     public static Tensor div(Tensor a, Tensor b) {
@@ -211,21 +214,22 @@ public abstract class Ops {
         });
 
         return new Tensor(y,
-                asList(parent(a, gF_a), parent(b, gF_b)));
+                asList(grad(a, gF_a), grad(b, gF_b)));
     }
 
     public static Tensor mul(Tensor a, Tensor b) {
         NDArray y = a.val().mul(b.val());
-        return new Tensor(y, asList(parent(a, funcGradientMul(a, b)), parent(b, funcGradientMul(b, a))));
+        return new Tensor(y, asList(grad(a, funcGradientMul(a, b)), grad(b, funcGradientMul(b, a))));
     }
+
     public static Tensor MUL(Tensor a, Tensor b) {
         validateBroadcastShapes(a.shape(), b.shape(), -1);
-        JavaShape shape = evalBroadcastOutputShape(a.shape(), b.shape());
+        Shape shape = evalBroadcastOutputShape(a.shape(), b.shape());
 
-        return new Tensor(v-> {
+        return new Tensor(v -> {
             //TODO direct write
             v.set(a.val().mul(b.val()));
-        }, shape, asList(parent(a, funcGradientMul(a, b)), parent(b, funcGradientMul(b, a))));
+        }, shape, asList(grad(a, funcGradientMul(a, b)), grad(b, funcGradientMul(b, a))));
     }
 
     private static GradFunc funcGradientMul(Tensor self, Tensor other) {
@@ -240,7 +244,7 @@ public abstract class Ops {
         return disposeAllExceptReturnedValue(() -> {
             NDArray gr = grad;
             NDArray ndArray2 = self.val();
-            int missingDims = gr.shape.getDimCount() - ndArray2.shape.getDimCount();
+            int missingDims = gr.shape.dimCount - ndArray2.shape.dimCount;
             if (missingDims >= 1) {
                 gr = gr.sumFirstDims(missingDims, REMOVE_DIM);
             }
@@ -263,15 +267,13 @@ public abstract class Ops {
             return fillLike(ndArray.shape, grad);
         };
 
-        return new Tensor(y, singletonList(parent(a, gF)));
+        return new Tensor(y, singletonList(grad(a, gF)));
     }
 
     public static Tensor SUM(Tensor a) {
         GradFunc gF = grad -> fillLike(a.shape(), grad);
 
-        return new Tensor(y->{
-            y.set(a.val().sum());
-        }, JavaShape.zeroDim, singletonList(parent(a, gF)));
+        return new Tensor(y -> y.set(a.val().sum()), Shape.zeroDim, singletonList(grad(a, gF)));
     }
 
     public static Tensor conv2d(Tensor input, Tensor filter) {
@@ -291,8 +293,8 @@ public abstract class Ops {
         GradFunc gF_Filter = grad -> grad.calcConv2dFilterGradient(input.val(), filter.val());
 
         return new Tensor(y,
-                asList(parent(input, gF_Input),
-                        parent(filter, gF_Filter)));
+                asList(grad(input, gF_Input),
+                        grad(filter, gF_Filter)));
     }
 
     public static Tensor maxpool2d(Tensor input, int size) {
@@ -300,7 +302,7 @@ public abstract class Ops {
 
         GradFunc gF = grad -> grad.maxPool2dGrad(result);
 
-        return new Tensor(result.getOutput(), singletonList(parent(input, gF)));
+        return new Tensor(result.output(), singletonList(grad(input, gF)));
     }
 
     public static Tensor flatten(Tensor input) {
@@ -311,12 +313,12 @@ public abstract class Ops {
         GradFunc gF = grad -> grad.reshape(inputShape);
 
         return new Tensor(input.val().reshape(inputShape.at(0), size),
-                singletonList(parent(input, gF)));
+                singletonList(grad(input, gF)));
     }
 
     public static int calcFlattenExampleSize(Shape inputShape) {
         int size = 1;
-        for (int i = 1; i < inputShape.getDimCount(); i++) {
+        for (int i = 1; i < inputShape.dimCount; i++) {
             size *= inputShape.at(i);
         }
         return size;
@@ -329,7 +331,7 @@ public abstract class Ops {
         GradFunc gF = grad -> grad.reshape(inputShape);
 
         return new Tensor(input.val().reshape(dims),
-                singletonList(parent(input, gF)));
+                singletonList(grad(input, gF)));
     }
 
     public static Tensor relu(Tensor input) {
@@ -338,7 +340,7 @@ public abstract class Ops {
 
         GradFunc gF = grad -> grad.mul(result.createMask());
 
-        return new Tensor(relu, singletonList(parent(input, gF)));
+        return new Tensor(relu, singletonList(grad(input, gF)));
     }
 
     public static Tensor leakyRelu(Tensor input, double leakyScale) {
@@ -347,7 +349,7 @@ public abstract class Ops {
 
         GradFunc gF = grad -> grad.mul(result.createMask());
 
-        return new Tensor(relu, singletonList(parent(input, gF)));
+        return new Tensor(relu, singletonList(grad(input, gF)));
     }
 
     public static Tensor sumSoftmaxCrossEntropy(Tensor labelsOneHot, Tensor prediction) {
@@ -358,17 +360,17 @@ public abstract class Ops {
 
         GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> grad.softMaxCrossEntropyGrad(softmax, oneHotArray));
 
-        return new Tensor(cost, singletonList(parent(prediction, gF)));
+        return new Tensor(cost, singletonList(grad(prediction, gF)));
     }
 
     public static Tensor dropout(Tensor input, Random rnd, double dropoutKeep, RunMode runMode) {
         if (runMode == RunMode.TRAINING) {
             NDArray.DropOutResult result = input.val().dropOut(rnd, dropoutKeep);
-            NDArray output = result.getOutput();
+            NDArray output = result.output();
 
             GradFunc gF = grad -> grad.mul(result.createMask());
 
-            return new Tensor(output, singletonList(parent(input, gF)));
+            return new Tensor(output, singletonList(grad(input, gF)));
         }
         return input;
     }
@@ -381,7 +383,7 @@ public abstract class Ops {
             dimsToCollapse[axi] = TRUE;
         }
         int elementsSummed = 1;
-        for (int i = 0; i < inputShape.getDimCount(); i++) {
+        for (int i = 0; i < inputShape.dimCount; i++) {
             if (dimsToCollapse[i]) {
                 elementsSummed *= inputShape.at(i);
             }
@@ -408,7 +410,7 @@ public abstract class Ops {
             return gradInInputShape.div(finalElementsSummed);
         });
 
-        return new Tensor(mean, singletonList(parent(input, gF)));
+        return new Tensor(mean, singletonList(grad(input, gF)));
     }
 
     public static Tensor sum(Tensor input, int... axis) {
@@ -429,7 +431,7 @@ public abstract class Ops {
                 ones(inputShape).mul(grad.reshape(broadcastDims)));
 
         NDArray sum = input.val().sum(dimsToCollapse, REMOVE_DIM);
-        return new Tensor(sum, singletonList(parent(input, gF)));
+        return new Tensor(sum, singletonList(grad(input, gF)));
     }
 
     public static Tensor SUM(Tensor x, int... axis) {
@@ -447,18 +449,18 @@ public abstract class Ops {
 
 
         //JavaShape sumShape = (JavaShape) inputShape;
-        JavaShape sumShape = (JavaShape) toPhysicalShape(inputShape, dimsToCollapse);
+        Shape sumShape = toPhysicalShape(inputShape, dimsToCollapse);
 //        if (keepRemove == DimKeepRemove.KEEP_DIM)
 //            sumShape = (toPhysicalShapeWithKeep(shape, dimsToCollapse));
 //        else
 //            sumShape = (JavaShape) physicalShape;
 
-        return new Tensor(y-> {
+        return new Tensor(y -> {
             y.zero();
             y.sum(x.val(), dimsToCollapse, REMOVE_DIM);
-        }, sumShape, singletonList(parent(x,
+        }, sumShape, singletonList(grad(x,
                 grad -> disposeAllExceptReturnedValue(() ->
-                    ones(inputShape).mul(grad.reshape(broadcastDims))))));
+                        ones(inputShape).mul(grad.reshape(broadcastDims))))));
     }
 
     public static Tensor log(Tensor x) {
@@ -466,7 +468,7 @@ public abstract class Ops {
 
         GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> grad.div(x.val()));
 
-        return new Tensor(y, singletonList(parent(x, gF)));
+        return new Tensor(y, singletonList(grad(x, gF)));
     }
 
     public static Tensor concat(int axis, Tensor... tensors) {
@@ -478,16 +480,15 @@ public abstract class Ops {
         NDArray concat = first.concat(rest, axis);
 
         int[] axisLens = Arrays.stream(tensors)
-                .map(tensor1 -> tensor1.val())
+                .map(Tensor::val)
                 .map(ndArray -> ndArray.shape)
                 .mapToInt(shape -> shape.at(axis))
                 .toArray();
         GradSplitter gradSplitter = new GradSplitter(axis, axisLens);
-        List<ParentLink> links = new ArrayList<>();
-        for (int i = 0; i < tensors.length; i++) {
-            Tensor tensor = tensors[i];
-            links.add(parent(tensor, gradSplitter.getGradOfPart(i)));
-        }
+
+        List<GradLink> links = new ArrayList<>(tensors.length);
+        for (int i = 0; i < tensors.length; i++)
+            links.add(grad(tensors[i], gradSplitter.getGradOfPart(i)));
 
         return new Tensor(concat, links);
     }

@@ -10,24 +10,20 @@ import static java.lang.Math.max;
 public abstract class MultiThreadingSupport {
     private static volatile ForkJoinPool pool;
 
-    public static void enableMultiThreading() {
-        synchronized (MultiThreadingSupport.class) {
-            if (pool!=null) {
-                int processors = Runtime.getRuntime().availableProcessors();
-                if (processors >= 2) {
-                    int threads = max(processors - 1, 2);
-                    pool = new ForkJoinPool(threads);
-                }
+    public static synchronized void enableMultiThreading() {
+        if (pool != null) {
+            int processors = Runtime.getRuntime().availableProcessors();
+            if (processors >= 2) {
+                int threads = max(processors - 1, 2);
+                pool = new ForkJoinPool(threads);
             }
         }
     }
 
-    public static void disableMultiThreading() {
-        synchronized (MultiThreadingSupport.class) {
-            if (pool!=null) {
-                pool.shutdownNow();
-                pool = null;
-            }
+    public static synchronized void disableMultiThreading() {
+        if (pool != null) {
+            pool.shutdownNow();
+            pool = null;
         }
     }
 

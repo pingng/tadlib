@@ -59,7 +59,7 @@ public class MultiDimArrayFlattener<E> {
             return outIndex + len;
         } else {
             for (int i = 0; i < len; i++) {
-                outIndex = flattenToArray(Array.get(array, i), currentDim+1, out, outIndex);
+                outIndex = flattenToArray(Array.get(array, i), currentDim + 1, out, outIndex);
             }
             return outIndex;
         }

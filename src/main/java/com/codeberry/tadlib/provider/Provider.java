@@ -1,18 +1,19 @@
 package com.codeberry.tadlib.provider;
 
-import com.codeberry.tadlib.array.NDIntArray;
-import com.codeberry.tadlib.array.Shape;
+import com.codeberry.tadlib.provider.java.JavaIntArray;
 import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.Shape;
 
 public interface Provider {
     NDArray createArray(double v);
+
     NDArray createArray(Object multiDimArray);
 
-    NDIntArray createIntArray(Object multiDimArray);
+    JavaIntArray createIntArray(Object multiDimArray);
 
-    NDIntArray createIntArray(int v);
+    JavaIntArray createIntArray(int v);
 
-    NDIntArray createIntArrayWithValue(Shape shape, int v);
+    JavaIntArray createIntArrayWithValue(Shape shape, int v);
 
     NDArray createArray(double[] data, Shape shape);
 

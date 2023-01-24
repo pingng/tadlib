@@ -1,7 +1,5 @@
 package com.codeberry.tadlib.provider.java;
 
-import com.codeberry.tadlib.array.Shape;
-
 import java.util.function.IntFunction;
 
 import static com.codeberry.tadlib.array.util.DimensionUtils.*;
@@ -11,7 +9,7 @@ public class CompareHelper {
     public interface CompareWriter<E, R> {
         R scalar(E value);
 
-        R toArray(JavaShape shape);
+        R toArray(Shape shape);
 
         void prepareDate(int size);
 
@@ -26,22 +24,23 @@ public class CompareHelper {
                             Shape leftShape, Shape rightShape,
                             IntFunction<E> left, IntFunction<E> right,
                             CompareWriter<E, R> writer) {
-        if (leftShape.getDimCount() == 0 &&
-                rightShape.getDimCount() == 0) {
+        if (leftShape.getDimCount() == 0) {
+            if (rightShape.getDimCount() == 0) {
 
-            E outVal = comparator.compare(left.apply(0), right.apply(0)) ?
-                    trueValue : falseValue;
+                E outVal = comparator.compare(left.apply(0), right.apply(0)) ?
+                        trueValue : falseValue;
 
-            return writer.scalar(outVal);
+                return writer.scalar(outVal);
+            }
         }
 
         validateBroadcastShapes(leftShape, rightShape, -1);
-        JavaShape outShape = NDArray.evalBroadcastOutputShape(leftShape, rightShape);
+        Shape outShape = NDArray.evalBroadcastOutputShape(leftShape, rightShape);
 
-        writer.prepareDate(toIntExact(outShape.getSize()));
+        writer.prepareDate(toIntExact(outShape.size));
 
-        int[] thisBroadcastBlockSizes = calcBroadcastBlockSizes(leftShape, outShape.getDimCount());
-        int[] otherBroadcastBlockSizes = calcBroadcastBlockSizes(rightShape, outShape.getDimCount());
+        int[] thisBroadcastBlockSizes = calcBroadcastBlockSizes(leftShape, outShape.dimCount);
+        int[] otherBroadcastBlockSizes = calcBroadcastBlockSizes(rightShape, outShape.dimCount);
 
         fillCompare(comparator, trueValue, falseValue,
                 left, thisBroadcastBlockSizes,

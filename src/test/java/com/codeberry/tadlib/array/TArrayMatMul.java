@@ -1,25 +1,18 @@
 package com.codeberry.tadlib.array;
 
+import com.codeberry.tadlib.array.exception.InvalidBroadcastShape;
+import com.codeberry.tadlib.array.exception.InvalidInputShape;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import static com.codeberry.tadlib.array.TArrayFactory.*;
+import static com.codeberry.tadlib.array.TArrayFactory.rangeDoubles;
 import static java.util.Arrays.deepEquals;
 import static java.util.Arrays.deepToString;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TArrayMatMul {
-
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new JavaProvider());
-    }
 
     @Test
     public void matmul() {
@@ -50,8 +43,8 @@ class TArrayMatMul {
         NDArray c = a.matmul(b);
 
         double[][] out = (double[][]) c.toDoubles();
-        System.out.println("Rows: "+ out.length);
-        System.out.println("Cols: "+ out[0].length);
+        System.out.println("Rows: " + out.length);
+        System.out.println("Cols: " + out[0].length);
     }
 
     @Test
@@ -116,7 +109,8 @@ class TArrayMatMul {
                 });
     }
 
-    @Disabled @Test
+    @Disabled
+    @Test
     public void matmulBig() {
         NDArray a = ProviderStore.array(rangeDoubles(4000 * 512));
         NDArray b = ProviderStore.array(rangeDoubles(512 * 1024));

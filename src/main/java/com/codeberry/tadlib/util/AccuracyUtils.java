@@ -1,6 +1,6 @@
 package com.codeberry.tadlib.util;
 
-import com.codeberry.tadlib.array.NDIntArray;
+import com.codeberry.tadlib.provider.java.JavaIntArray;
 import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.tensor.Tensor;
 
@@ -9,7 +9,7 @@ import static com.codeberry.tadlib.array.Comparison.equalsWithDelta;
 public class AccuracyUtils {
     public static double softmaxAccuracy(Tensor labels, Tensor prediction) {
         // TODO: test shapes
-        NDIntArray predictedClasses = prediction.val().argmax(-1);
+        JavaIntArray predictedClasses = prediction.val().argmax(-1);
         NDArray labelClasses = labels.val().reshape(-1);
         int examples = labelClasses.shape.at(0);
 

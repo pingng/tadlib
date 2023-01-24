@@ -1,20 +1,15 @@
 package com.codeberry.tadlib.provider;
 
-import com.codeberry.tadlib.array.NDIntArray;
-import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.provider.java.JavaShape;
-import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.JavaIntArray;
 import com.codeberry.tadlib.provider.java.JavaProvider;
+import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.Shape;
 
 import java.util.Stack;
 import java.util.concurrent.Callable;
 
 public class ProviderStore {
-    private static Provider provider = new JavaProvider();
-
-    public static void setProvider(Provider provider) {
-        ProviderStore.provider = provider;
-    }
+    private static final Provider provider = new JavaProvider();
 
     public static String getProviderShortDescription() {
         return provider.getShortDescription();
@@ -27,6 +22,7 @@ public class ProviderStore {
     public static NDArray array(double[] v) {
         return provider.createArray(v);
     }
+
     public static NDArray array(double[][] v) {
         return provider.createArray(v);
     }
@@ -40,29 +36,30 @@ public class ProviderStore {
     }
 
     public static Shape shape(int... dims) {
-        if (dims.length==0)
-            return JavaShape.zeroDim;
+        if (dims.length == 0)
+            return Shape.zeroDim;
         return provider.createShape(dims);
     }
 
     public static NDArray arrayFillWith(Shape shape, double v) {
         return provider.createArrayWithValue(shape, v);
     }
+
     private static final ThreadLocal<Stack<String>> DEVICE_NAME = ThreadLocal.withInitial(Stack::new);
 
-    public static NDIntArray array(int v) {
+    public static JavaIntArray array(int v) {
         return provider.createIntArray(v);
     }
 
-    public static NDIntArray array(int[] v) {
+    public static JavaIntArray array(int[] v) {
         return provider.createIntArray(v);
     }
 
-    public static NDIntArray array(int[][] v) {
+    public static JavaIntArray array(int[][] v) {
         return provider.createIntArray(v);
     }
 
-    public static NDIntArray intArrayFillWith(Shape shape, int v) {
+    public static JavaIntArray intArrayFillWith(Shape shape, int v) {
         return provider.createIntArrayWithValue(shape, v);
     }
 

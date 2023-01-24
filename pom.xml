@@ -9,21 +9,21 @@
     <version>0.1-SNAPSHOT</version>
 
     <properties>
-        <maven.compiler.source>14</maven.compiler.source>
-        <maven.compiler.target>14</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>net.java.dev.jna</groupId>
-            <artifactId>jna</artifactId>
-            <version>5.6.0</version>
-        </dependency>
-        <dependency> <!-- JNA dependency -->
-            <groupId>net.java.dev.jna</groupId>
-            <artifactId>jna-platform</artifactId>
-            <version>5.6.0</version>
-        </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>net.java.dev.jna</groupId>-->
+        <!--            <artifactId>jna</artifactId>-->
+        <!--            <version>5.6.0</version>-->
+        <!--        </dependency>-->
+        <!--        <dependency> &lt;!&ndash; JNA dependency &ndash;&gt;-->
+        <!--            <groupId>net.java.dev.jna</groupId>-->
+        <!--            <artifactId>jna-platform</artifactId>-->
+        <!--            <version>5.6.0</version>-->
+        <!--        </dependency>-->
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>

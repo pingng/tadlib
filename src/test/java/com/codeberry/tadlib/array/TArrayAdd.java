@@ -2,22 +2,15 @@ package com.codeberry.tadlib.array;
 
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import static com.codeberry.tadlib.array.TArrayFactory.*;
-import static com.codeberry.tadlib.provider.ProviderStore.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static com.codeberry.tadlib.array.TArrayFactory.rangeDoubles;
+import static com.codeberry.tadlib.provider.ProviderStore.array;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TArrayAdd {
-
-    @BeforeEach
-    public void init() {
-        ProviderStore.setProvider(new JavaProvider());
-        //setProvider(new OpenCLProvider());
-    }
 
     @Test
     public void plainValue() {
@@ -131,7 +124,6 @@ class TArrayAdd {
                 {0, 1, 2},
                 {3, 4, 10}
         });
-        ;
         assertEquals(a.shape, b.shape);
 
         NDArray c = a.add(b);

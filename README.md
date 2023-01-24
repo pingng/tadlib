@@ -3,8 +3,9 @@ TADLib - Tiny Automatic Differentiation Library
 
 What is TADLib?
 ---
-TADLib was created for **understanding how ['autograd'](https://en.wikipedia.org/wiki/Automatic_differentiation) and basic neural networks can be implemented**. It provides 
-Automatic Differentiation (AD) like Tensorflow and PyTorch, but is implemented in pure Java. Hardware acceleration 
+TADLib was created for **understanding how ['autograd'](https://en.wikipedia.org/wiki/Automatic_differentiation) and
+basic neural networks can be implemented**. It provides
+Automatic Differentiation (AD) like Tensorflow and PyTorch, but is implemented in pure Java. Hardware acceleration
 is supported using [OpenCL](https://www.khronos.org/opencl/).
 
 The main code uses tensors/multi dim arrays. A separate auto grad implementation using only scalar values can
@@ -12,8 +13,11 @@ also be found. It should be even easier to understand the concept of auto grad f
 
 Examples
 ---
+
 ### A fully connected Neural Network for the MNIST dataset
+
 First we need some weights:
+
 ```java
 hiddenW = tensor(randWeight(weightRnd, shape(28 * 28, 32)));
 hiddenB = tensor(randWeight(weightRnd, shape(32)));
@@ -21,7 +25,9 @@ hiddenB = tensor(randWeight(weightRnd, shape(32)));
 outW = tensor(randWeight(weightRnd, shape(32, 10)));
 outB = tensor(randWeight(weightRnd, shape(10)));
 ```
+
 Then we need the forward pass:
+
 ```java
 // relu(inputs @ hiddenW + hiddenB)
 Tensor firstLayer = relu(add(
@@ -32,21 +38,27 @@ Tensor prediction = add(
         matmul(firstLayer, outW),
         outB);
 ```
-The _outLayer_ is the output [logits](https://stackoverflow.com/questions/34240703/what-is-logits-softmax-and-softmax-cross-entropy-with-logits)
+
+The _outLayer_ is the
+output [logits](https://stackoverflow.com/questions/34240703/what-is-logits-softmax-and-softmax-cross-entropy-with-logits)
 for each output classes.
 
 We must then calculate the loss (scaled by the number of examples in the batch):
+
 ```java
 Tensor totalSoftmaxCost = sumSoftmaxCrossEntropy(toOneHot(trainingData.output, 10), prediction);
 Tensor avgSoftmaxCost = div(totalSoftmaxCost, constant(trainingData.getBatchSize()));
 ```
 
 Then we trigger backpropagation of the gradients:
+
 ```java
 avgSoftmaxCost.backward();
 ```
 
-And, finally, update the weights ([plain SGD](https://ruder.io/optimizing-gradient-descent/index.html#batchgradientdescent)):
+And, finally, update the
+weights ([plain SGD](https://ruder.io/optimizing-gradient-descent/index.html#batchgradientdescent)):
+
 ```java
 hiddenW.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
 hiddenB.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
@@ -55,21 +67,24 @@ outB.update((values, gradient) -> values.sub(gradient.mul(learningRate)));
 ```
 
 #### Examples
-- [TrainHardCodedFullyConnectedMNISTModel](src/main/java/com/codeberry/tadlib/example/mnist/TrainHardCodedFullyConnectedMNISTModel.java) \
+
+- [TrainHardCodedFullyConnectedMNISTModel](src/test/java/com/codeberry/tadlib/example/mnist/TrainHardCodedFullyConnectedMNISTModel.java) \
   A simple & hard coded neural network, implemented in a single class.
-- [TrainFixedConvMNISTMain](src/main/java/com/codeberry/tadlib/example/mnist/TrainFixedConvMNISTMain.java) \
+- [TrainFixedConvMNISTMain](src/test/java/com/codeberry/tadlib/example/mnist/TrainFixedConvMNISTMain.java) \
   A neural network with convolution operations.
-- [TrainConfiguredConvMNISTMain](src/main/java/com/codeberry/tadlib/example/mnist/TrainConfiguredConvMNISTMain.java) \
+- [TrainConfiguredConvMNISTMain](src/test/java/com/codeberry/tadlib/example/mnist/TrainConfiguredConvMNISTMain.java) \
   Another convolutional neural network. It is built using layers.
-- [TrainFixedMNISTConvAttentionMain](src/main/java/com/codeberry/tadlib/example/mnist/TrainFixedMNISTConvAttentionMain.java) \
+- [TrainFixedMNISTConvAttentionMain](src/test/java/com/codeberry/tadlib/example/mnist/TrainFixedMNISTConvAttentionMain.java) \
   Trains an experimental with self attention.
 
 OpenCL support
 ===
 OpenCL support can be enabled by assigning the provider:
+
 ```java
 ProviserStore.setProvider(new OpenCLProvider());
 ```
+
 Operations will run **a lot** faster using OpenCL.
 
 The OpenCL integration, as the java code, is naive & minimal to allow for (hopefully) better readability.
@@ -80,24 +95,29 @@ See the [opencl package](src/main/java/com/codeberry/tadlib/provider/opencl/READ
 
 Scalar implementation
 ===
-An even simpler implementation using scalar values can be found in the [singlevalue package](src/main/java/com/codeberry/tadlib/singlevalue/README.md).
+An even simpler implementation using scalar values can be found in
+the [singlevalue package](src/main/java/com/codeberry/tadlib/singlevalue/README.md).
 
 About
 ---
+
 ### What is the point/goal of TADLib?
+
 The focus of TADLib is to show how nn works under the hood. It runs conceptually like
-Tensorflow or PyTorch in eager/immediate mode. TADLib is of course much more simple and 
+Tensorflow or PyTorch in eager/immediate mode. TADLib is of course much more simple and
 runs orders of magnitude slower. The advantage is that it allows you to follow/debug/trace
 the flow of each value, since it is implemented with plain double arrays and uses
 normal java math operations.
 
 The code is meant to be simple to read and not too difficult to follow. Some limitations are:
+
 - limited set of math ops
 - no/minimal optimizations
 - immutable (mostly)
 - ...which means it is slow :)
 
 ### What can it do?
+
 It provides all the primitives to implement a standard multi layered convolutional neural net
 for the MNIST-class problems. Using TADLib is like coding a nn in Tensorflow using Variables and
 math ops to manually create the layers and structure of the model, but with the added verbosity of Java.
@@ -117,6 +137,7 @@ The main auto grad structure of TADLib is heavily inspired by Joel Grus' auto gr
 A huge thanks to Joel :)
 
 Other refs:
+
 - the Keras source code
 - Andrew Ng's ML tutorials
 - https://gombru.github.io/2018/05/23/cross_entropy_loss/
@@ -130,7 +151,7 @@ Other refs:
   (self attention)
 - https://papers.nips.cc/paper/2018/file/7edcfb2d8f6a659ef4cd1e6c9b6d7079-Paper.pdf
   (block drop)
-  
+
 License
 ---
 Copyright © 2021, [Ping Ng](https://github.com/pingng)

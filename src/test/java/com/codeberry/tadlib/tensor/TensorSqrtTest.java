@@ -1,29 +1,22 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
-import static com.codeberry.tadlib.util.MatrixTestUtils.*;
+import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 
 public class TensorSqrtTest {
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new JavaProvider());
-    }
+
 
     @Test
     public void sqrt() {
         Tensor input = new Tensor(ProviderStore.array(new double[]{10, 1, 2, 3, 4, 5, 6, 7, 8}).reshape(1, 3, 3));
 
         Tensor sqrt = Ops.sqrt(input);
-        sqrt.backward(ProviderStore.array(new double[]{10., 2., 30.,
-                4., 50, 6,
+        sqrt.backward(ProviderStore.array(new double[]{10.0, 2.0, 30.0,
+                4.0, 50, 6,
                 70, 8, 90}).reshape(1, 3, 3));
 
         assertEqualsMatrix(ProviderStore.array(new double[]{

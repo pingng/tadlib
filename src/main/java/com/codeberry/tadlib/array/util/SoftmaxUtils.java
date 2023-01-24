@@ -1,11 +1,11 @@
 package com.codeberry.tadlib.array.util;
 
-import com.codeberry.tadlib.array.NDIntArray;
+import com.codeberry.tadlib.provider.java.JavaIntArray;
 import com.codeberry.tadlib.provider.java.NDArray;
 
 public abstract class SoftmaxUtils {
     public static NDArray calcSoftmaxCrossEntropyGradient(NDArray predicted, NDArray labelsOneHot) {
-        NDIntArray indices = labelsOneHot.argmax(-1);
+        JavaIntArray indices = labelsOneHot.argmax(-1);
         NDArray predAtTargetIndices = predicted.getAtIndicesOnAxis(indices, -1);
         NDArray change = predAtTargetIndices.add(-1);
 

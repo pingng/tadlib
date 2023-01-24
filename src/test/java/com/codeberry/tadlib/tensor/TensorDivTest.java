@@ -1,24 +1,17 @@
 package com.codeberry.tadlib.tensor;
 
-import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
-import com.codeberry.tadlib.provider.java.JavaProvider;
 import com.codeberry.tadlib.util.MatrixTestUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
-import static com.codeberry.tadlib.provider.ProviderStore.*;
-import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
+import static com.codeberry.tadlib.provider.ProviderStore.array;
 import static com.codeberry.tadlib.tensor.Ops.div;
+import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 
 public class TensorDivTest {
-    @BeforeEach
-    public void init() {
-        ProviderStore.setProvider(new JavaProvider());// enableMultiThreading();
-        //setProvider(new OpenCLProvider());
-    }
+
 
     @Test
     public void divTest() {
@@ -39,19 +32,19 @@ public class TensorDivTest {
         }).reshape(1, 3, 3));
 
         MatrixTestUtils.assertEqualsMatrix(new NDArray(new double[]{
-                        0., 6.6666665, 0.42857143, 40., 1.6666666, 8.571428,
-                        7., 26.666666, 1.2857143
+                        0.0, 6.6666665, 0.42857143, 40.0, 1.6666666, 8.571428,
+                        7.0, 26.666666, 1.2857143
                 }).reshape(1, 3, 3).toDoubles(),
                 quotient.toDoubles());
         System.out.println(Arrays.deepToString((Object[]) dividend.grad().toDoubles()));
         assertEqualsMatrix(new NDArray(new double[]{
-                        90., 2.6666667, 10., 0.5, 1.6666666,
-                        -0.5714286, -50., 0.6666667, -0.14285715
+                        90.0, 2.6666667, 10.0, 0.5, 1.6666666,
+                        -0.5714286, -50.0, 0.6666667, -0.14285715
                 }).reshape(1, 3, 3).toDoubles(),
                 dividend.grad().toDoubles());
         System.out.println(Arrays.toString((double[]) divisor.grad().toDoubles()));
         assertEqualsMatrix(new NDArray(new double[]{
-                        330., -38.33333, 0.7959186
+                        330.0, -38.33333, 0.7959186
                 }).toDoubles(),
                 divisor.grad().toDoubles());
 

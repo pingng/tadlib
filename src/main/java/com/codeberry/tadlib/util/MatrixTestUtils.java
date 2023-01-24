@@ -40,10 +40,10 @@ public class MatrixTestUtils {
         double subSum = sqrSum(a, SumOp.SUB, b);
         double addSum = sqrSum(a, SumOp.ADD, b);
 
-        // Exception for cases when a or b is very small or is zero
-        if (subSum < 3.5e-21 && subSum < 3.5e-21) {
-            return subSum;
-        }
+//        // Exception for cases when a or b is very small or is zero
+//        if (subSum < 3.5e-21 && subSum < 3.5e-21) {
+//            return subSum;
+//        }
 
         return Math.sqrt(subSum) / Math.sqrt(addSum);
     }

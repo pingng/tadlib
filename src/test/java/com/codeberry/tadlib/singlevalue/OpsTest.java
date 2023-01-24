@@ -8,7 +8,7 @@ import java.util.function.Function;
 
 import static com.codeberry.tadlib.singlevalue.Ops.*;
 import static com.codeberry.tadlib.singlevalue.Value.value;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class OpsTest {
     @Test
@@ -21,8 +21,8 @@ class OpsTest {
         assertEquals(7.0, y.v);
         y.backward(3);
 
-        assertEquals(3., a.grad);
-        assertEquals(3., b.grad);
+        assertEquals(3.0, a.grad);
+        assertEquals(3.0, b.grad);
     }
 
     @Test
@@ -42,7 +42,7 @@ class OpsTest {
     @Test
     public void testMinimize() {
         Random rand = new Random(4);
-        Value[] params = new Value[]{
+        Value[] params = {
                 value(rand.nextDouble()),
                 value(rand.nextDouble()),
                 value(rand.nextDouble()),
@@ -57,7 +57,7 @@ class OpsTest {
             Value diff = sub(value(5.0), y);
             Value loss = sqr(diff);
             System.out.println("loss: " + loss.v + " y: " + y.v);
-            System.out.println("\t"+Arrays.toString(params));
+            System.out.println("\t" + Arrays.toString(params));
 
             loss.backward(1);
 
@@ -80,7 +80,7 @@ class OpsTest {
             double _b = Math.sin(_a) * 3 + params[0].v;
             double _y = Math.tanh(params[2].v) * (_b * _b * params[1].v);
 
-            System.out.println("_y = " + _y + " - "+y.v);
+            System.out.println("_y = " + _y + " - " + y.v);
             assertEquals(_y, y.v, 0.00001);
 
             return y;
@@ -93,7 +93,7 @@ class OpsTest {
     static class NumDiff {
         private final int paramCount;
         private final double[] fixedParams;
-        private Function<Value[], Value> graphFn;
+        private final Function<Value[], Value> graphFn;
 
         NumDiff(int paramCount, Function<Value[], Value> graphFn) {
             this.paramCount = paramCount;
@@ -113,7 +113,7 @@ class OpsTest {
             for (int i = 0; i < 50; i++) {
                 System.out.println("=== " + i);
                 double[] paramVals = fixedParams == null ? createParams(rand) : fixedParams;
-                if (Arrays.binarySearch(ignoreIndex, i)>=0) {
+                if (Arrays.binarySearch(ignoreIndex, i) >= 0) {
                     System.out.println("IGNORED");
                     continue;
                 }
@@ -140,7 +140,7 @@ class OpsTest {
 
         /**
          * "Neural Networks Demystified [Part 5: Numerical Gradient Checking]"
-         * https://youtu.be/pHMzNW8Agq4
+         * <a href="https://youtu.be/pHMzNW8Agq4">...</a>
          */
         private double calcNumericDiff(double[] paramVals, int j) {
             double e = 0.0001;
@@ -152,10 +152,10 @@ class OpsTest {
             paramsCopy[j] = value(paramsCopy[j].v + e);
             Value after = graphFn.apply(paramsCopy);
 
-            return (after.v - before.v) / (2*e);
+            return (after.v - before.v) / (2 * e);
         }
 
-        private Value[] toValues(double[] vals) {
+        private static Value[] toValues(double[] vals) {
             Value[] cp = new Value[vals.length];
             for (int i = 0; i < vals.length; i++) {
                 cp[i] = value(vals[i]);

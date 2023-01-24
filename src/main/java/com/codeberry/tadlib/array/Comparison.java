@@ -3,105 +3,6 @@ package com.codeberry.tadlib.array;
 import static java.lang.Math.abs;
 
 public abstract class Comparison {
-    public static Comparison equalsWithDelta(double delta) {
-        return new EqualsComparison(delta);
-    }
-
-    public static Comparison greaterThan() {
-        return new Comparison() {
-            @Override
-            public boolean doubleIsTrue(double leftVal, double rightVal) {
-                return leftVal > rightVal;
-            }
-
-            @Override
-            public Comparison getFlippedComparison() {
-                return lessThan();
-            }
-
-            @Override
-            public boolean intIsTrue(int l, int r) {
-                return l > r;
-            }
-
-            @Override
-            public String getId() {
-                return ">";
-            }
-        };
-    }
-
-    public static Comparison lessThan() {
-        return new Comparison() {
-            @Override
-            public boolean doubleIsTrue(double leftVal, double rightVal) {
-                return leftVal < rightVal;
-            }
-
-            @Override
-            public Comparison getFlippedComparison() {
-                return greaterThan();
-            }
-
-            @Override
-            public boolean intIsTrue(int l, int r) {
-                return l < r;
-            }
-
-            @Override
-            public String getId() {
-                return "<";
-            }
-        };
-    }
-
-    public static Comparison greaterThanOrEquals() {
-        return new Comparison() {
-            @Override
-            public boolean doubleIsTrue(double leftVal, double rightVal) {
-                return leftVal >= rightVal;
-            }
-
-            @Override
-            public Comparison getFlippedComparison() {
-                return lessThanOrEquals();
-            }
-
-            @Override
-            public boolean intIsTrue(int l, int r) {
-                return l >= r;
-            }
-
-            @Override
-            public String getId() {
-                return ">=";
-            }
-        };
-    }
-
-    public static Comparison lessThanOrEquals() {
-        return new Comparison() {
-            @Override
-            public boolean doubleIsTrue(double leftVal, double rightVal) {
-                return leftVal <= rightVal;
-            }
-
-            @Override
-            public Comparison getFlippedComparison() {
-                return greaterThanOrEquals();
-            }
-
-            @Override
-            public boolean intIsTrue(int l, int r) {
-                return l <= r;
-            }
-
-            @Override
-            public String getId() {
-                return "<=";
-            }
-        };
-    }
 
     public abstract boolean doubleIsTrue(double leftVal, double rightVal);
 
@@ -111,9 +12,100 @@ public abstract class Comparison {
 
     public abstract String getId();
 
-    public double getDelta() {
-        return 0.0;
+    
+    public static Comparison equalsWithDelta(double delta) {
+        return new EqualsComparison(delta);
     }
+
+    public static final Comparison greaterThan = new Comparison() {
+        @Override
+        public boolean doubleIsTrue(double leftVal, double rightVal) {
+            return leftVal > rightVal;
+        }
+
+        @Override
+        public Comparison getFlippedComparison() {
+            return lessThan;
+        }
+
+        @Override
+        public boolean intIsTrue(int l, int r) {
+            return l > r;
+        }
+
+        @Override
+        public String getId() {
+            return ">";
+        }
+    };
+
+    public static final Comparison lessThan = new Comparison() {
+        @Override
+        public boolean doubleIsTrue(double leftVal, double rightVal) {
+            return leftVal < rightVal;
+        }
+
+        @Override
+        public Comparison getFlippedComparison() {
+            return greaterThan;
+        }
+
+        @Override
+        public boolean intIsTrue(int l, int r) {
+            return l < r;
+        }
+
+        @Override
+        public String getId() {
+            return "<";
+        }
+
+    };
+
+    public static final Comparison lessThanOrEquals = new Comparison() {
+        @Override
+        public boolean doubleIsTrue(double leftVal, double rightVal) {
+            return leftVal <= rightVal;
+        }
+
+        @Override
+        public Comparison getFlippedComparison() {
+            return greaterThanOrEquals;
+        }
+
+        @Override
+        public boolean intIsTrue(int l, int r) {
+            return l <= r;
+        }
+
+        @Override
+        public String getId() {
+            return "<=";
+        }
+
+    };
+    public static final Comparison greaterThanOrEquals = new Comparison() {
+        @Override
+        public boolean doubleIsTrue(double leftVal, double rightVal) {
+            return leftVal >= rightVal;
+        }
+
+        @Override
+        public Comparison getFlippedComparison() {
+            return lessThanOrEquals;
+        }
+
+        @Override
+        public boolean intIsTrue(int l, int r) {
+            return l >= r;
+        }
+
+        @Override
+        public String getId() {
+            return ">=";
+        }
+
+    };
 
     static class EqualsComparison extends Comparison {
         private final double delta;
@@ -129,8 +121,7 @@ public abstract class Comparison {
 
         @Override
         public boolean doubleIsTrue(double leftVal, double rightVal) {
-            double diff = rightVal - leftVal;
-            return abs(diff) <= delta;
+            return abs(rightVal - leftVal) <= delta;
         }
 
         @Override
@@ -143,9 +134,5 @@ public abstract class Comparison {
             return "==";
         }
 
-        @Override
-        public double getDelta() {
-            return delta;
-        }
     }
 }

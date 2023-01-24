@@ -1,8 +1,8 @@
 package com.codeberry.tadlib.util;
 
-import com.codeberry.tadlib.array.Shape;
-import com.codeberry.tadlib.provider.java.TMutableArray;
 import com.codeberry.tadlib.provider.ProviderStore;
+import com.codeberry.tadlib.provider.java.Shape;
+import com.codeberry.tadlib.provider.java.TMutableArray;
 import com.codeberry.tadlib.tensor.Tensor;
 
 import static com.codeberry.tadlib.provider.ProviderStore.shape;

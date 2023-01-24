@@ -1,9 +1,6 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.provider.ProviderStore;
-import com.codeberry.tadlib.provider.java.JavaProvider;
-//import com.codeberry.tadlib.provider.opencl.OpenCLProvider;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static com.codeberry.tadlib.array.TArrayFactory.onesShaped;
@@ -11,11 +8,6 @@ import static com.codeberry.tadlib.util.MatrixTestUtils.assertEqualsMatrix;
 import static com.codeberry.tadlib.util.StringUtils.toJson;
 
 public class TensorMeanTest {
-    @BeforeEach
-    public void init() {
-//        ProviderStore.setProvider(new JavaProvider()); enableMultiThreading();
-        ProviderStore.setProvider(new JavaProvider());
-    }
 
     @Test
     public void mean() {
@@ -38,7 +30,7 @@ public class TensorMeanTest {
         assertEqualsMatrix(ProviderStore.array(new double[]{
                         (0.01 + 1 + 0.02 + 2 + 0.03 + 3 + 0.04 + 4) / 8,
                         (0.1 + 10 + 0.2 + 20 + 0.3 + 30 + 0.4 + 40) / 8,
-                        (-1. - 2 - 3 - 4 - 5 - 6 - 7 - 8) / 8
+                        (-1.0 - 2 - 3 - 4 - 5 - 6 - 7 - 8) / 8
                 }).toDoubles(),
                 mean.val().toDoubles());
         assertEqualsMatrix(ProviderStore.array(new double[]{

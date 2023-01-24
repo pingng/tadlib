@@ -1,7 +1,9 @@
 package com.codeberry.tadlib.array;
 
-import com.codeberry.tadlib.memorymanagement.DisposalRegister;
+import com.codeberry.tadlib.provider.java.JavaIntArray;
 import com.codeberry.tadlib.provider.java.NDArray;
+import com.codeberry.tadlib.provider.java.Shape;
+import com.codeberry.tadlib.util.memory.DisposalRegister;
 
 import java.util.Random;
 
@@ -14,7 +16,7 @@ public abstract class TArrayFactory {
     }
 
     public static NDArray ones(Shape shape) {
-        return arrayFillWith(shape.normalOrderedCopy(), 1.0);
+        return arrayFillWith(shape.normalOrderedCopy(), 1);
     }
 
     public static NDArray zerosShaped(int... dims) {
@@ -25,11 +27,11 @@ public abstract class TArrayFactory {
         return arrayFillWith(shape.normalOrderedCopy(), 0.0);
     }
 
-    public static NDIntArray intZerosShaped(int... dims) {
+    public static JavaIntArray intZerosShaped(int... dims) {
         return intZeros(shape(dims));
     }
 
-    public static NDIntArray intZeros(Shape shape) {
+    public static JavaIntArray intZeros(Shape shape) {
         return intArrayFillWith(shape, 0);
     }
 
@@ -51,7 +53,7 @@ public abstract class TArrayFactory {
     }
 
     public static NDArray randomWeight(Random rand, Shape shape) {
-        int size = Math.toIntExact(shape.getSize());
+        int size = Math.toIntExact(shape.size);
 
         return DisposalRegister.disposeAllExceptReturnedValue(() -> randomWeight(rand, size).reshape(shape));
     }
@@ -72,33 +74,29 @@ public abstract class TArrayFactory {
         return array(rangeDoubles(count));
     }
 
-    public static NDIntArray intRange(int count) {
+    public static JavaIntArray intRange(int count) {
         return array(rangeInt(count));
     }
 
     public static double[] rangeDoubles(int count) {
         double[] data = new double[count];
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++)
             data[i] = i;
-        }
         return data;
     }
 
     public static int[] rangeInt(int count) {
         int[] data = new int[count];
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++)
             data[i] = i;
-        }
         return data;
     }
 
     public static NDArray fillLike(Shape shape, NDArray zeroDim) {
-        if (zeroDim.shape.getDimCount() != 0) {
+        if (zeroDim.shape.dimCount != 0)
             throw new IllegalArgumentException("value must be of zero dim");
-        }
-        double v = (double) zeroDim.toDoubles();
 
-        return arrayFillWith(shape.normalOrderedCopy(), v);
+        return arrayFillWith(shape.normalOrderedCopy(), (double) zeroDim.toDoubles());
     }
 
 }

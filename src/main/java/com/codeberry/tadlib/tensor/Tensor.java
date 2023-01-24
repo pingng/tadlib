@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.TArrayFactory;
+import com.codeberry.tadlib.nn.Initializer;
 import com.codeberry.tadlib.nn.optimizer.Optimizer;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
@@ -186,14 +187,24 @@ public class Tensor {
         return this;
     }
 
-    public NDArray optimize(Optimizer o) {
+    public final void init(Initializer o) {
+        o.initialize(optimizables());
+    }
+
+    public final NDArray optimize(Optimizer o) {
         backward();
+
+        o.optimize(optimizables());
+
+        return val();
+    }
+
+    private List<Tensor> optimizables() {
         if (optimizables == null)
             optimizables = compileOptimizables();
 
-        o.optimize(optimizables);
-
-        return val();
+        List<Tensor> oo = optimizables;
+        return oo;
     }
 
     private List<Tensor> compileOptimizables() {

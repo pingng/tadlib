@@ -1261,13 +1261,13 @@ public class NDArray implements DisposalRegister.Disposable {
     }
 
     public NDArray negate() {
-        if (this.shape instanceof ReorderedJavaShape) {
+        if (this.shape instanceof ReorderedJavaShape)
             throw new UnsupportedOperationException("reordered shape not yet supported");
-        }
+
         double[] data = this.data.clone();
-        for (int i = 0; i < data.length; i++) {
-            data[i] *= -1;
-        }
+        for (int i = 0; i < data.length; i++)
+            data[i] = -data[i];
+
         return new NDArray(data, shape);
     }
 

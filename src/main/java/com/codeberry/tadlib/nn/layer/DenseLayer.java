@@ -30,10 +30,7 @@ public class DenseLayer implements Layer {
     @Override
     public ForwardResult forward(Random rnd, Tensor inputs, RunMode runMode, IterationInfo iterationInfo) {
         Tensor hW = matmul(inputs, w);
-        if (b != null) {
-            return result(add(hW, b));
-        }
-        return result(hW);
+        return b != null ? result(add(hW, b)) : result(hW);
     }
 
     @Override

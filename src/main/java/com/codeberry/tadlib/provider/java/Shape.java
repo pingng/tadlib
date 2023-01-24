@@ -67,7 +67,7 @@ public class Shape {
         return dim >= 0 ? dim : dimCount + dim;
     }
 
-    public Shape reshape(int[] dims) {
+    public Shape reshape(int... dims) {
         return new Shape(reshapeDims(dims));
     }
 

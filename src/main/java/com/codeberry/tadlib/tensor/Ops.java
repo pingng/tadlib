@@ -8,11 +8,13 @@ import com.codeberry.tadlib.provider.java.Shape;
 import com.codeberry.tadlib.util.MultiThreadingSupport;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 import static com.codeberry.tadlib.array.TArrayFactory.fillLike;
 import static com.codeberry.tadlib.array.TArrayFactory.ones;
 import static com.codeberry.tadlib.array.util.DimensionUtils.validateBroadcastShapes;
 import static com.codeberry.tadlib.array.util.DimensionUtils.validateMatMulShapes;
+import static com.codeberry.tadlib.provider.ProviderStore.shape;
 import static com.codeberry.tadlib.provider.java.NDArray.DimKeepRemove.KEEP_DIM;
 import static com.codeberry.tadlib.provider.java.NDArray.DimKeepRemove.REMOVE_DIM;
 import static com.codeberry.tadlib.provider.java.NDArray.*;
@@ -121,6 +123,15 @@ public abstract class Ops {
         return new Tensor(v -> {
             v.set(a.val().add(b.val()));
         }, a.shape(), asList(grad(a, funcGradientAdd(a)), grad(b, funcGradientAdd(b))));
+    }
+
+    public static Tensor DENSE(Tensor x, int outputSize, boolean bias) {
+        var xShape = x.shape();
+        var wShape = shape(xShape.at(-1), outputSize);
+        Tensor W = new Tensor(new NDArray(wShape)).optimizable();
+        Tensor B = bias ? new Tensor(new NDArray(shape(outputSize))).optimizable() : null;
+        Tensor y = MATMUL(/*FLATTEN*/(x), W);
+        return bias ? ADD(y, B) : y;
     }
 
     public static Tensor add(Tensor a, double constant) {
@@ -306,6 +317,15 @@ public abstract class Ops {
                 singletonList(grad(input, gF)));
     }
 
+    public static Tensor FLATTEN(Tensor input) {
+        Shape inputShape = input.shape();
+        int size = calcFlattenExampleSize(inputShape);
+
+        return new Tensor(v -> v.set(input.val()),
+                inputShape.reshape(inputShape.at(0), size),
+                singletonList(grad(input, grad -> grad.reshape(inputShape))));
+    }
+
     public static int calcFlattenExampleSize(Shape inputShape) {
         int size = 1;
         for (int i = 1; i < inputShape.dimCount; i++) {
@@ -331,6 +351,15 @@ public abstract class Ops {
         GradFunc gF = grad -> grad.mul(result.createMask());
 
         return new Tensor(relu, singletonList(grad(input, gF)));
+    }
+
+    /** TODO avoid duplicate call to relu() */
+    public static Tensor RELU(Tensor x) {
+        return new Tensor(y->
+            y.set(x.val().relu(0).getOutput()),
+            x.shape(),
+            singletonList(grad(x, grad ->
+            grad.mul(x.val().relu(0).createMask()))));
     }
 
     public static Tensor leakyRelu(Tensor input, double leakyScale) {

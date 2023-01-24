@@ -1,5 +1,6 @@
 package com.codeberry.tadlib.tensor;
 
+import com.codeberry.tadlib.nn.Initializer;
 import com.codeberry.tadlib.nn.optimizer.Optimizer;
 import com.codeberry.tadlib.nn.optimizer.RMSProp;
 import com.codeberry.tadlib.nn.optimizer.SGD;
@@ -55,35 +56,46 @@ public class TensorTrainSimple {
         assertTrue(err < 0.1f);
     }
 
-    @Test void optimizerSGD() {
-        testOptimizer(new SGD(new FixedLearningRate(0.0001)));
+    @Test void optimizerSGD_1_layer() {
+        testOptimizer(new SGD(new FixedLearningRate(0.0001)), false);
     }
 
-    @Test void optimizerRMSProp() {
-        testOptimizer(new RMSProp(new FixedLearningRate(0.01f)));
+    @Test void optimizerSGD_2_layer() {
+        testOptimizer(new SGD(new FixedLearningRate(0.00001)), true);
     }
 
-    private static void testOptimizer(Optimizer opt) {
+    @Test void optimizerRMSProp_1_layer() {
+        testOptimizer(new RMSProp(new FixedLearningRate(0.01f)), false);
+    }
+    @Test void optimizerRMSProp_2_layer() {
+        testOptimizer(new RMSProp(new FixedLearningRate(0.002f)), true);
+    }
+
+    private static void testOptimizer(Optimizer opt, boolean twoLayers) {
         Random rng = new Random(3);
 
         Tensor x_data = new Tensor(random(rng, 100, 3));
         Tensor y_data = new Tensor(x_data.val().matmul(ProviderStore.array(new double[]{5, -2, 3.5})).add(5.0).reshape(100, 1));
 
-        Tensor w = new Tensor(random(rng, 3, 1)).optimizable();
-        Tensor b = new Tensor(random(rng, 1)).optimizable();
+        Tensor y = !twoLayers ?
+            DENSE(x_data, 1, true) :
+            RELU(DENSE(RELU(DENSE(x_data, 4, true)), 1, true));
+            //DENSE(DENSE(x_data, 4, true), 1, true);
 
-        Tensor y = ADD(MATMUL(x_data, w), b);
         Tensor diff = SUB(y, y_data);
         Tensor diffSq = MUL(diff, diff);
         Tensor diffSqSum = SUM(diffSq);
 
+        diffSqSum.init(new Initializer.UniformInitializer(rng, 0.1f));
+
         double err = Double.POSITIVE_INFINITY;
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 2000; i++) {
             err = diffSqSum.optimize(opt).scalar();
             //System.out.println(err);
         }
 
-        assertTrue(err < 0.1f);
+        double ERR = err;
+        assertTrue(err < 0.1f, ()->"err: " + ERR);
     }
 
     @Deprecated @Test

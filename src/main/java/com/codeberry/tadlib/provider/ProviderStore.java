@@ -36,9 +36,7 @@ public class ProviderStore {
     }
 
     public static Shape shape(int... dims) {
-        if (dims.length == 0)
-            return Shape.zeroDim;
-        return provider.createShape(dims);
+        return dims.length == 0 ? Shape.zeroDim : provider.createShape(dims);
     }
 
     public static NDArray arrayFillWith(Shape shape, double v) {

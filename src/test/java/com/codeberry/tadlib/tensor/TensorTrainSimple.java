@@ -1,5 +1,9 @@
 package com.codeberry.tadlib.tensor;
 
+import com.codeberry.tadlib.nn.optimizer.Optimizer;
+import com.codeberry.tadlib.nn.optimizer.RMSProp;
+import com.codeberry.tadlib.nn.optimizer.SGD;
+import com.codeberry.tadlib.nn.optimizer.schedule.FixedLearningRate;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
 import org.junit.jupiter.api.Test;
@@ -13,15 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class TensorTrainSimple {
 
     @Test
-    public void testMethod() {
-        Random rand = new Random(3);
+    public void raw() {
+        Random rng = new Random(3);
 
-        Tensor x_data = new Tensor(random(rand, 100, 3));
+        Tensor x_data = new Tensor(random(rng, 100, 3));
         Tensor y_data = new Tensor(x_data.val().matmul(ProviderStore.array(new double[]{5, -2, 3.5})).add(5.0).reshape(100, 1));
 
-        Random wR = new Random(3);
-        Tensor w = new Tensor(random(wR, 3, 1));
-        Tensor b = new Tensor(random(wR, 1));
+        Tensor w = new Tensor(random(rng, 3, 1));
+        Tensor b = new Tensor(random(rng, 1));
 
         double lr = 0.0001;
 
@@ -37,7 +40,7 @@ public class TensorTrainSimple {
 
             diffSqSum.backward();
 
-            System.out.println(err);
+            //System.out.println(err);
             //System.out.println(Y.toDoubles());
             //System.out.println(Arrays.deepToString((Object[]) w.getGradient().toDoubles()));
 
@@ -52,17 +55,47 @@ public class TensorTrainSimple {
         assertTrue(err < 0.1f);
     }
 
-    @Test
-    public void testMethod2() {
-        Random rand = new Random(3);
-        Tensor x_data = new Tensor(random(rand, 100, 3));
-        Tensor coeff = new Tensor(new double[]{4, -2, 7});
-        Tensor y_data = new Tensor(x_data.val().matmul(coeff.val()));
+    @Test void optimizerSGD() {
+        testOptimizer(new SGD(new FixedLearningRate(0.0001)));
+    }
 
-        Random wR = new Random(3);
-        NDArray mW = ProviderStore.array(random(wR, 3)).reshape(3, 1);
+    @Test void optimizerRMSProp() {
+        testOptimizer(new RMSProp(new FixedLearningRate(0.01f)));
+    }
+
+    private static void testOptimizer(Optimizer opt) {
+        Random rng = new Random(3);
+
+        Tensor x_data = new Tensor(random(rng, 100, 3));
+        Tensor y_data = new Tensor(x_data.val().matmul(ProviderStore.array(new double[]{5, -2, 3.5})).add(5.0).reshape(100, 1));
+
+        Tensor w = new Tensor(random(rng, 3, 1)).optimizable();
+        Tensor b = new Tensor(random(rng, 1)).optimizable();
+
+        Tensor y = ADD(MATMUL(x_data, w), b);
+        Tensor diff = SUB(y, y_data);
+        Tensor diffSq = MUL(diff, diff);
+        Tensor diffSqSum = SUM(diffSq);
+
+        double err = Double.POSITIVE_INFINITY;
+        for (int i = 0; i < 1000; i++) {
+            err = diffSqSum.optimize(opt).scalar();
+            //System.out.println(err);
+        }
+
+        assertTrue(err < 0.1f);
+    }
+
+    @Deprecated @Test
+    public void immediate() {
+        Random rng = new Random(3);
+        Tensor x_data = new Tensor(random(rng, 100, 3));
+        Tensor coeff = new Tensor(new double[]{4, -2, 7});
+        //Tensor y_data = new Tensor(x_data.val().matmul(coeff.val()));
+
+        NDArray mW = ProviderStore.array(random(rng, 3)).reshape(3, 1);
         Tensor w = new Tensor(mW);
-        Tensor b = new Tensor(random(wR, 1));
+        Tensor b = new Tensor(random(rng, 1));
 
         for (int i = 0; i < 1; i++) {
             Tensor matmuled = matmul(x_data, w);
@@ -73,8 +106,8 @@ public class TensorTrainSimple {
             }
             matmuled.backward(ProviderStore.array(grad));
 
-            NDArray ndArray = matmuled.val();
-            System.out.println(ndArray.shape);
+            //NDArray ndArray = matmuled.val();
+            //System.out.println(ndArray.shape);
             //System.out.println(Arrays.toString((double[]) matmuled.toArray()));
             //System.out.println(Arrays.toString((double[]) w.gradient.toArray()));
         }

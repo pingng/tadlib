@@ -11,12 +11,13 @@ public record SGD(LearningRateSchedule learningRateSchedule) implements Optimize
 
     @Override
     public void optimize(List<Tensor> params) {
-        BiFunction<NDArray, NDArray, NDArray> each = this::apply;
+        double lr = learningRateSchedule.getLearningRate();
+
+        BiFunction<NDArray, NDArray, NDArray> each = (values, gradient) ->
+            values.sub(gradient.mul(lr));
+
         for (Tensor p : params)
             p.update(each);
     }
 
-    private NDArray apply(NDArray values, NDArray gradient) {
-        return values.sub(gradient.mul(learningRateSchedule.getLearningRate()));
-    }
 }

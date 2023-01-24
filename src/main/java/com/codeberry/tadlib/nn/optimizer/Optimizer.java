@@ -18,7 +18,7 @@ public interface Optimizer {
     /**
      * @return disables that should NOT be released/freed automatically
      */
-    default Collection<DisposalRegister.Disposable> getKeepInMemoryDisposables() {
+    default Collection<? extends DisposalRegister.Disposable> getKeepInMemoryDisposables() {
         return emptyList();
     }
 

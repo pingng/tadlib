@@ -64,25 +64,21 @@ public abstract class Ops {
     public static Tensor matmul(Tensor a, Tensor b) {
         NDArray y = a.val().matmul(b.val());
 
-        GradFunc gF_a = grad -> disposeAllExceptReturnedValue(() -> {
-            NDArray rawAGrad = grad.matmul(b.val().transposeLast2D());
-            return aggregateBroadcastedDims(a, rawAGrad);
-        });
-        GradFunc gF_b = grad -> disposeAllExceptReturnedValue(() -> {
-            NDArray rawBGrad = a.val().transposeLast2D().matmul(grad);
-            return aggregateBroadcastedDims(b, rawBGrad);
-        });
+        GradFunc gF_a = grad -> disposeAllExceptReturnedValue(() ->
+            aggregateBroadcastedDims(a, grad.matmul(b.val().transposeLast2D())));
+        GradFunc gF_b = grad -> disposeAllExceptReturnedValue(() ->
+            aggregateBroadcastedDims(b, a.val().transposeLast2D().matmul(grad)));
 
-        return new Tensor(y,
-                asList(grad(a, gF_a), grad(b, gF_b)));
+        return new Tensor(y, asList(grad(a, gF_a), grad(b, gF_b)));
     }
 
     public static Tensor NEGATE(Tensor x) {
         return new Tensor(y -> {
-            double[] xx = x.val().data;
-            double[] yy = y.data;
-            for (int i = 0; i < xx.length; i++)
-                yy[i] = -xx[i];
+//            double[] xx = x.val().data;
+//            double[] yy = y.data;
+//            for (int i = 0; i < xx.length; i++)
+//                yy[i] = -xx[i];
+            y.set(x.val().mul(-1));
         }, x.shape(), singletonList(grad(x, NDArray::negate)));
     }
 
@@ -118,15 +114,11 @@ public abstract class Ops {
     public static Tensor add(Tensor a, Tensor b) {
         NDArray y = a.val().add(b.val());
 
-        GradFunc gF_a = funcGradientAdd(a);
-        GradFunc gF_b = funcGradientAdd(b);
-
-        return new Tensor(y, asList(grad(a, gF_a), grad(b, gF_b)));
+        return new Tensor(y, asList(grad(a, funcGradientAdd(a)), grad(b, funcGradientAdd(b))));
     }
 
     public static Tensor ADD(Tensor a, Tensor b) {
         return new Tensor(v -> {
-            //TODO direct write
             v.set(a.val().add(b.val()));
         }, a.shape(), asList(grad(a, funcGradientAdd(a)), grad(b, funcGradientAdd(b))));
     }
@@ -134,9 +126,7 @@ public abstract class Ops {
     public static Tensor add(Tensor a, double constant) {
         NDArray y = a.val().add(constant);
 
-        GradFunc gF_a = funcGradientAdd(a);
-
-        return new Tensor(y, singletonList(grad(a, gF_a)));
+        return new Tensor(y, singletonList(grad(a, funcGradientAdd(a))));
     }
 
     private static GradFunc funcGradientAdd(Tensor tensor) {
@@ -146,9 +136,9 @@ public abstract class Ops {
     public static Tensor sqr(Tensor a) {
         NDArray y = a.val().sqr();
 
-        GradFunc gF = grad -> disposeAllExceptReturnedValue(() -> grad.mul(a.val()).mul(2.0));
-
-        return new Tensor(y, singletonList(grad(a, gF)));
+        return new Tensor(y, singletonList(grad(a,
+                grad -> disposeAllExceptReturnedValue(() ->
+                    grad.mul(a.val()).mul(2.0)))));
     }
 
     public static Tensor sqrt(Tensor a) {

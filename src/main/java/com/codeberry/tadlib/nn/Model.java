@@ -14,12 +14,12 @@ import static com.codeberry.tadlib.provider.ProviderStore.array;
 import static java.util.Collections.emptyList;
 
 public interface Model {
-    default PredictionAndLosses trainSingleIteration(Random rnd, Batch batchData, Optimizer optimizer, IterationInfo iterationInfo) {
+
+    /** single training iteration */
+    default PredictionAndLosses train(Random rnd, Batch batchData, Optimizer optimizer, IterationInfo iterationInfo) {
         PredictionAndLosses l = calcGradient(rnd, batchData, iterationInfo);
 
-        List<Tensor> params = getParams();
-
-        optimizer.optimize(params);
+        optimizer.optimize(getParams());
 
         l.runTasks();
 

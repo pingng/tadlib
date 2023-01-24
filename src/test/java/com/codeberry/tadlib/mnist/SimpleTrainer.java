@@ -106,7 +106,7 @@ public class SimpleTrainer {
     private List<Disposable> trainBatch(Random rnd, TrainStats stats, IterationInfo iterationInfo) {
         Batch batchData = data.getTrainingBatch(iterationInfo.batchIndex, params.batchSize);
 
-        Model.PredictionAndLosses pl = model.trainSingleIteration(rnd, batchData, optimizer, iterationInfo);
+        Model.PredictionAndLosses pl = model.train(rnd, batchData, optimizer, iterationInfo);
 
         stats.accumulate(pl, batchData.output);
 

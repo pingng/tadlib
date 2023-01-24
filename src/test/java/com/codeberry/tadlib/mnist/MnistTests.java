@@ -2,6 +2,7 @@ package com.codeberry.tadlib.mnist;
 
 import com.codeberry.tadlib.nn.optimizer.RMSProp;
 import com.codeberry.tadlib.nn.optimizer.SGD;
+import com.codeberry.tadlib.nn.optimizer.schedule.FixedLearningRate;
 import com.codeberry.tadlib.util.TrainingData;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -11,7 +12,6 @@ import static com.codeberry.tadlib.mnist.MNISTLoader.LoadParams.params;
 import static com.codeberry.tadlib.mnist.SimpleTrainer.TrainParams.trainParams;
 import static com.codeberry.tadlib.mnist.TrainConfiguredConvMNISTMain.createModelFactory;
 import static com.codeberry.tadlib.nn.optimizer.schedule.DecayingLearningRate.decayingLearningRate;
-import static com.codeberry.tadlib.nn.optimizer.schedule.FixedLearningRate.fixedLearningRate;
 import static com.codeberry.tadlib.nn.optimizer.schedule.SawToothSchedule.sawTooth;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -38,7 +38,7 @@ public class MnistTests {
     void FixedConvTest() {
         var trainer = new SimpleTrainer(trainParams("FixedConv")
                 .batchSize(32)
-                .optimizer(new SGD(fixedLearningRate(0.15)))
+                .optimizer(new SGD(new FixedLearningRate(0.15)))
                 .loaderParams(params()
                         .downloadWhenMissing(true)
                         .trainingExamples(40_000)

@@ -1,6 +1,7 @@
 package com.codeberry.tadlib.tensor;
 
 import com.codeberry.tadlib.array.TArrayFactory;
+import com.codeberry.tadlib.nn.optimizer.Optimizer;
 import com.codeberry.tadlib.provider.ProviderStore;
 import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.provider.java.Shape;
@@ -104,7 +105,7 @@ public class Tensor {
 
         this.links = links.toArray(GradLink[]::new);
         for (var l : links)
-            l.parent.linked.add(this);
+            l.tensor.linked.add(this);
     }
 
     public static Tensor tensor(double[] vals) {
@@ -177,6 +178,40 @@ public class Tensor {
         }
     }
 
+    private boolean optimizable = false;
+    List<Tensor> optimizables = null;
+
+    public Tensor optimizable() {
+        this.optimizable = true;
+        return this;
+    }
+
+    public NDArray optimize(Optimizer o) {
+        backward();
+        if (optimizables == null)
+            optimizables = compileOptimizables();
+
+        o.optimize(optimizables);
+
+        return val();
+    }
+
+    private List<Tensor> compileOptimizables() {
+        List<Tensor> l = new ArrayList<>();
+        compileOptimizables(l);
+        return l;
+    }
+
+    private void compileOptimizables(List<Tensor> l) {
+        if (optimizable) {
+            if (!l.contains(this))
+                l.add(this);
+        }
+
+        for (var x : links)
+            x.tensor.compileOptimizables(l);
+    }
+
     public static abstract class TensorFactories {
         public static Tensor randomWeight(Random r, Shape shape) {
             return tensor(TArrayFactory.randomWeight(r, shape));
@@ -196,7 +231,7 @@ public class Tensor {
             gradient.zero();
 
         for (var p : links)
-            p.parent.gradientZero();
+            p.tensor.gradientZero();
     }
 
     public void backward(boolean zero) {
@@ -220,8 +255,8 @@ public class Tensor {
             gradientAccum(gradient);
 
             for (var link : links)
-                if (link.parent.gradientMode == CALCULATE_GRAD)
-                    link.parent.backwardDepthFirst(link.gradFunc.calcGradient(gradient));
+                if (link.tensor.gradientMode == CALCULATE_GRAD)
+                    link.tensor.backwardDepthFirst(link.gradFunc.calcGradient(gradient));
         }
     }
 
@@ -238,7 +273,7 @@ public class Tensor {
         for (var next : backwardBreadthFirst) {
             NDArray g = next.gradient;
             for (var link : next.links) {
-                Tensor parent = link.parent;
+                Tensor parent = link.tensor;
                 if (parent.gradientMode == CALCULATE_GRAD)
                     parent.gradientAccum(link.gradFunc.calcGradient(g));
             }
@@ -256,7 +291,7 @@ public class Tensor {
             backwardBreadthFirst.add(next);
 
             for (var link : next.links) {
-                Tensor p = link.parent;
+                Tensor p = link.tensor;
                 if (p.gradientMode == CALCULATE_GRAD)
                     q.add(p);
             }
@@ -279,16 +314,16 @@ public class Tensor {
         return new Tensor(this.val().subBatch(batchId, batchSize), this.gradientMode);
     }
 
-    public void update(BiFunction<NDArray, NDArray, NDArray> convertFunc) {
+    public void update(BiFunction<NDArray, NDArray, NDArray> f) {
         testNaN(gradient);
 
         NDArray old = this.val();
         testNaN(old);
 
-        var newVals = convertFunc.apply(old, this.gradient);
-        set(newVals);
+        var newVals = f.apply(old, this.gradient);
+        testNaN(newVals);
 
-        testNaN(val);
+        set(newVals);
 
         DisposalRegister.registerForDisposal(old);
 

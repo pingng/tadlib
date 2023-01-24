@@ -1,11 +1,11 @@
 package com.codeberry.tadlib.tensor;
 
 public class GradLink {
-    final Tensor parent;
+    final Tensor tensor;
     final GradFunc gradFunc;
 
-    GradLink(Tensor parent, GradFunc gradFunc) {
-        this.parent = parent;
+    GradLink(Tensor tensor, GradFunc gradFunc) {
+        this.tensor = tensor;
         this.gradFunc = gradFunc;
     }
 

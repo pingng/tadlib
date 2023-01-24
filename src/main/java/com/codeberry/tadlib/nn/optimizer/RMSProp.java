@@ -35,31 +35,30 @@ public class RMSProp implements Optimizer {
 
     @Override
     public void optimize(List<Tensor> params) {
+        double lr = learningRateSchedule.getLearningRate();
+
         for (Tensor p : params) {
             p.update((values, gradient) -> {
                 NDArray sT = updateST(p, gradient);
-                NDArray sTWithEpsilon = sT.add(EPSILON);
-                NDArray sqrt = sTWithEpsilon.sqrt();
-                return values.sub(gradient.mul(learningRateSchedule.getLearningRate()).div(sqrt));
+                return values.sub(gradient.mul(lr).div(sT.add(EPSILON).sqrt()));
             });
         }
     }
 
     @Override
-    public Collection<DisposalRegister.Disposable> getKeepInMemoryDisposables() {
-        return Collections.unmodifiableCollection(sTMap.values());
+    public Collection<? extends DisposalRegister.Disposable> getKeepInMemoryDisposables() {
+        return /*Collections.unmodifiableCollection*/(sTMap.values());
     }
 
     private NDArray updateST(Tensor p, NDArray gradient) {
         NDArray sT = sTMap.get(p);
-        if (sT == null) {
+        if (sT == null)
             sT = zeros(gradient.shape);
-        }
+
         NDArray gradSqr = gradient.sqr();
         sT = sT.mul(gamma).add(gradSqr.mul(1.0 - gamma));
         NDArray old = sTMap.put(p, sT);
         DisposalRegister.registerForDisposal(old);
-
         return sT;
     }
 }

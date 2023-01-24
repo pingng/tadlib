@@ -4,6 +4,7 @@ import com.codeberry.tadlib.nn.Model;
 import com.codeberry.tadlib.nn.ModelFactory;
 import com.codeberry.tadlib.nn.SequentialModel;
 import com.codeberry.tadlib.nn.optimizer.SGD;
+import com.codeberry.tadlib.nn.optimizer.schedule.FixedLearningRate;
 import com.codeberry.tadlib.provider.java.NDArray;
 import com.codeberry.tadlib.util.MatrixTestUtils;
 import com.codeberry.tadlib.util.StringUtils;
@@ -17,7 +18,6 @@ import java.util.Random;
 import static com.codeberry.tadlib.mnist.MNISTLoader.generate;
 import static com.codeberry.tadlib.mnist.TrainConfiguredConvMNISTMain.ModelSize;
 import static com.codeberry.tadlib.mnist.TrainConfiguredConvMNISTMain.createModelFactory;
-import static com.codeberry.tadlib.nn.optimizer.schedule.FixedLearningRate.fixedLearningRate;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class LargeGradientTest {
@@ -129,7 +129,7 @@ public class LargeGradientTest {
         Random dropRnd = new Random(epoch);
         TrainStats stats = new TrainStats();
 
-        Model.PredictionAndLosses pl = model.trainSingleIteration(dropRnd, trainingData.getTrainingBatchAll(), new SGD(fixedLearningRate(0.1)), new Model.IterationInfo(epoch, 0, 1));
+        Model.PredictionAndLosses pl = model.train(dropRnd, trainingData.getTrainingBatchAll(), new SGD(new FixedLearningRate(0.1)), new Model.IterationInfo(epoch, 0, 1));
 
         stats.accumulate(pl, trainingData.yTrain);
         System.out.println("Trained: " + stats);

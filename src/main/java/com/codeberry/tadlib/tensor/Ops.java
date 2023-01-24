@@ -125,6 +125,10 @@ public abstract class Ops {
         }, a.shape(), asList(grad(a, funcGradientAdd(a)), grad(b, funcGradientAdd(b))));
     }
 
+    public static Tensor DENSE(Tensor x, int outputSize) {
+        return DENSE(x, outputSize, true);
+    }
+
     public static Tensor DENSE(Tensor x, int outputSize, boolean bias) {
         var xShape = x.shape();
         var wShape = shape(xShape.at(-1), outputSize);
@@ -353,13 +357,14 @@ public abstract class Ops {
         return new Tensor(relu, singletonList(grad(input, gF)));
     }
 
-    /** TODO avoid duplicate call to relu() */
     public static Tensor RELU(Tensor x) {
-        return new Tensor(y->
-            y.set(x.val().relu(0).getOutput()),
+        ReluResult[] xr = new ReluResult[1];
+        return new Tensor(y -> {
+              xr[0] = x.val().relu(0);
+              y.set(xr[0].getOutput());
+            },
             x.shape(),
-            singletonList(grad(x, grad ->
-            grad.mul(x.val().relu(0).createMask()))));
+            singletonList(grad(x, g -> g.mul(xr[0].createMask()))));
     }
 
     public static Tensor leakyRelu(Tensor input, double leakyScale) {

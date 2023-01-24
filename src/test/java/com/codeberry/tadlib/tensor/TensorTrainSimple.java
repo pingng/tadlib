@@ -68,7 +68,7 @@ public class TensorTrainSimple {
         testOptimizer(new RMSProp(new FixedLearningRate(0.01f)), false);
     }
     @Test void optimizerRMSProp_2_layer() {
-        testOptimizer(new RMSProp(new FixedLearningRate(0.002f)), true);
+        testOptimizer(new RMSProp(new FixedLearningRate(0.003f)), true);
     }
 
     private static void testOptimizer(Optimizer opt, boolean twoLayers) {
@@ -78,8 +78,9 @@ public class TensorTrainSimple {
         Tensor y_data = new Tensor(x_data.val().matmul(ProviderStore.array(new double[]{5, -2, 3.5})).add(5.0).reshape(100, 1));
 
         Tensor y = !twoLayers ?
-            DENSE(x_data, 1, true) :
-            RELU(DENSE(RELU(DENSE(x_data, 4, true)), 1, true));
+            DENSE(x_data, 1, true)
+            :
+            RELU( DENSE( RELU( DENSE(x_data, 4)), 1));
             //DENSE(DENSE(x_data, 4, true), 1, true);
 
         Tensor diff = SUB(y, y_data);
@@ -89,9 +90,8 @@ public class TensorTrainSimple {
         diffSqSum.init(new Initializer.UniformInitializer(rng, 0.1f));
 
         double err = Double.POSITIVE_INFINITY;
-        for (int i = 0; i < 2000; i++) {
-            err = diffSqSum.optimize(opt).scalar();
-            //System.out.println(err);
+        for (int i = 0; i < 1000; i++) {
+            err = diffSqSum.optimize(opt).scalar(); //System.out.println(err);
         }
 
         double ERR = err;

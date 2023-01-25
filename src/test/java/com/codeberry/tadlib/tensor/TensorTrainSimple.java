@@ -80,7 +80,7 @@ public class TensorTrainSimple {
         Tensor y = !twoLayers ?
             DENSE(x_data, 1, true)
             :
-            RELU( DENSE( RELU( DENSE(x_data, 4)), 1));
+            DENSE( RELU( DENSE(x_data, 4)), 1);
             //DENSE(DENSE(x_data, 4, true), 1, true);
 
         Tensor diff = SUB(y, y_data);
